@@ -1442,22 +1442,9 @@ function render() {
     const input = document.querySelector(`.form-step[data-step="${currentStep}"] .form-input`);
     if (input) answers[`q${currentStep}`] = input.value.trim();
 
-    // early contact capture after email step (step 4) — delayed so full submission can cancel it
+    // after email step, store partial data so it can be sent on page leave
     if (currentStep === 4) {
-      partialTimer = setTimeout(() => {
-        fetch('/api/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: answers.q1 || '—', age: answers.q2 || '—',
-            phone: answers.q3 || '—', email: answers.q4 || '—',
-            country: '—', occupation: '—', experience: '—',
-            hours: '—', budget: '—', looking: '—', goal: '—',
-            lang: lang === 'ar' ? 'Arabic' : 'English',
-            partial: true,
-          }),
-        }).catch(() => {});
-      }, 600000); // wait 10 min — if they finish the form the timer gets cancelled
+      partialTimer = true; // flag that contact info has been captured
     }
 
     if (currentStep === TOTAL_STEPS) {
@@ -1552,6 +1539,20 @@ function render() {
   // re-render form text on lang switch
   const _origSetLang = setLang;
   setLang = function(l) { _origSetLang(l); formRenderText(); };
+
+  // send partial lead if they leave after giving contact info but before finishing
+  window.addEventListener('pagehide', () => {
+    if (!partialTimer) return;
+    const data = {
+      name: answers.q1 || '—', age: answers.q2 || '—',
+      phone: answers.q3 || '—', email: answers.q4 || '—',
+      country: '—', occupation: '—', experience: '—',
+      hours: '—', budget: '—', looking: '—', goal: '—',
+      lang: lang === 'ar' ? 'Arabic' : 'English',
+      partial: true,
+    };
+    navigator.sendBeacon('/api/submit', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+  });
 </script>
 </body>
 </html>
