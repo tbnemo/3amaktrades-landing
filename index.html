@@ -63,8 +63,8 @@
       padding: 14px 28px;
       display: flex; align-items: center; justify-content: space-between;
     }
-    .nav-logo { font-size: 18px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
-    .nav-logo span { color: var(--green); }
+    .nav-logo-img { height: 36px; width: auto; object-fit: contain; }
+    .foot-logo-img { height: 48px; width: auto; object-fit: contain; opacity: 0.85; }
 
     .nav-right { display: flex; align-items: center; gap: 12px; }
 
@@ -1048,7 +1048,7 @@ function render() {
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo"><span>3AMAK</span> TRADES</div>
+  <img src="/logo.png" alt="UNC's Trading Floor" class="nav-logo-img" />
   <div class="nav-right">
     <div class="lang-toggle">
       <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')">عربي</button>
@@ -1374,7 +1374,7 @@ function render() {
 
 <!-- FOOTER -->
 <footer>
-  <div class="foot-logo"><span>3AMAK</span> TRADES</div>
+  <img src="/logo.png" alt="UNC's Trading Floor" class="foot-logo-img" />
   <p></p>
 </footer>
 
