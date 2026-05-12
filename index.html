@@ -1457,7 +1457,7 @@ function render() {
             partial: true,
           }),
         }).catch(() => {});
-      }, 60000); // wait 60s — if they finish the form the timer gets cancelled
+      }, 600000); // wait 10 min — if they finish the form the timer gets cancelled
     }
 
     if (currentStep === TOTAL_STEPS) {
