@@ -1400,6 +1400,8 @@ function render() {
     if (target) target.classList.add('active');
     currentStep = n;
     formRenderText();
+    const input = target && target.querySelector('.form-input');
+    if (input) setTimeout(() => input.focus(), 50);
   }
 
   function isStepValid() {
