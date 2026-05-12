@@ -13,31 +13,28 @@ module.exports = async function handler(req, res) {
   }
 
   const message = {
-    attachments: [
+    username: '3AMAK Trades',
+    icon_emoji: ':bar_chart:',
+    blocks: [
       {
-        color: '#22c55e',
-        blocks: [
-          {
-            type: 'header',
-            text: { type: 'plain_text', text: 'New Application — 3AMAK Trades', emoji: false }
-          },
-          { type: 'divider' },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Name*\n${name}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Age*\n${age}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Country*\n${country}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Occupation*\n${occupation}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Experience*\n${experience}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Hours / day*\n${hours}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Budget*\n${budget}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Looking for*\n${looking}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Goal*\n${goal}` } },
-          { type: 'section', text: { type: 'mrkdwn', text: `*Language*\n${lang}` } },
-          { type: 'divider' },
-          {
-            type: 'context',
-            elements: [{ type: 'mrkdwn', text: `Submitted · ${new Date().toUTCString()}` }]
-          }
-        ]
+        type: 'header',
+        text: { type: 'plain_text', text: 'New Application', emoji: false }
+      },
+      { type: 'divider' },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Name*\n${name}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Age*\n${age}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Country*\n${country}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Occupation*\n${occupation}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Experience*\n${experience}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Hours / day*\n${hours}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Budget*\n${budget}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Looking for*\n${looking}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Goal*\n${goal}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Language*\n${lang}` } },
+      { type: 'divider' },
+      {
+        type: 'context',
+        elements: [{ type: 'mrkdwn', text: `Submitted · ${new Date().toUTCString()}` }]
       }
     ]
   };
