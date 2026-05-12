@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { name, age, country, occupation, experience, hours, budget, looking, goal, lang } = req.body;
@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
   if (!SLACK_WEBHOOK) {
     console.error('SLACK_WEBHOOK_URL not set');
-    return res.status(200).json({ ok: true }); // still return ok so form confirms
+    return res.status(200).json({ ok: true });
   }
 
   const message = {
@@ -40,15 +40,19 @@ export default async function handler(req, res) {
     ]
   };
 
-  const slackRes = await fetch(SLACK_WEBHOOK, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(message),
-  });
+  try {
+    const slackRes = await fetch(SLACK_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message),
+    });
 
-  if (!slackRes.ok) {
-    console.error('Slack error:', await slackRes.text());
+    if (!slackRes.ok) {
+      console.error('Slack error:', await slackRes.text());
+    }
+  } catch (e) {
+    console.error('Fetch error:', e.message);
   }
 
   return res.status(200).json({ ok: true });
-}
+};
