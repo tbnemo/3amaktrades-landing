@@ -769,6 +769,8 @@ const t = {
     q8_a: "دورة فيديو من الألف للياء", q8_b: "مجتمع متداولين للتعلم معهم", q8_c: "إرشاد 1 على 1 مباشر", q8_d: "كل ما سبق",
     q9: "ما هدفك الرئيسي؟",
     q9_a: "دخل إضافي جانبي", q9_b: "استبدال دخلي الكامل", q9_c: "أنا أتداول وأريد أن أصبح محترفاً",
+    q10: "ما رقم هاتفك؟", q10_ph: "مثال: +966 5xxxxxxxx",
+    q11: "ما بريدك الإلكتروني؟", q11_ph: "مثال: name@email.com",
     btn_next: "التالي", btn_back: "رجوع",
     confirm_h: "تم استلام طلبك! 🎉",
     confirm_p: "شكراً لك. سنراجع طلبك ونتواصل معك خلال 24 ساعة.",
@@ -885,6 +887,8 @@ const t = {
     q8_a: "A-Z video course at my own pace", q8_b: "A community of traders to learn with", q8_c: "1-on-1 mentorship with direct access", q8_d: "All of the above",
     q9: "What's your main goal?",
     q9_a: "Extra income on the side", q9_b: "Replace my full-time income", q9_c: "Already trading, want to go pro",
+    q10: "What's your phone number?", q10_ph: "e.g. +1 555 000 0000",
+    q11: "What's your email address?", q11_ph: "e.g. name@email.com",
     btn_next: "Next", btn_back: "Back",
     confirm_h: "Application received! 🎉",
     confirm_p: "Thanks! We'll review your application and reach out within 24 hours.",
@@ -1236,6 +1240,18 @@ function render() {
           </div>
         </div>
 
+        <!-- Step 10: Phone -->
+        <div class="form-step" data-step="10">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q10"></span></h3>
+          <input class="form-input" id="f_phone" type="tel" data-placeholder-key="q10_ph" autocomplete="off" />
+        </div>
+
+        <!-- Step 11: Email -->
+        <div class="form-step" data-step="11">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q11"></span></h3>
+          <input class="form-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
+        </div>
+
       </div><!-- end form-steps -->
 
       <!-- Nav -->
@@ -1363,7 +1379,7 @@ function render() {
 
 <script>
   // ── FORM STATE ──
-  const TOTAL_STEPS = 9;
+  const TOTAL_STEPS = 11;
   let currentStep = 1;
   const answers = {};
 
@@ -1467,15 +1483,17 @@ function render() {
     const goalMap = { 'side-income': txt('q9_a'), 'replace-income': txt('q9_b'), 'full-time': txt('q9_c') };
 
     const payload = {
-      name:       answers.q1 || '—',
-      age:        answers.q2 || '—',
-      country:    answers.q3 || '—',
+      name:       answers.q1  || '—',
+      age:        answers.q2  || '—',
+      country:    answers.q3  || '—',
       occupation: occupationMap[answers.q4] || answers.q4 || '—',
       experience: expMap[answers.q5]        || answers.q5 || '—',
       hours:      hoursMap[answers.q6]      || answers.q6 || '—',
       budget:     budgetMap[answers.q7]     || answers.q7 || '—',
       looking:    lookingMap[answers.q8]    || answers.q8 || '—',
       goal:       goalMap[answers.q9]       || answers.q9 || '—',
+      phone:      answers.q10 || '—',
+      email:      answers.q11 || '—',
       lang:       lang === 'ar' ? 'Arabic' : 'English',
     };
 
