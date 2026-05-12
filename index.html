@@ -1159,6 +1159,7 @@ function render() {
       <div class="form-steps">
 
         <!-- Step 1: Name -->
+        <!-- Step 1: Name -->
         <div class="form-step active" data-step="1">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q1"></span></h3>
           <input class="form-input" id="f_name" type="text" data-placeholder-key="q1_ph" autocomplete="off" />
@@ -1170,16 +1171,28 @@ function render() {
           <input class="form-input" id="f_age" type="number" min="16" max="80" data-placeholder-key="q2_ph" autocomplete="off" />
         </div>
 
-        <!-- Step 3: Country -->
+        <!-- Step 3: Phone -->
         <div class="form-step" data-step="3">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q10"></span></h3>
+          <input class="form-input" id="f_phone" type="tel" data-placeholder-key="q10_ph" autocomplete="off" />
+        </div>
+
+        <!-- Step 4: Email -->
+        <div class="form-step" data-step="4">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q11"></span></h3>
+          <input class="form-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
+        </div>
+
+        <!-- Step 5: Country -->
+        <div class="form-step" data-step="5">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q3"></span></h3>
           <input class="form-input" id="f_country" type="text" data-placeholder-key="q3_ph" autocomplete="off" />
         </div>
 
-        <!-- Step 4: Occupation -->
-        <div class="form-step" data-step="4">
+        <!-- Step 6: Occupation -->
+        <div class="form-step" data-step="6">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q4"></span></h3>
-          <div class="form-choices" id="choices_4">
+          <div class="form-choices" id="choices_6">
             <div class="form-choice" data-value="student"><span class="choice-key">A</span><span data-key="q4_a"></span></div>
             <div class="form-choice" data-value="employed"><span class="choice-key">B</span><span data-key="q4_b"></span></div>
             <div class="form-choice" data-value="self-employed"><span class="choice-key">C</span><span data-key="q4_c"></span></div>
@@ -1188,30 +1201,30 @@ function render() {
           </div>
         </div>
 
-        <!-- Step 5: Experience -->
-        <div class="form-step" data-step="5">
+        <!-- Step 7: Experience -->
+        <div class="form-step" data-step="7">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q5"></span></h3>
-          <div class="form-choices" id="choices_5">
+          <div class="form-choices" id="choices_7">
             <div class="form-choice" data-value="beginner"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
             <div class="form-choice" data-value="tried-lost"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
             <div class="form-choice" data-value="some-exp"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
           </div>
         </div>
 
-        <!-- Step 6: Hours -->
-        <div class="form-step" data-step="6">
+        <!-- Step 8: Hours -->
+        <div class="form-step" data-step="8">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q6"></span></h3>
-          <div class="form-choices" id="choices_6">
+          <div class="form-choices" id="choices_8">
             <div class="form-choice" data-value="<1h"><span class="choice-key">A</span><span data-key="q6_a"></span></div>
             <div class="form-choice" data-value="1-2h"><span class="choice-key">B</span><span data-key="q6_b"></span></div>
             <div class="form-choice" data-value="3h+"><span class="choice-key">C</span><span data-key="q6_c"></span></div>
           </div>
         </div>
 
-        <!-- Step 7: Budget -->
-        <div class="form-step" data-step="7">
+        <!-- Step 9: Budget -->
+        <div class="form-step" data-step="9">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q7"></span></h3>
-          <div class="form-choices" id="choices_7">
+          <div class="form-choices" id="choices_9">
             <div class="form-choice" data-value="<500"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
             <div class="form-choice" data-value="500-1k"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
             <div class="form-choice" data-value="1k-3k"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
@@ -1219,10 +1232,10 @@ function render() {
           </div>
         </div>
 
-        <!-- Step 8: Looking for -->
-        <div class="form-step" data-step="8">
+        <!-- Step 10: Looking for -->
+        <div class="form-step" data-step="10">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q8"></span></h3>
-          <div class="form-choices" id="choices_8">
+          <div class="form-choices" id="choices_10">
             <div class="form-choice" data-value="videos"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
             <div class="form-choice" data-value="community"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
             <div class="form-choice" data-value="1on1"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
@@ -1230,26 +1243,14 @@ function render() {
           </div>
         </div>
 
-        <!-- Step 9: Goal -->
-        <div class="form-step" data-step="9">
+        <!-- Step 11: Goal -->
+        <div class="form-step" data-step="11">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q9"></span></h3>
-          <div class="form-choices" id="choices_9">
+          <div class="form-choices" id="choices_11">
             <div class="form-choice" data-value="side-income"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
             <div class="form-choice" data-value="replace-income"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
             <div class="form-choice" data-value="full-time"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
           </div>
-        </div>
-
-        <!-- Step 10: Phone -->
-        <div class="form-step" data-step="10">
-          <h3><span class="step-num" data-key="step_label"></span><span data-key="q10"></span></h3>
-          <input class="form-input" id="f_phone" type="tel" data-placeholder-key="q10_ph" autocomplete="off" />
-        </div>
-
-        <!-- Step 11: Email -->
-        <div class="form-step" data-step="11">
-          <h3><span class="step-num" data-key="step_label"></span><span data-key="q11"></span></h3>
-          <input class="form-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
         </div>
 
       </div><!-- end form-steps -->
@@ -1440,6 +1441,22 @@ function render() {
     const input = document.querySelector(`.form-step[data-step="${currentStep}"] .form-input`);
     if (input) answers[`q${currentStep}`] = input.value.trim();
 
+    // early contact capture after email step (step 4)
+    if (currentStep === 4) {
+      fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: answers.q1 || '—', age: answers.q2 || '—',
+          phone: answers.q3 || '—', email: answers.q4 || '—',
+          country: '—', occupation: '—', experience: '—',
+          hours: '—', budget: '—', looking: '—', goal: '—',
+          lang: lang === 'ar' ? 'Arabic' : 'English',
+          partial: true,
+        }),
+      }).catch(() => {});
+    }
+
     if (currentStep === TOTAL_STEPS) {
       submitForm();
       return;
@@ -1475,25 +1492,26 @@ function render() {
     formRenderText();
 
     // map answer values to readable labels for Slack
+    // step order: 1=name,2=age,3=phone,4=email,5=country,6=occupation,7=experience,8=hours,9=budget,10=looking,11=goal
     const occupationMap = { student: txt('q4_a'), employed: txt('q4_b'), 'self-employed': txt('q4_c'), unemployed: txt('q4_d'), other: txt('q4_e') };
-    const expMap = { beginner: txt('q5_a'), 'tried-lost': txt('q5_b'), 'some-exp': txt('q5_c') };
-    const hoursMap = { '<1h': txt('q6_a'), '1-2h': txt('q6_b'), '3h+': txt('q6_c') };
-    const budgetMap = { '<500': txt('q7_a'), '500-1k': txt('q7_b'), '1k-3k': txt('q7_c'), '3k+': txt('q7_d') };
-    const lookingMap = { videos: txt('q8_a'), community: txt('q8_b'), '1on1': txt('q8_c'), all: txt('q8_d') };
-    const goalMap = { 'side-income': txt('q9_a'), 'replace-income': txt('q9_b'), 'full-time': txt('q9_c') };
+    const expMap        = { beginner: txt('q5_a'), 'tried-lost': txt('q5_b'), 'some-exp': txt('q5_c') };
+    const hoursMap      = { '<1h': txt('q6_a'), '1-2h': txt('q6_b'), '3h+': txt('q6_c') };
+    const budgetMap     = { '<500': txt('q7_a'), '500-1k': txt('q7_b'), '1k-3k': txt('q7_c'), '3k+': txt('q7_d') };
+    const lookingMap    = { videos: txt('q8_a'), community: txt('q8_b'), '1on1': txt('q8_c'), all: txt('q8_d') };
+    const goalMap       = { 'side-income': txt('q9_a'), 'replace-income': txt('q9_b'), 'full-time': txt('q9_c') };
 
     const payload = {
       name:       answers.q1  || '—',
       age:        answers.q2  || '—',
-      country:    answers.q3  || '—',
-      occupation: occupationMap[answers.q4] || answers.q4 || '—',
-      experience: expMap[answers.q5]        || answers.q5 || '—',
-      hours:      hoursMap[answers.q6]      || answers.q6 || '—',
-      budget:     budgetMap[answers.q7]     || answers.q7 || '—',
-      looking:    lookingMap[answers.q8]    || answers.q8 || '—',
-      goal:       goalMap[answers.q9]       || answers.q9 || '—',
-      phone:      answers.q10 || '—',
-      email:      answers.q11 || '—',
+      phone:      answers.q3  || '—',
+      email:      answers.q4  || '—',
+      country:    answers.q5  || '—',
+      occupation: occupationMap[answers.q6]  || answers.q6  || '—',
+      experience: expMap[answers.q7]         || answers.q7  || '—',
+      hours:      hoursMap[answers.q8]       || answers.q8  || '—',
+      budget:     budgetMap[answers.q9]      || answers.q9  || '—',
+      looking:    lookingMap[answers.q10]    || answers.q10 || '—',
+      goal:       goalMap[answers.q11]       || answers.q11 || '—',
       lang:       lang === 'ar' ? 'Arabic' : 'English',
     };
 

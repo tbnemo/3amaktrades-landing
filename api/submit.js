@@ -3,7 +3,7 @@ const fetch = require('node-fetch');
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { name, age, country, occupation, experience, hours, budget, looking, goal, phone, email, lang } = req.body;
+  const { name, age, country, occupation, experience, hours, budget, looking, goal, phone, email, lang, partial } = req.body;
 
   const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK_URL;
 
@@ -12,7 +12,26 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
-  const message = {
+  const message = partial ? {
+    username: '3AMAK Trades',
+    icon_emoji: ':bar_chart:',
+    blocks: [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: 'Lead Captured — Form Not Completed', emoji: false }
+      },
+      { type: 'divider' },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Name*\n${name}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Age*\n${age}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Phone*\n${phone}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Email*\n${email}` } },
+      { type: 'divider' },
+      {
+        type: 'context',
+        elements: [{ type: 'mrkdwn', text: `Partial capture · ${new Date().toUTCString()}` }]
+      }
+    ]
+  } : {
     username: '3AMAK Trades',
     icon_emoji: ':bar_chart:',
     blocks: [
@@ -23,6 +42,8 @@ module.exports = async function handler(req, res) {
       { type: 'divider' },
       { type: 'section', text: { type: 'mrkdwn', text: `*Name*\n${name}` } },
       { type: 'section', text: { type: 'mrkdwn', text: `*Age*\n${age}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Phone*\n${phone}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Email*\n${email}` } },
       { type: 'section', text: { type: 'mrkdwn', text: `*Country*\n${country}` } },
       { type: 'section', text: { type: 'mrkdwn', text: `*Occupation*\n${occupation}` } },
       { type: 'section', text: { type: 'mrkdwn', text: `*Experience*\n${experience}` } },
@@ -30,8 +51,6 @@ module.exports = async function handler(req, res) {
       { type: 'section', text: { type: 'mrkdwn', text: `*Budget*\n${budget}` } },
       { type: 'section', text: { type: 'mrkdwn', text: `*Looking for*\n${looking}` } },
       { type: 'section', text: { type: 'mrkdwn', text: `*Goal*\n${goal}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Phone*\n${phone}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Email*\n${email}` } },
       { type: 'section', text: { type: 'mrkdwn', text: `*Language*\n${lang}` } },
       { type: 'divider' },
       {
