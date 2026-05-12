@@ -19,21 +19,16 @@ module.exports = async function handler(req, res) {
         text: { type: 'plain_text', text: 'New Application — 3AMAK Trades', emoji: false }
       },
       { type: 'divider' },
-      {
-        type: 'section',
-        fields: [
-          { type: 'mrkdwn', text: `*Name*\n${name}` },
-          { type: 'mrkdwn', text: `*Age*\n${age}` },
-          { type: 'mrkdwn', text: `*Country*\n${country}` },
-          { type: 'mrkdwn', text: `*Occupation*\n${occupation}` },
-          { type: 'mrkdwn', text: `*Experience*\n${experience}` },
-          { type: 'mrkdwn', text: `*Hours / day*\n${hours}` },
-          { type: 'mrkdwn', text: `*Budget*\n${budget}` },
-          { type: 'mrkdwn', text: `*Looking for*\n${looking}` },
-          { type: 'mrkdwn', text: `*Goal*\n${goal}` },
-          { type: 'mrkdwn', text: `*Language*\n${lang}` },
-        ]
-      },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Name*\n${name}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Age*\n${age}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Country*\n${country}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Occupation*\n${occupation}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Experience*\n${experience}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Hours / day*\n${hours}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Budget*\n${budget}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Looking for*\n${looking}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Goal*\n${goal}` } },
+      { type: 'section', text: { type: 'mrkdwn', text: `*Language*\n${lang}` } },
       { type: 'divider' },
       {
         type: 'context',
