@@ -1,3 +1,5 @@
+const fetch = require('node-fetch');
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -40,18 +42,14 @@ module.exports = async function handler(req, res) {
     ]
   };
 
-  try {
-    const slackRes = await fetch(SLACK_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(message),
-    });
+  const slackRes = await fetch(SLACK_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(message),
+  });
 
-    if (!slackRes.ok) {
-      console.error('Slack error:', await slackRes.text());
-    }
-  } catch (e) {
-    console.error('Fetch error:', e.message);
+  if (!slackRes.ok) {
+    console.error('Slack error:', await slackRes.text());
   }
 
   return res.status(200).json({ ok: true });
