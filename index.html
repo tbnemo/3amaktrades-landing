@@ -1381,6 +1381,7 @@ function render() {
 <script>
   // ── FORM STATE ──
   const TOTAL_STEPS = 11;
+  let partialTimer = null;
   let currentStep = 1;
   const answers = {};
 
@@ -1441,20 +1442,22 @@ function render() {
     const input = document.querySelector(`.form-step[data-step="${currentStep}"] .form-input`);
     if (input) answers[`q${currentStep}`] = input.value.trim();
 
-    // early contact capture after email step (step 4)
+    // early contact capture after email step (step 4) — delayed so full submission can cancel it
     if (currentStep === 4) {
-      fetch('/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: answers.q1 || '—', age: answers.q2 || '—',
-          phone: answers.q3 || '—', email: answers.q4 || '—',
-          country: '—', occupation: '—', experience: '—',
-          hours: '—', budget: '—', looking: '—', goal: '—',
-          lang: lang === 'ar' ? 'Arabic' : 'English',
-          partial: true,
-        }),
-      }).catch(() => {});
+      partialTimer = setTimeout(() => {
+        fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: answers.q1 || '—', age: answers.q2 || '—',
+            phone: answers.q3 || '—', email: answers.q4 || '—',
+            country: '—', occupation: '—', experience: '—',
+            hours: '—', budget: '—', looking: '—', goal: '—',
+            lang: lang === 'ar' ? 'Arabic' : 'English',
+            partial: true,
+          }),
+        }).catch(() => {});
+      }, 60000); // wait 60s — if they finish the form the timer gets cancelled
     }
 
     if (currentStep === TOTAL_STEPS) {
@@ -1484,6 +1487,7 @@ function render() {
   });
 
   async function submitForm() {
+    if (partialTimer) { clearTimeout(partialTimer); partialTimer = null; }
     document.getElementById('formNav').style.display = 'none';
     document.querySelector('.form-steps').style.display = 'none';
     document.querySelector('.form-step-counter').style.display = 'none';
