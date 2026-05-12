@@ -343,7 +343,7 @@
       background: radial-gradient(ellipse, rgba(34,197,94,0.05) 0%, transparent 70%);
       pointer-events: none;
     }
-    .apply-wrapper { max-width: 680px; margin: 0 auto; position: relative; z-index: 1; }
+    .apply-wrapper { max-width: 640px; margin: 0 auto; position: relative; z-index: 1; }
     .apply-header { text-align: center; margin-bottom: 44px; }
     .apply-header h2 {
       font-size: clamp(28px, 4vw, 44px); font-weight: 900;
@@ -351,20 +351,136 @@
     }
     html[lang="ar"] .apply-header h2 { letter-spacing: 0; line-height: 1.3; }
     .apply-header p { color: var(--gray); font-size: 15px; line-height: 1.7; }
-    .typeform-box {
+
+    /* ══ FORM ══ */
+    .form-box {
       background: var(--dark-3); border: 1px solid #1e1e1e;
-      border-radius: 16px; padding: 48px 36px; text-align: center;
-      position: relative; overflow: hidden;
+      border-radius: 16px; overflow: hidden;
+      position: relative;
     }
-    .typeform-box::before {
+    .form-box::before {
       content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
       background: linear-gradient(90deg, transparent, var(--green), transparent);
+      z-index: 1;
     }
-    .tf-badge { font-size: 10px; color: #444; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 18px; }
-    html[lang="ar"] .tf-badge { letter-spacing: 0; font-size: 11px; }
-    .typeform-box h3 { font-size: 24px; font-weight: 800; margin-bottom: 10px; }
-    .typeform-box p { color: var(--gray); font-size: 14px; margin-bottom: 32px; line-height: 1.7; }
-    .typeform-embed-zone { min-height: 100px; display: flex; align-items: center; justify-content: center; }
+
+    /* progress bar */
+    .form-progress {
+      height: 3px; background: #1a1a1a; position: relative;
+    }
+    .form-progress-fill {
+      height: 100%; background: var(--green);
+      transition: width 0.4s ease;
+      box-shadow: 0 0 8px var(--green-glow);
+    }
+
+    /* step counter */
+    .form-step-counter {
+      padding: 18px 28px 0;
+      font-size: 11px; color: var(--gray); letter-spacing: 1px;
+      text-transform: uppercase; font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    html[lang="ar"] .form-step-counter { text-transform: none; letter-spacing: 0; }
+
+    /* steps wrapper */
+    .form-steps { position: relative; min-height: 320px; }
+
+    /* individual step */
+    .form-step {
+      padding: 32px 28px 28px;
+      display: none;
+      animation: stepIn 0.3s ease;
+    }
+    .form-step.active { display: block; }
+    @keyframes stepIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .form-step h3 {
+      font-size: clamp(18px, 3vw, 22px); font-weight: 800;
+      margin-bottom: 24px; line-height: 1.3;
+    }
+    html[lang="ar"] .form-step h3 { font-size: clamp(18px, 3vw, 22px); }
+    .form-step h3 .step-num {
+      color: var(--green); font-size: 13px; font-weight: 700;
+      display: block; margin-bottom: 6px; letter-spacing: 1px;
+    }
+    html[lang="ar"] .form-step h3 .step-num { letter-spacing: 0; }
+
+    /* text input */
+    .form-input {
+      width: 100%; background: transparent;
+      border: none; border-bottom: 2px solid #2a2a2a;
+      color: var(--white); font-size: 20px; font-weight: 600;
+      padding: 10px 0; outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--green); }
+    .form-input::placeholder { color: #333; }
+
+    /* choices */
+    .form-choices { display: flex; flex-direction: column; gap: 10px; }
+    .form-choice {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--dark-4); border: 1px solid #222;
+      border-radius: 10px; padding: 14px 18px;
+      cursor: pointer; transition: all 0.15s;
+      font-size: 15px; font-weight: 600;
+      user-select: none;
+    }
+    html[lang="ar"] .form-choice { font-size: 15px; }
+    .form-choice:hover { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.04); }
+    .form-choice.selected { border-color: var(--green); background: rgba(34,197,94,0.08); color: var(--green); }
+    .choice-key {
+      width: 28px; height: 28px; border-radius: 6px;
+      background: #1a1a1a; border: 1px solid #333;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--gray);
+      flex-shrink: 0; font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+    .form-choice.selected .choice-key { background: var(--green); border-color: var(--green); color: #000; }
+
+    /* nav buttons */
+    .form-nav {
+      padding: 0 28px 28px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .form-btn-next {
+      background: var(--green); color: #000;
+      border: none; border-radius: 8px;
+      padding: 13px 32px; font-size: 14px; font-weight: 800;
+      cursor: pointer; font-family: inherit;
+      transition: opacity 0.15s, transform 0.15s;
+      display: flex; align-items: center; gap: 8px;
+      margin-inline-start: auto;
+    }
+    .form-btn-next:hover { opacity: 0.88; transform: translateY(-1px); }
+    .form-btn-next:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .form-btn-back {
+      background: transparent; color: var(--gray);
+      border: 1px solid #222; border-radius: 8px;
+      padding: 13px 20px; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .form-btn-back:hover { color: var(--white); border-color: #444; }
+
+    /* confirmation screen */
+    .form-confirm {
+      padding: 52px 28px;
+      text-align: center; display: none;
+    }
+    .form-confirm.active { display: block; animation: stepIn 0.4s ease; }
+    .confirm-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: rgba(34,197,94,0.1); border: 2px solid var(--green);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 24px; font-size: 30px;
+      box-shadow: 0 0 30px var(--green-glow);
+    }
+    .form-confirm h3 { font-size: 24px; font-weight: 900; margin-bottom: 12px; }
+    .form-confirm p { color: var(--gray); font-size: 15px; line-height: 1.7; }
 
     /* ══ MENTOR ══ */
     #mentor { padding: 100px 20px; background: var(--dark); }
@@ -636,6 +752,27 @@ const t = {
     cta4: "تقدم لمكالمة استراتيجية مجانية",
     cta4_sub: "الأماكن محدودة — لا تتأخر",
     footer_copy: "© 2025 3AMAK Trades · جميع الحقوق محفوظة · النتائج غير مضمونة · هذا ليس نصيحة مالية",
+    // form
+    step_label: "السؤال",
+    q1: "ما اسمك؟", q1_ph: "اكتب اسمك هنا...",
+    q2: "كم عمرك؟", q2_ph: "مثال: 24",
+    q3: "من أي دولة أنت؟", q3_ph: "مثال: السعودية",
+    q4: "ما طبيعة عملك؟",
+    q4_a: "طالب", q4_b: "موظف (9-5)", q4_c: "عمل حر / صاحب مشروع", q4_d: "غير موظف", q4_e: "أخرى",
+    q5: "ما مستوى خبرتك في التداول؟",
+    q5_a: "مبتدئ كامل", q5_b: "جربت لكن خسرت", q5_c: "لدي بعض الخبرة لكن غير منتظم",
+    q6: "كم ساعة يومياً يمكنك تخصيصها للتعلم؟",
+    q6_a: "أقل من ساعة", q6_b: "١–٢ ساعة", q6_c: "٣ ساعات أو أكثر",
+    q7: "ما ميزانيتك للبدء؟",
+    q7_a: "أقل من $500", q7_b: "$500 – $1,000", q7_c: "$1,000 – $3,000", q7_d: "$3,000+",
+    q8: "ماذا تبحث عنه؟",
+    q8_a: "دورة فيديو من الألف للياء", q8_b: "مجتمع متداولين للتعلم معهم", q8_c: "إرشاد 1 على 1 مباشر", q8_d: "كل ما سبق",
+    q9: "ما هدفك الرئيسي؟",
+    q9_a: "دخل إضافي جانبي", q9_b: "استبدال دخلي الكامل", q9_c: "أنا أتداول وأريد أن أصبح محترفاً",
+    btn_next: "التالي", btn_back: "رجوع",
+    confirm_h: "تم استلام طلبك! 🎉",
+    confirm_p: "شكراً لك. سنراجع طلبك ونتواصل معك خلال 24 ساعة.",
+    step_of: "من",
   },
   en: {
     nav_apply: "Apply Now",
@@ -731,6 +868,27 @@ const t = {
     cta4: "Apply For Your Free Strategy Call",
     cta4_sub: "Spots are limited — don't wait",
     footer_copy: "© 2025 3AMAK Trades · All rights reserved · Results are not guaranteed · Not financial advice",
+    // form
+    step_label: "Question",
+    q1: "What's your name?", q1_ph: "Type your name...",
+    q2: "How old are you?", q2_ph: "e.g. 24",
+    q3: "What country are you from?", q3_ph: "e.g. Saudi Arabia",
+    q4: "What do you do for a living?",
+    q4_a: "Student", q4_b: "Employed (9-5)", q4_c: "Self-employed / Business owner", q4_d: "Unemployed", q4_e: "Other",
+    q5: "What's your trading experience?",
+    q5_a: "Complete beginner", q5_b: "Tried it but lost money", q5_c: "Some experience, not consistent",
+    q6: "How many hours a day can you dedicate to learning?",
+    q6_a: "Less than 1 hour", q6_b: "1–2 hours", q6_c: "3+ hours",
+    q7: "What's your budget to get started?",
+    q7_a: "Less than $500", q7_b: "$500 – $1,000", q7_c: "$1,000 – $3,000", q7_d: "$3,000+",
+    q8: "What are you looking for?",
+    q8_a: "A-Z video course at my own pace", q8_b: "A community of traders to learn with", q8_c: "1-on-1 mentorship with direct access", q8_d: "All of the above",
+    q9: "What's your main goal?",
+    q9_a: "Extra income on the side", q9_b: "Replace my full-time income", q9_c: "Already trading, want to go pro",
+    btn_next: "Next", btn_back: "Back",
+    confirm_h: "Application received! 🎉",
+    confirm_p: "Thanks! We'll review your application and reach out within 24 hours.",
+    step_of: "of",
   }
 };
 
@@ -990,15 +1148,117 @@ function render() {
       <h2><span class="apply-h"></span><span class="apply-h-g g"></span></h2>
       <p></p>
     </div>
-    <div class="typeform-box fade-up">
-      <div class="tf-badge"></div>
-      <h3></h3>
-      <p></p>
-      <div class="typeform-embed-zone">
-        <!-- DROP TYPEFORM EMBED HERE -->
-        <a href="#" class="cta-btn tf-placeholder" style="pointer-events:none;opacity:0.4;"><span class="main"></span><span class="sub"></span></a>
+
+    <div class="form-box fade-up">
+      <div class="form-progress"><div class="form-progress-fill" id="formProgress" style="width:11%"></div></div>
+
+      <div class="form-step-counter">
+        <span id="stepCounterText"></span>
+        <span id="stepCounterFrac" style="font-family:'Inter',sans-serif;"></span>
       </div>
-    </div>
+
+      <div class="form-steps">
+
+        <!-- Step 1: Name -->
+        <div class="form-step active" data-step="1">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q1"></span></h3>
+          <input class="form-input" id="f_name" type="text" data-placeholder-key="q1_ph" autocomplete="off" />
+        </div>
+
+        <!-- Step 2: Age -->
+        <div class="form-step" data-step="2">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q2"></span></h3>
+          <input class="form-input" id="f_age" type="number" min="16" max="80" data-placeholder-key="q2_ph" autocomplete="off" />
+        </div>
+
+        <!-- Step 3: Country -->
+        <div class="form-step" data-step="3">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q3"></span></h3>
+          <input class="form-input" id="f_country" type="text" data-placeholder-key="q3_ph" autocomplete="off" />
+        </div>
+
+        <!-- Step 4: Occupation -->
+        <div class="form-step" data-step="4">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q4"></span></h3>
+          <div class="form-choices" id="choices_4">
+            <div class="form-choice" data-value="student"><span class="choice-key">A</span><span data-key="q4_a"></span></div>
+            <div class="form-choice" data-value="employed"><span class="choice-key">B</span><span data-key="q4_b"></span></div>
+            <div class="form-choice" data-value="self-employed"><span class="choice-key">C</span><span data-key="q4_c"></span></div>
+            <div class="form-choice" data-value="unemployed"><span class="choice-key">D</span><span data-key="q4_d"></span></div>
+            <div class="form-choice" data-value="other"><span class="choice-key">E</span><span data-key="q4_e"></span></div>
+          </div>
+        </div>
+
+        <!-- Step 5: Experience -->
+        <div class="form-step" data-step="5">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q5"></span></h3>
+          <div class="form-choices" id="choices_5">
+            <div class="form-choice" data-value="beginner"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
+            <div class="form-choice" data-value="tried-lost"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
+            <div class="form-choice" data-value="some-exp"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
+          </div>
+        </div>
+
+        <!-- Step 6: Hours -->
+        <div class="form-step" data-step="6">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q6"></span></h3>
+          <div class="form-choices" id="choices_6">
+            <div class="form-choice" data-value="<1h"><span class="choice-key">A</span><span data-key="q6_a"></span></div>
+            <div class="form-choice" data-value="1-2h"><span class="choice-key">B</span><span data-key="q6_b"></span></div>
+            <div class="form-choice" data-value="3h+"><span class="choice-key">C</span><span data-key="q6_c"></span></div>
+          </div>
+        </div>
+
+        <!-- Step 7: Budget -->
+        <div class="form-step" data-step="7">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q7"></span></h3>
+          <div class="form-choices" id="choices_7">
+            <div class="form-choice" data-value="<500"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
+            <div class="form-choice" data-value="500-1k"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
+            <div class="form-choice" data-value="1k-3k"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
+            <div class="form-choice" data-value="3k+"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
+          </div>
+        </div>
+
+        <!-- Step 8: Looking for -->
+        <div class="form-step" data-step="8">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q8"></span></h3>
+          <div class="form-choices" id="choices_8">
+            <div class="form-choice" data-value="videos"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
+            <div class="form-choice" data-value="community"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
+            <div class="form-choice" data-value="1on1"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
+            <div class="form-choice" data-value="all"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
+          </div>
+        </div>
+
+        <!-- Step 9: Goal -->
+        <div class="form-step" data-step="9">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q9"></span></h3>
+          <div class="form-choices" id="choices_9">
+            <div class="form-choice" data-value="side-income"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
+            <div class="form-choice" data-value="replace-income"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
+            <div class="form-choice" data-value="full-time"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
+          </div>
+        </div>
+
+      </div><!-- end form-steps -->
+
+      <!-- Nav -->
+      <div class="form-nav" id="formNav">
+        <button class="form-btn-back" id="formBack" onclick="formPrev()" style="visibility:hidden" data-key="btn_back"></button>
+        <button class="form-btn-next" id="formNext" onclick="formNext()">
+          <span data-key="btn_next"></span> <span style="font-size:16px">→</span>
+        </button>
+      </div>
+
+      <!-- Confirmation -->
+      <div class="form-confirm" id="formConfirm">
+        <div class="confirm-icon">✓</div>
+        <h3 data-key="confirm_h"></h3>
+        <p data-key="confirm_p"></p>
+      </div>
+
+    </div><!-- end form-box -->
   </div>
 </section>
 
@@ -1107,11 +1367,140 @@ function render() {
 </footer>
 
 <script>
-  // Init render
+  // ── FORM STATE ──
+  const TOTAL_STEPS = 9;
+  let currentStep = 1;
+  const answers = {};
+
+  function formRenderText() {
+    // step counter
+    document.getElementById('stepCounterText').textContent = txt('step_label');
+    document.getElementById('stepCounterFrac').textContent = `${currentStep} / ${TOTAL_STEPS}`;
+    // progress
+    document.getElementById('formProgress').style.width = `${(currentStep / TOTAL_STEPS) * 100}%`;
+    // all step-num labels
+    document.querySelectorAll('.form-step .step-num').forEach(el => {
+      el.textContent = `${txt('step_label')} ${el.closest('.form-step').dataset.step} —`;
+    });
+    // all question text
+    document.querySelectorAll('[data-key]').forEach(el => {
+      const k = el.dataset.key;
+      if (t[lang][k] !== undefined) el.textContent = t[lang][k];
+    });
+    // placeholders
+    document.querySelectorAll('[data-placeholder-key]').forEach(el => {
+      el.placeholder = txt(el.dataset.placeholderKey);
+    });
+    // back button visibility
+    const backBtn = document.getElementById('formBack');
+    backBtn.style.visibility = currentStep > 1 ? 'visible' : 'hidden';
+    // next button arrow direction
+    const arrow = currentStep === TOTAL_STEPS ? '✓' : (lang === 'ar' ? '←' : '→');
+    document.querySelector('#formNext span:last-child').textContent = arrow;
+  }
+
+  function showStep(n) {
+    document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+    const target = document.querySelector(`.form-step[data-step="${n}"]`);
+    if (target) target.classList.add('active');
+    currentStep = n;
+    formRenderText();
+  }
+
+  function isStepValid() {
+    const step = document.querySelector(`.form-step[data-step="${currentStep}"]`);
+    const input = step.querySelector('.form-input');
+    if (input) return input.value.trim().length > 0;
+    return !!answers[`q${currentStep}`];
+  }
+
+  function formNext() {
+    if (!isStepValid()) {
+      // shake the active step
+      const step = document.querySelector('.form-step.active');
+      step.style.animation = 'none';
+      step.offsetHeight;
+      step.style.animation = 'shake 0.3s ease';
+      return;
+    }
+    // save text inputs
+    const input = document.querySelector(`.form-step[data-step="${currentStep}"] .form-input`);
+    if (input) answers[`q${currentStep}`] = input.value.trim();
+
+    if (currentStep === TOTAL_STEPS) {
+      submitForm();
+      return;
+    }
+    showStep(currentStep + 1);
+  }
+
+  function formPrev() {
+    if (currentStep > 1) showStep(currentStep - 1);
+  }
+
+  // choice selection
+  document.addEventListener('click', e => {
+    const choice = e.target.closest('.form-choice');
+    if (!choice) return;
+    const group = choice.closest('.form-choices');
+    group.querySelectorAll('.form-choice').forEach(c => c.classList.remove('selected'));
+    choice.classList.add('selected');
+    answers[`q${currentStep}`] = choice.dataset.value;
+  });
+
+  // enter key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') formNext();
+  });
+
+  async function submitForm() {
+    document.getElementById('formNav').style.display = 'none';
+    document.querySelector('.form-steps').style.display = 'none';
+    document.querySelector('.form-step-counter').style.display = 'none';
+    document.getElementById('formProgress').style.width = '100%';
+    document.getElementById('formConfirm').classList.add('active');
+    formRenderText();
+
+    // map answer values to readable labels for Slack
+    const occupationMap = { student: txt('q4_a'), employed: txt('q4_b'), 'self-employed': txt('q4_c'), unemployed: txt('q4_d'), other: txt('q4_e') };
+    const expMap = { beginner: txt('q5_a'), 'tried-lost': txt('q5_b'), 'some-exp': txt('q5_c') };
+    const hoursMap = { '<1h': txt('q6_a'), '1-2h': txt('q6_b'), '3h+': txt('q6_c') };
+    const budgetMap = { '<500': txt('q7_a'), '500-1k': txt('q7_b'), '1k-3k': txt('q7_c'), '3k+': txt('q7_d') };
+    const lookingMap = { videos: txt('q8_a'), community: txt('q8_b'), '1on1': txt('q8_c'), all: txt('q8_d') };
+    const goalMap = { 'side-income': txt('q9_a'), 'replace-income': txt('q9_b'), 'full-time': txt('q9_c') };
+
+    const payload = {
+      name:       answers.q1 || '—',
+      age:        answers.q2 || '—',
+      country:    answers.q3 || '—',
+      occupation: occupationMap[answers.q4] || answers.q4 || '—',
+      experience: expMap[answers.q5]        || answers.q5 || '—',
+      hours:      hoursMap[answers.q6]      || answers.q6 || '—',
+      budget:     budgetMap[answers.q7]     || answers.q7 || '—',
+      looking:    lookingMap[answers.q8]    || answers.q8 || '—',
+      goal:       goalMap[answers.q9]       || answers.q9 || '—',
+      lang:       lang === 'ar' ? 'Arabic' : 'English',
+    };
+
+    try {
+      await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch(e) { /* silent fail — confirmation still shown */ }
+  }
+
+  // shake animation
+  const shakeStyle = document.createElement('style');
+  shakeStyle.textContent = '@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }';
+  document.head.appendChild(shakeStyle);
+
+  // ── INIT ──
   document.addEventListener('DOMContentLoaded', () => {
     render();
+    formRenderText();
 
-    // Scroll fade-in
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((e, i) => {
         if (e.isIntersecting) {
@@ -1122,6 +1511,10 @@ function render() {
     }, { threshold: 0.1 });
     document.querySelectorAll('.fade-up:not(.visible)').forEach(el => observer.observe(el));
   });
+
+  // re-render form text on lang switch
+  const _origSetLang = setLang;
+  setLang = function(l) { _origSetLang(l); formRenderText(); };
 </script>
 </body>
 </html>
