@@ -1415,7 +1415,22 @@ function render() {
   function isStepValid() {
     const step = document.querySelector(`.form-step[data-step="${currentStep}"]`);
     const input = step.querySelector('.form-input');
-    if (input) return input.value.trim().length > 0;
+    if (input) {
+      const val = input.value.trim();
+      if (!val.length) return false;
+      // Step 1: name — letters only (Arabic + Latin), no digits
+      if (currentStep === 1 && /\d/.test(val)) { input.dataset.error = '1'; return false; }
+      // Step 2: age — digits only (Arabic-Indic or Latin), reasonable range
+      if (currentStep === 2) {
+        const normalized = val.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+        if (!/^\d+$/.test(normalized) || +normalized < 13 || +normalized > 80) return false;
+      }
+      // Step 3: phone — must have at least 7 digits
+      if (currentStep === 3 && val.replace(/\D/g,'').length < 7) return false;
+      // Step 4: email — basic email format
+      if (currentStep === 4 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
+      return true;
+    }
     return !!answers[`q${currentStep}`];
   }
 
