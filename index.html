@@ -420,33 +420,35 @@
     .form-input:focus { border-color: var(--green); }
     .form-input::placeholder { color: #333; }
 
-    /* Phone with country code */
-    .phone-wrap { display: flex; gap: 8px; align-items: stretch; }
-    .phone-wrap .phone-num { flex: 1; }
+    /* Phone with country code — always LTR regardless of page direction */
+    .phone-wrap { display: flex; gap: 8px; align-items: stretch; direction: ltr; }
+    .phone-wrap .phone-num { flex: 1; text-align: left; }
     .cc-selector { position: relative; flex-shrink: 0; }
     .cc-selected {
       display: flex; align-items: center; gap: 6px; cursor: pointer;
       background: #111; border: 1px solid #2a2a2a; border-radius: 10px;
       padding: 0 14px; height: 56px; font-size: 15px; white-space: nowrap;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s; direction: ltr;
     }
     .cc-selected:hover { border-color: var(--green); }
     .cc-arrow { color: #555; font-size: 11px; }
     .cc-dropdown {
       display: none; position: absolute; top: calc(100% + 6px);
-      left: 0; width: 280px; background: #111; border: 1px solid #2a2a2a;
+      left: 0; width: 260px; background: #111; border: 1px solid #2a2a2a;
       border-radius: 10px; overflow: hidden; z-index: 100;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6); direction: ltr;
     }
     .cc-dropdown.open { display: block; }
     .cc-search {
       width: 100%; background: #0a0a0a; border: none; border-bottom: 1px solid #2a2a2a;
       color: #fff; padding: 10px 14px; font-size: 14px; outline: none;
+      font-family: 'Inter', sans-serif; direction: ltr; text-align: left;
     }
     .cc-list { max-height: 220px; overflow-y: auto; }
     .cc-option {
       display: flex; align-items: center; gap: 10px; padding: 10px 14px;
       cursor: pointer; font-size: 14px; transition: background 0.15s;
+      font-family: 'Inter', sans-serif;
     }
     .cc-option:hover { background: #1a1a1a; }
     .cc-option.top { border-bottom: 1px solid #2a2a2a; }
