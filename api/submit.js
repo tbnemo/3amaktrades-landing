@@ -12,51 +12,29 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
+  const footer = `Sent by <https://3amaktrades-landing.vercel.app|3AMAK Bot> · ${new Date().toUTCString()}`;
+
   const message = partial ? {
-    username: '3AMAK Trades',
+    username: '3AMAK Bot',
     icon_emoji: ':bar_chart:',
     blocks: [
+      { type: 'header', text: { type: 'plain_text', text: 'Lead Captured — Incomplete', emoji: false } },
       {
-        type: 'header',
-        text: { type: 'plain_text', text: 'Lead Captured — Form Not Completed', emoji: false }
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*Name:* ${name}\n*Age:* ${age}\n*Phone:* ${phone}\n*Email:* ${email}` }
       },
-      { type: 'divider' },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Name*\n${name}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Age*\n${age}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Phone*\n${phone}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Email*\n${email}` } },
-      { type: 'divider' },
-      {
-        type: 'context',
-        elements: [{ type: 'mrkdwn', text: `Partial capture · ${new Date().toUTCString()}` }]
-      }
+      { type: 'context', elements: [{ type: 'mrkdwn', text: footer }] }
     ]
   } : {
-    username: '3AMAK Trades',
+    username: '3AMAK Bot',
     icon_emoji: ':bar_chart:',
     blocks: [
+      { type: 'header', text: { type: 'plain_text', text: 'New Application', emoji: false } },
       {
-        type: 'header',
-        text: { type: 'plain_text', text: 'New Application', emoji: false }
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*Name:* ${name}\n*Age:* ${age}\n*Phone:* ${phone}\n*Email:* ${email}\n*Country:* ${country}\n*Occupation:* ${occupation}\n*Experience:* ${experience}\n*Hours / day:* ${hours}\n*Budget:* ${budget}\n*Looking for:* ${looking}\n*Goal:* ${goal}\n*Language:* ${lang}` }
       },
-      { type: 'divider' },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Name*\n${name}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Age*\n${age}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Phone*\n${phone}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Email*\n${email}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Country*\n${country}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Occupation*\n${occupation}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Experience*\n${experience}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Hours / day*\n${hours}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Budget*\n${budget}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Looking for*\n${looking}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Goal*\n${goal}` } },
-      { type: 'section', text: { type: 'mrkdwn', text: `*Language*\n${lang}` } },
-      { type: 'divider' },
-      {
-        type: 'context',
-        elements: [{ type: 'mrkdwn', text: `Submitted · ${new Date().toUTCString()}` }]
-      }
+      { type: 'context', elements: [{ type: 'mrkdwn', text: footer }] }
     ]
   };
 
