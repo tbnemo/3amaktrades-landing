@@ -420,6 +420,38 @@
     .form-input:focus { border-color: var(--green); }
     .form-input::placeholder { color: #333; }
 
+    /* Phone with country code */
+    .phone-wrap { display: flex; gap: 8px; align-items: stretch; }
+    .phone-wrap .phone-num { flex: 1; }
+    .cc-selector { position: relative; flex-shrink: 0; }
+    .cc-selected {
+      display: flex; align-items: center; gap: 6px; cursor: pointer;
+      background: #111; border: 1px solid #2a2a2a; border-radius: 10px;
+      padding: 0 14px; height: 56px; font-size: 15px; white-space: nowrap;
+      transition: border-color 0.2s;
+    }
+    .cc-selected:hover { border-color: var(--green); }
+    .cc-arrow { color: #555; font-size: 11px; }
+    .cc-dropdown {
+      display: none; position: absolute; top: calc(100% + 6px);
+      left: 0; width: 280px; background: #111; border: 1px solid #2a2a2a;
+      border-radius: 10px; overflow: hidden; z-index: 100;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    }
+    .cc-dropdown.open { display: block; }
+    .cc-search {
+      width: 100%; background: #0a0a0a; border: none; border-bottom: 1px solid #2a2a2a;
+      color: #fff; padding: 10px 14px; font-size: 14px; outline: none;
+    }
+    .cc-list { max-height: 220px; overflow-y: auto; }
+    .cc-option {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      cursor: pointer; font-size: 14px; transition: background 0.15s;
+    }
+    .cc-option:hover { background: #1a1a1a; }
+    .cc-option.top { border-bottom: 1px solid #2a2a2a; }
+    .cc-option span:last-child { color: #888; margin-left: auto; font-size: 13px; }
+
     /* choices */
     .form-choices { display: flex; flex-direction: column; gap: 10px; }
     .form-choice {
@@ -1188,7 +1220,20 @@ function render() {
         <!-- Step 3: Phone -->
         <div class="form-step" data-step="3">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q10"></span></h3>
-          <input class="form-input" id="f_phone" type="tel" data-placeholder-key="q10_ph" autocomplete="off" />
+          <div class="phone-wrap">
+            <div class="cc-selector" id="ccSelector">
+              <div class="cc-selected" id="ccSelected">
+                <span id="ccFlag">🇸🇦</span>
+                <span id="ccCode">+966</span>
+                <span class="cc-arrow">▾</span>
+              </div>
+              <div class="cc-dropdown" id="ccDropdown">
+                <input class="cc-search" id="ccSearch" type="text" placeholder="Search..." autocomplete="off" />
+                <div class="cc-list" id="ccList"></div>
+              </div>
+            </div>
+            <input class="form-input phone-num" id="f_phone" type="tel" placeholder="5xx xxx xxxx" autocomplete="off" />
+          </div>
         </div>
 
         <!-- Step 4: Email -->
@@ -1425,8 +1470,8 @@ function render() {
         const normalized = val.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
         if (!/^\d+$/.test(normalized) || +normalized < 13 || +normalized > 80) return false;
       }
-      // Step 3: phone — must have at least 7 digits
-      if (currentStep === 3 && val.replace(/\D/g,'').length < 7) return false;
+      // Step 3: phone — number part must have at least 6 digits
+      if (currentStep === 3 && val.replace(/\D/g,'').length < 6) return false;
       // Step 4: email — basic email format
       if (currentStep === 4 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
       return true;
@@ -1445,7 +1490,11 @@ function render() {
     }
     // save text inputs
     const input = document.querySelector(`.form-step[data-step="${currentStep}"] .form-input`);
-    if (input) answers[`q${currentStep}`] = input.value.trim();
+    if (input) {
+      let val = input.value.trim();
+      if (currentStep === 3) val = selectedCode + val; // prepend country code
+      answers[`q${currentStep}`] = val;
+    }
 
     // after email step, store partial data so it can be sent on page leave
     if (currentStep === 4) {
@@ -1477,6 +1526,94 @@ function render() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Enter') formNext();
   });
+
+  // ── COUNTRY CODE DROPDOWN ──
+  const COUNTRIES = [
+    // MENA first
+    { flag:'🇸🇦', name:'Saudi Arabia', code:'+966', top:true },
+    { flag:'🇦🇪', name:'UAE', code:'+971', top:true },
+    { flag:'🇰🇼', name:'Kuwait', code:'+965', top:true },
+    { flag:'🇶🇦', name:'Qatar', code:'+974', top:true },
+    { flag:'🇧🇭', name:'Bahrain', code:'+973', top:true },
+    { flag:'🇴🇲', name:'Oman', code:'+968', top:true },
+    { flag:'🇪🇬', name:'Egypt', code:'+20', top:true },
+    { flag:'🇯🇴', name:'Jordan', code:'+962', top:true },
+    { flag:'🇱🇧', name:'Lebanon', code:'+961', top:true },
+    { flag:'🇲🇦', name:'Morocco', code:'+212', top:true },
+    { flag:'🇩🇿', name:'Algeria', code:'+213', top:true },
+    { flag:'🇹🇳', name:'Tunisia', code:'+216', top:true },
+    { flag:'🇮🇶', name:'Iraq', code:'+964', top:true },
+    { flag:'🇾🇪', name:'Yemen', code:'+967', top:true },
+    // Rest of world
+    { flag:'🇺🇸', name:'United States', code:'+1' },
+    { flag:'🇬🇧', name:'United Kingdom', code:'+44' },
+    { flag:'🇨🇦', name:'Canada', code:'+1' },
+    { flag:'🇫🇷', name:'France', code:'+33' },
+    { flag:'🇩🇪', name:'Germany', code:'+49' },
+    { flag:'🇮🇹', name:'Italy', code:'+39' },
+    { flag:'🇪🇸', name:'Spain', code:'+34' },
+    { flag:'🇳🇱', name:'Netherlands', code:'+31' },
+    { flag:'🇧🇪', name:'Belgium', code:'+32' },
+    { flag:'🇸🇪', name:'Sweden', code:'+46' },
+    { flag:'🇳🇴', name:'Norway', code:'+47' },
+    { flag:'🇩🇰', name:'Denmark', code:'+45' },
+    { flag:'🇵🇱', name:'Poland', code:'+48' },
+    { flag:'🇷🇺', name:'Russia', code:'+7' },
+    { flag:'🇹🇷', name:'Turkey', code:'+90' },
+    { flag:'🇵🇰', name:'Pakistan', code:'+92' },
+    { flag:'🇮🇳', name:'India', code:'+91' },
+    { flag:'🇧🇩', name:'Bangladesh', code:'+880' },
+    { flag:'🇵🇭', name:'Philippines', code:'+63' },
+    { flag:'🇮🇩', name:'Indonesia', code:'+62' },
+    { flag:'🇳🇬', name:'Nigeria', code:'+234' },
+    { flag:'🇿🇦', name:'South Africa', code:'+27' },
+    { flag:'🇦🇺', name:'Australia', code:'+61' },
+    { flag:'🇳🇿', name:'New Zealand', code:'+64' },
+    { flag:'🇧🇷', name:'Brazil', code:'+55' },
+    { flag:'🇲🇽', name:'Mexico', code:'+52' },
+    { flag:'🇦🇷', name:'Argentina', code:'+54' },
+  ];
+
+  let selectedCode = '+966';
+
+  function buildCCList(filter = '') {
+    const list = document.getElementById('ccList');
+    const f = filter.toLowerCase();
+    const filtered = COUNTRIES.filter(c => c.name.toLowerCase().includes(f) || c.code.includes(f));
+    list.innerHTML = filtered.map(c =>
+      `<div class="cc-option${c.top && !f ? ' top' : ''}" data-code="${c.code}" data-flag="${c.flag}">
+        <span>${c.flag}</span><span>${c.name}</span><span>${c.code}</span>
+      </div>`
+    ).join('');
+    list.querySelectorAll('.cc-option').forEach(el => {
+      el.addEventListener('click', () => {
+        selectedCode = el.dataset.code;
+        document.getElementById('ccFlag').textContent = el.dataset.flag;
+        document.getElementById('ccCode').textContent = el.dataset.code;
+        document.getElementById('ccDropdown').classList.remove('open');
+        document.getElementById('f_phone').focus();
+      });
+    });
+  }
+
+  document.getElementById('ccSelected').addEventListener('click', () => {
+    const dd = document.getElementById('ccDropdown');
+    dd.classList.toggle('open');
+    if (dd.classList.contains('open')) {
+      document.getElementById('ccSearch').focus();
+      buildCCList();
+    }
+  });
+
+  document.getElementById('ccSearch').addEventListener('input', e => buildCCList(e.target.value));
+
+  document.addEventListener('click', e => {
+    if (!document.getElementById('ccSelector').contains(e.target)) {
+      document.getElementById('ccDropdown').classList.remove('open');
+    }
+  });
+
+  buildCCList();
 
   async function submitForm() {
     if (partialTimer) { clearTimeout(partialTimer); partialTimer = null; }
