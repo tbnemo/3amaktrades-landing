@@ -723,11 +723,6 @@ const t = {
     apply_h: "أنت خطوة واحدة بعيد عن",
     apply_h_g: "تغيير طريقة كسبك للمال",
     apply_sub: "أكمل الاستمارة أدناه. مجاني ولا يأخذ سوى دقيقتين.",
-    tf_badge: "مدعوم من Typeform",
-    tf_h: "اكتشف إذا كنت مؤهلاً",
-    tf_p: "أسئلة قصيرة. إذا كنت مناسباً، سنحجز لك مكالمة استراتيجية مجانية.",
-    tf_btn: "استمارة Typeform هنا",
-    tf_btn_sub: "استبدلها بكود التضمين",
     mentor_label: "مرشدك",
     mentor_h: "تعرف على",
     mentor_h_g: "3AMAK",
@@ -791,20 +786,10 @@ const t = {
     // form
     step_label: "السؤال",
     q1: "ما اسمك؟", q1_ph: "اكتب اسمك هنا...",
-    q2: "كم عمرك؟", q2_ph: "مثال: 24",
-    q3: "من أي دولة أنت؟", q3_ph: "مثال: السعودية",
-    q4: "ما طبيعة عملك؟",
-    q4_a: "طالب", q4_b: "موظف (9-5)", q4_c: "عمل حر / صاحب مشروع", q4_d: "غير موظف", q4_e: "أخرى",
     q5: "ما مستوى خبرتك في التداول؟",
     q5_a: "مبتدئ كامل", q5_b: "جربت لكن خسرت", q5_c: "لدي بعض الخبرة لكن غير منتظم",
-    q6: "كم ساعة يومياً يمكنك تخصيصها للتعلم؟",
-    q6_a: "أقل من ساعة", q6_b: "١–٢ ساعة", q6_c: "٣ ساعات أو أكثر",
     q7: "ما ميزانيتك للبدء؟",
     q7_a: "أقل من $500", q7_b: "$500 – $1,000", q7_c: "$1,000 – $3,000", q7_d: "$3,000+",
-    q8: "ماذا تبحث عنه؟",
-    q8_a: "دورة فيديو من الألف للياء", q8_b: "مجتمع متداولين للتعلم معهم", q8_c: "إرشاد 1 على 1 مباشر", q8_d: "كل ما سبق",
-    q9: "ما هدفك الرئيسي؟",
-    q9_a: "دخل إضافي جانبي", q9_b: "استبدال دخلي الكامل", q9_c: "أنا أتداول وأريد أن أصبح محترفاً",
     q10: "ما رقم هاتفك؟", q10_ph: "مثال: +966 5xxxxxxxx",
     q11: "ما بريدك الإلكتروني؟", q11_ph: "مثال: name@email.com",
     btn_next: "التالي", btn_back: "رجوع",
@@ -841,11 +826,6 @@ const t = {
     apply_h: "You're One Step Away From",
     apply_h_g: "Changing How You Make Money",
     apply_sub: "Fill out the short form below. It's free and takes under 2 minutes.",
-    tf_badge: "Powered by Typeform",
-    tf_h: "See If You Qualify",
-    tf_p: "A few quick questions. If it's a fit, we'll book your free strategy call.",
-    tf_btn: "Typeform Embed Goes Here",
-    tf_btn_sub: "Replace with your embed code",
     mentor_label: "Your Mentor",
     mentor_h: "Meet",
     mentor_h_g: "3AMAK",
@@ -909,20 +889,10 @@ const t = {
     // form
     step_label: "Question",
     q1: "What's your name?", q1_ph: "Type your name...",
-    q2: "How old are you?", q2_ph: "e.g. 24",
-    q3: "What country are you from?", q3_ph: "e.g. Saudi Arabia",
-    q4: "What do you do for a living?",
-    q4_a: "Student", q4_b: "Employed (9-5)", q4_c: "Self-employed / Business owner", q4_d: "Unemployed", q4_e: "Other",
     q5: "What's your trading experience?",
     q5_a: "Complete beginner", q5_b: "Tried it but lost money", q5_c: "Some experience, not consistent",
-    q6: "How many hours a day can you dedicate to learning?",
-    q6_a: "Less than 1 hour", q6_b: "1–2 hours", q6_c: "3+ hours",
     q7: "What's your budget to get started?",
     q7_a: "Less than $500", q7_b: "$500 – $1,000", q7_c: "$1,000 – $3,000", q7_d: "$3,000+",
-    q8: "What are you looking for?",
-    q8_a: "A-Z video course at my own pace", q8_b: "A community of traders to learn with", q8_c: "1-on-1 mentorship with direct access", q8_d: "All of the above",
-    q9: "What's your main goal?",
-    q9_a: "Extra income on the side", q9_b: "Replace my full-time income", q9_c: "Already trading, want to go pro",
     q10: "What's your phone number?", q10_ph: "e.g. +1 555 000 0000",
     q11: "What's your email address?", q11_ph: "e.g. name@email.com",
     btn_next: "Next", btn_back: "Back",
@@ -1197,7 +1167,7 @@ function render() {
     </div>
 
     <div class="form-box fade-up">
-      <div class="form-progress"><div class="form-progress-fill" id="formProgress" style="width:11%"></div></div>
+      <div class="form-progress"><div class="form-progress-fill" id="formProgress" style="width:20%"></div></div>
 
       <div class="form-step-counter">
         <span id="stepCounterText"></span>
@@ -1207,20 +1177,13 @@ function render() {
       <div class="form-steps">
 
         <!-- Step 1: Name -->
-        <!-- Step 1: Name -->
         <div class="form-step active" data-step="1">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q1"></span></h3>
           <input class="form-input" id="f_name" type="text" data-placeholder-key="q1_ph" autocomplete="off" />
         </div>
 
-        <!-- Step 2: Age -->
+        <!-- Step 2: Phone -->
         <div class="form-step" data-step="2">
-          <h3><span class="step-num" data-key="step_label"></span><span data-key="q2"></span></h3>
-          <input class="form-input" id="f_age" type="text" inputmode="numeric" data-placeholder-key="q2_ph" autocomplete="off" />
-        </div>
-
-        <!-- Step 3: Phone -->
-        <div class="form-step" data-step="3">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q10"></span></h3>
           <div class="phone-wrap">
             <div class="cc-selector" id="ccSelector">
@@ -1238,79 +1201,30 @@ function render() {
           </div>
         </div>
 
-        <!-- Step 4: Email -->
-        <div class="form-step" data-step="4">
+        <!-- Step 3: Email -->
+        <div class="form-step" data-step="3">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q11"></span></h3>
           <input class="form-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
         </div>
 
-        <!-- Step 5: Country -->
-        <div class="form-step" data-step="5">
-          <h3><span class="step-num" data-key="step_label"></span><span data-key="q3"></span></h3>
-          <input class="form-input" id="f_country" type="text" data-placeholder-key="q3_ph" autocomplete="off" />
-        </div>
-
-        <!-- Step 6: Occupation -->
-        <div class="form-step" data-step="6">
-          <h3><span class="step-num" data-key="step_label"></span><span data-key="q4"></span></h3>
-          <div class="form-choices" id="choices_6">
-            <div class="form-choice" data-value="student"><span class="choice-key">A</span><span data-key="q4_a"></span></div>
-            <div class="form-choice" data-value="employed"><span class="choice-key">B</span><span data-key="q4_b"></span></div>
-            <div class="form-choice" data-value="self-employed"><span class="choice-key">C</span><span data-key="q4_c"></span></div>
-            <div class="form-choice" data-value="unemployed"><span class="choice-key">D</span><span data-key="q4_d"></span></div>
-            <div class="form-choice" data-value="other"><span class="choice-key">E</span><span data-key="q4_e"></span></div>
-          </div>
-        </div>
-
-        <!-- Step 7: Experience -->
-        <div class="form-step" data-step="7">
+        <!-- Step 4: Experience -->
+        <div class="form-step" data-step="4">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q5"></span></h3>
-          <div class="form-choices" id="choices_7">
+          <div class="form-choices" id="choices_4">
             <div class="form-choice" data-value="beginner"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
             <div class="form-choice" data-value="tried-lost"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
             <div class="form-choice" data-value="some-exp"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
           </div>
         </div>
 
-        <!-- Step 8: Hours -->
-        <div class="form-step" data-step="8">
-          <h3><span class="step-num" data-key="step_label"></span><span data-key="q6"></span></h3>
-          <div class="form-choices" id="choices_8">
-            <div class="form-choice" data-value="<1h"><span class="choice-key">A</span><span data-key="q6_a"></span></div>
-            <div class="form-choice" data-value="1-2h"><span class="choice-key">B</span><span data-key="q6_b"></span></div>
-            <div class="form-choice" data-value="3h+"><span class="choice-key">C</span><span data-key="q6_c"></span></div>
-          </div>
-        </div>
-
-        <!-- Step 9: Budget -->
-        <div class="form-step" data-step="9">
+        <!-- Step 5: Budget -->
+        <div class="form-step" data-step="5">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q7"></span></h3>
-          <div class="form-choices" id="choices_9">
+          <div class="form-choices" id="choices_5">
             <div class="form-choice" data-value="<500"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
             <div class="form-choice" data-value="500-1k"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
             <div class="form-choice" data-value="1k-3k"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
             <div class="form-choice" data-value="3k+"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
-          </div>
-        </div>
-
-        <!-- Step 10: Looking for -->
-        <div class="form-step" data-step="10">
-          <h3><span class="step-num" data-key="step_label"></span><span data-key="q8"></span></h3>
-          <div class="form-choices" id="choices_10">
-            <div class="form-choice" data-value="videos"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
-            <div class="form-choice" data-value="community"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
-            <div class="form-choice" data-value="1on1"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
-            <div class="form-choice" data-value="all"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
-          </div>
-        </div>
-
-        <!-- Step 11: Goal -->
-        <div class="form-step" data-step="11">
-          <h3><span class="step-num" data-key="step_label"></span><span data-key="q9"></span></h3>
-          <div class="form-choices" id="choices_11">
-            <div class="form-choice" data-value="side-income"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
-            <div class="form-choice" data-value="replace-income"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
-            <div class="form-choice" data-value="full-time"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
           </div>
         </div>
 
@@ -1417,7 +1331,7 @@ function render() {
 
 <script>
   // ── FORM STATE ──
-  const TOTAL_STEPS = 11;
+  const TOTAL_STEPS = 5;
   let partialTimer = null;
   let currentStep = 1;
   const answers = {};
@@ -1467,15 +1381,10 @@ function render() {
       if (!val.length) return false;
       // Step 1: name — letters only (Arabic + Latin), no digits
       if (currentStep === 1 && /\d/.test(val)) { input.dataset.error = '1'; return false; }
-      // Step 2: age — digits only (Arabic-Indic or Latin), reasonable range
-      if (currentStep === 2) {
-        const normalized = val.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
-        if (!/^\d+$/.test(normalized) || +normalized < 13 || +normalized > 80) return false;
-      }
-      // Step 3: phone — number part must have at least 6 digits
-      if (currentStep === 3 && val.replace(/\D/g,'').length < 6) return false;
-      // Step 4: email — basic email format
-      if (currentStep === 4 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
+      // Step 2: phone — number part must have at least 6 digits
+      if (currentStep === 2 && val.replace(/\D/g,'').length < 6) return false;
+      // Step 3: email — basic email format
+      if (currentStep === 3 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
       return true;
     }
     return !!answers[`q${currentStep}`];
@@ -1494,12 +1403,12 @@ function render() {
     const input = document.querySelector(`.form-step[data-step="${currentStep}"] .form-input`);
     if (input) {
       let val = input.value.trim();
-      if (currentStep === 3) val = selectedCode + val; // prepend country code
+      if (currentStep === 2) val = selectedCode + val; // prepend country code
       answers[`q${currentStep}`] = val;
     }
 
     // after email step, store partial data so it can be sent on page leave
-    if (currentStep === 4) {
+    if (currentStep === 3) {
       partialTimer = true; // flag that contact info has been captured
     }
 
@@ -1693,26 +1602,16 @@ function render() {
     formRenderText();
 
     // map answer values to readable labels for Slack
-    // step order: 1=name,2=age,3=phone,4=email,5=country,6=occupation,7=experience,8=hours,9=budget,10=looking,11=goal
-    const occupationMap = { student: txt('q4_a'), employed: txt('q4_b'), 'self-employed': txt('q4_c'), unemployed: txt('q4_d'), other: txt('q4_e') };
+    // step order: 1=name,2=phone,3=email,4=experience,5=budget
     const expMap        = { beginner: txt('q5_a'), 'tried-lost': txt('q5_b'), 'some-exp': txt('q5_c') };
-    const hoursMap      = { '<1h': txt('q6_a'), '1-2h': txt('q6_b'), '3h+': txt('q6_c') };
     const budgetMap     = { '<500': txt('q7_a'), '500-1k': txt('q7_b'), '1k-3k': txt('q7_c'), '3k+': txt('q7_d') };
-    const lookingMap    = { videos: txt('q8_a'), community: txt('q8_b'), '1on1': txt('q8_c'), all: txt('q8_d') };
-    const goalMap       = { 'side-income': txt('q9_a'), 'replace-income': txt('q9_b'), 'full-time': txt('q9_c') };
 
     const payload = {
       name:       answers.q1  || '—',
-      age:        answers.q2  || '—',
-      phone:      answers.q3  || '—',
-      email:      answers.q4  || '—',
-      country:    answers.q5  || '—',
-      occupation: occupationMap[answers.q6]  || answers.q6  || '—',
-      experience: expMap[answers.q7]         || answers.q7  || '—',
-      hours:      hoursMap[answers.q8]       || answers.q8  || '—',
-      budget:     budgetMap[answers.q9]      || answers.q9  || '—',
-      looking:    lookingMap[answers.q10]    || answers.q10 || '—',
-      goal:       goalMap[answers.q11]       || answers.q11 || '—',
+      phone:      answers.q2  || '—',
+      email:      answers.q3  || '—',
+      experience: expMap[answers.q4]         || answers.q4  || '—',
+      budget:     budgetMap[answers.q5]      || answers.q5  || '—',
       lang:       lang === 'ar' ? 'Arabic' : 'English',
     };
 
@@ -1754,10 +1653,9 @@ function render() {
   window.addEventListener('pagehide', () => {
     if (!partialTimer) return;
     const data = {
-      name: answers.q1 || '—', age: answers.q2 || '—',
-      phone: answers.q3 || '—', email: answers.q4 || '—',
-      country: '—', occupation: '—', experience: '—',
-      hours: '—', budget: '—', looking: '—', goal: '—',
+      name: answers.q1 || '—',
+      phone: answers.q2 || '—', email: answers.q3 || '—',
+      experience: '—', budget: '—',
       lang: lang === 'ar' ? 'Arabic' : 'English',
       partial: true,
     };

@@ -3,7 +3,7 @@ const fetch = require('node-fetch');
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { name, age, country, occupation, experience, hours, budget, looking, goal, phone, email, lang, partial } = req.body;
+  const { name, experience, budget, phone, email, lang, partial } = req.body;
 
   const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK_URL;
 
@@ -21,7 +21,7 @@ module.exports = async function handler(req, res) {
       { type: 'header', text: { type: 'plain_text', text: 'Lead Captured — Incomplete', emoji: false } },
       {
         type: 'section',
-        text: { type: 'mrkdwn', text: `*Name:* ${name}\n*Age:* ${age}\n*Phone:* ${phone}\n*Email:* ${email}` }
+        text: { type: 'mrkdwn', text: `*Name:* ${name}\n*Phone:* ${phone}\n*Email:* ${email}` }
       },
       { type: 'context', elements: [{ type: 'mrkdwn', text: footer }] }
     ]
@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
       { type: 'header', text: { type: 'plain_text', text: 'New Application', emoji: false } },
       {
         type: 'section',
-        text: { type: 'mrkdwn', text: `*Name:* ${name}\n*Age:* ${age}\n*Phone:* ${phone}\n*Email:* ${email}\n*Country:* ${country}\n*Occupation:* ${occupation}\n*Experience:* ${experience}\n*Hours / day:* ${hours}\n*Budget:* ${budget}\n*Looking for:* ${looking}\n*Goal:* ${goal}\n*Language:* ${lang}` }
+        text: { type: 'mrkdwn', text: `*Name:* ${name}\n*Phone:* ${phone}\n*Email:* ${email}\n*Experience:* ${experience}\n*Budget:* ${budget}\n*Language:* ${lang}` }
       },
       { type: 'context', elements: [{ type: 'mrkdwn', text: footer }] }
     ]
