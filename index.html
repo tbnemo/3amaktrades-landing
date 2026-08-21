@@ -15,9 +15,9 @@
       --green-dim: #B8960C;
       --green-glow: rgba(212,175,55,0.4);
       --dark: #050505;
-      --dark-2: #0a0a0a;
-      --dark-3: #111;
-      --dark-4: #181818;
+      --dark-2: linear-gradient(180deg, #0c0c0c 0%, #060606 100%);
+      --dark-3: linear-gradient(155deg, #171717 0%, #0d0d0d 55%, #0a0a0a 100%);
+      --dark-4: linear-gradient(155deg, #212121 0%, #161616 55%, #131313 100%);
       --white: #ffffff;
       --gray: #777;
       --red: #ef4444;
@@ -26,7 +26,7 @@
     html { scroll-behavior: smooth; }
 
     body {
-      background: var(--dark);
+      background: radial-gradient(ellipse 1400px 900px at 50% -10%, #0f0f0f 0%, var(--dark) 55%) var(--dark);
       color: var(--white);
       overflow-x: hidden;
     }
@@ -658,13 +658,6 @@
     #final-cta {
       padding: 120px 20px; background: var(--dark);
       text-align: center; position: relative; overflow: hidden;
-    }
-    #final-cta::before {
-      content: ''; position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(212,175,55,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(212,175,55,0.03) 1px, transparent 1px);
-      background-size: 60px 60px;
     }
     #final-cta::after {
       content: ''; position: absolute; top: 50%; left: 50%;
