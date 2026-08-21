@@ -782,10 +782,15 @@ const t = {
     // form
     step_label: "السؤال",
     q1: "ما اسمك؟", q1_ph: "اكتب اسمك هنا...",
+    q3: "من أي دولة أنت؟", q3_ph: "مثال: السعودية",
     q5: "ما مستوى خبرتك في التداول؟",
     q5_a: "مبتدئ كامل", q5_b: "جربت لكن خسرت", q5_c: "لدي بعض الخبرة لكن غير منتظم",
     q7: "ما ميزانيتك للبدء؟",
     q7_a: "أقل من $500", q7_b: "$500 – $1,000", q7_c: "$1,000 – $3,000", q7_d: "$3,000+",
+    q8: "ماذا تبحث عنه؟",
+    q8_a: "دورة فيديو من الألف للياء", q8_b: "مجتمع متداولين للتعلم معهم", q8_c: "إرشاد 1 على 1 مباشر", q8_d: "كل ما سبق",
+    q9: "ما هدفك الرئيسي؟",
+    q9_a: "دخل إضافي جانبي", q9_b: "استبدال دخلي الكامل", q9_c: "أنا أتداول وأريد أن أصبح محترفاً",
     q10: "ما رقم هاتفك؟", q10_ph: "مثال: +966 5xxxxxxxx",
     q11: "ما بريدك الإلكتروني؟", q11_ph: "مثال: name@email.com",
     btn_next: "التالي", btn_back: "رجوع",
@@ -885,10 +890,15 @@ const t = {
     // form
     step_label: "Question",
     q1: "What's your name?", q1_ph: "Type your name...",
+    q3: "What country are you from?", q3_ph: "e.g. Saudi Arabia",
     q5: "What's your trading experience?",
     q5_a: "Complete beginner", q5_b: "Tried it but lost money", q5_c: "Some experience, not consistent",
     q7: "What's your budget to get started?",
     q7_a: "Less than $500", q7_b: "$500 – $1,000", q7_c: "$1,000 – $3,000", q7_d: "$3,000+",
+    q8: "What are you looking for?",
+    q8_a: "A-Z video course at my own pace", q8_b: "A community of traders to learn with", q8_c: "1-on-1 mentorship with direct access", q8_d: "All of the above",
+    q9: "What's your main goal?",
+    q9_a: "Extra income on the side", q9_b: "Replace my full-time income", q9_c: "Already trading, want to go pro",
     q10: "What's your phone number?", q10_ph: "e.g. +1 555 000 0000",
     q11: "What's your email address?", q11_ph: "e.g. name@email.com",
     btn_next: "Next", btn_back: "Back",
@@ -1170,7 +1180,7 @@ function render() {
     </div>
 
     <div class="form-box fade-up">
-      <div class="form-progress"><div class="form-progress-fill" id="formProgress" style="width:20%"></div></div>
+      <div class="form-progress"><div class="form-progress-fill" id="formProgress" style="width:12.5%"></div></div>
 
       <div class="form-step-counter">
         <span id="stepCounterText"></span>
@@ -1210,24 +1220,51 @@ function render() {
           <input class="form-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
         </div>
 
-        <!-- Step 4: Experience -->
+        <!-- Step 4: Country -->
         <div class="form-step" data-step="4">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q3"></span></h3>
+          <input class="form-input" id="f_country" type="text" data-placeholder-key="q3_ph" autocomplete="off" />
+        </div>
+
+        <!-- Step 5: Experience -->
+        <div class="form-step" data-step="5">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q5"></span></h3>
-          <div class="form-choices" id="choices_4">
+          <div class="form-choices" id="choices_5">
             <div class="form-choice" data-value="beginner"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
             <div class="form-choice" data-value="tried-lost"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
             <div class="form-choice" data-value="some-exp"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
           </div>
         </div>
 
-        <!-- Step 5: Budget -->
-        <div class="form-step" data-step="5">
+        <!-- Step 6: Budget -->
+        <div class="form-step" data-step="6">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q7"></span></h3>
-          <div class="form-choices" id="choices_5">
+          <div class="form-choices" id="choices_6">
             <div class="form-choice" data-value="<500"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
             <div class="form-choice" data-value="500-1k"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
             <div class="form-choice" data-value="1k-3k"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
             <div class="form-choice" data-value="3k+"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
+          </div>
+        </div>
+
+        <!-- Step 7: Looking for -->
+        <div class="form-step" data-step="7">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q8"></span></h3>
+          <div class="form-choices" id="choices_7">
+            <div class="form-choice" data-value="videos"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
+            <div class="form-choice" data-value="community"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
+            <div class="form-choice" data-value="1on1"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
+            <div class="form-choice" data-value="all"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
+          </div>
+        </div>
+
+        <!-- Step 8: Goal -->
+        <div class="form-step" data-step="8">
+          <h3><span class="step-num" data-key="step_label"></span><span data-key="q9"></span></h3>
+          <div class="form-choices" id="choices_8">
+            <div class="form-choice" data-value="side-income"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
+            <div class="form-choice" data-value="replace-income"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
+            <div class="form-choice" data-value="full-time"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
           </div>
         </div>
 
@@ -1342,7 +1379,7 @@ function render() {
 
 <script>
   // ── FORM STATE ──
-  const TOTAL_STEPS = 5;
+  const TOTAL_STEPS = 8;
   let partialTimer = null;
   let currentStep = 1;
   const answers = {};
@@ -1613,16 +1650,21 @@ function render() {
     formRenderText();
 
     // map answer values to readable labels for Slack
-    // step order: 1=name,2=phone,3=email,4=experience,5=budget
+    // step order: 1=name,2=phone,3=email,4=country,5=experience,6=budget,7=looking,8=goal
     const expMap        = { beginner: txt('q5_a'), 'tried-lost': txt('q5_b'), 'some-exp': txt('q5_c') };
     const budgetMap     = { '<500': txt('q7_a'), '500-1k': txt('q7_b'), '1k-3k': txt('q7_c'), '3k+': txt('q7_d') };
+    const lookingMap    = { videos: txt('q8_a'), community: txt('q8_b'), '1on1': txt('q8_c'), all: txt('q8_d') };
+    const goalMap       = { 'side-income': txt('q9_a'), 'replace-income': txt('q9_b'), 'full-time': txt('q9_c') };
 
     const payload = {
       name:       answers.q1  || '—',
       phone:      answers.q2  || '—',
       email:      answers.q3  || '—',
-      experience: expMap[answers.q4]         || answers.q4  || '—',
-      budget:     budgetMap[answers.q5]      || answers.q5  || '—',
+      country:    answers.q4  || '—',
+      experience: expMap[answers.q5]         || answers.q5  || '—',
+      budget:     budgetMap[answers.q6]      || answers.q6  || '—',
+      looking:    lookingMap[answers.q7]     || answers.q7  || '—',
+      goal:       goalMap[answers.q8]        || answers.q8  || '—',
       lang:       lang === 'ar' ? 'Arabic' : 'English',
     };
 
@@ -1666,7 +1708,7 @@ function render() {
     const data = {
       name: answers.q1 || '—',
       phone: answers.q2 || '—', email: answers.q3 || '—',
-      experience: '—', budget: '—',
+      country: '—', experience: '—', budget: '—', looking: '—', goal: '—',
       lang: lang === 'ar' ? 'Arabic' : 'English',
       partial: true,
     };
