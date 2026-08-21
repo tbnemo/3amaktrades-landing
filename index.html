@@ -110,16 +110,6 @@
       text-align: center; padding: 80px 20px 60px;
       overflow: hidden;
     }
-    #hero::before {
-      content: '';
-      position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(212,175,55,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(212,175,55,0.04) 1px, transparent 1px);
-      background-size: 60px 60px;
-      animation: gridScroll 20s linear infinite;
-    }
-    @keyframes gridScroll { from { background-position: 0 0; } to { background-position: 0 60px; } }
     #hero::after {
       content: ''; position: absolute; top: -20%; left: 50%; transform: translateX(-50%);
       width: 700px; height: 500px;
