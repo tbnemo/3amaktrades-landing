@@ -1,19 +1,9 @@
-const fetch = require('node-fetch');
+const { postToSlack, CHANNEL_NEW_APPLICATIONS, CHANNEL_INCOMPLETE_LEADS } = require('./_slack');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { name, country, experience, budget, looking, goal, phone, email, lang, partial } = req.body;
-
-  // Incomplete (partial) leads go to #2-incomplete-leads if that webhook is configured,
-  // otherwise fall back to the main channel so nothing silently breaks.
-  const SLACK_WEBHOOK = (partial && process.env.SLACK_WEBHOOK_URL_PARTIAL)
-    || process.env.SLACK_WEBHOOK_URL;
-
-  if (!SLACK_WEBHOOK) {
-    console.error('SLACK_WEBHOOK_URL not set');
-    return res.status(200).json({ ok: true });
-  }
 
   const footer = `Sent by <https://3amaktrades-landing.vercel.app|3AMAK Bot> · ${new Date().toUTCString()}`;
 
@@ -41,15 +31,7 @@ module.exports = async function handler(req, res) {
     ]
   };
 
-  const slackRes = await fetch(SLACK_WEBHOOK, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(message),
-  });
-
-  if (!slackRes.ok) {
-    console.error('Slack error:', await slackRes.text());
-  }
+  await postToSlack(partial ? CHANNEL_INCOMPLETE_LEADS : CHANNEL_NEW_APPLICATIONS, message);
 
   return res.status(200).json({ ok: true });
 };
