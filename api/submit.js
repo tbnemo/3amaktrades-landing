@@ -5,7 +5,10 @@ module.exports = async function handler(req, res) {
 
   const { name, country, experience, budget, looking, goal, phone, email, lang, partial } = req.body;
 
-  const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK_URL;
+  // Incomplete (partial) leads go to #2-incomplete-leads if that webhook is configured,
+  // otherwise fall back to the main channel so nothing silently breaks.
+  const SLACK_WEBHOOK = (partial && process.env.SLACK_WEBHOOK_URL_PARTIAL)
+    || process.env.SLACK_WEBHOOK_URL;
 
   if (!SLACK_WEBHOOK) {
     console.error('SLACK_WEBHOOK_URL not set');
