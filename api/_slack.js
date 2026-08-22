@@ -16,7 +16,7 @@ async function postToSlack(channelId, message) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${BOT_TOKEN}`,
       },
-      body: JSON.stringify({ channel: channelId, ...message }),
+      body: JSON.stringify({ channel: channelId, unfurl_links: false, unfurl_media: false, ...message }),
     });
     const data = await res.json();
     if (!data.ok) console.error('Slack chat.postMessage error:', data.error);
