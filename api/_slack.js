@@ -2,6 +2,19 @@ const fetch = require('node-fetch');
 
 const CHANNEL_NEW_APPLICATIONS = 'C0B3EAGNATT'; // #1-new-applications
 const CHANNEL_INCOMPLETE_LEADS = 'C0BRK4HDFFH'; // #2-incomplete-leads
+const CHANNEL_WARM_LEADS = 'C0BRXBD8QAZ'; // #3-warm-leads
+
+// Gets a shareable link to a specific message, so a ping in another channel
+// can point back to the full application instead of repeating its contents.
+async function getPermalink(channelId, messageTs) {
+  const BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+  if (!BOT_TOKEN || !messageTs) return null;
+  const url = `https://slack.com/api/chat.getPermalink?channel=${channelId}&message_ts=${messageTs}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${BOT_TOKEN}` } });
+  const data = await res.json();
+  if (!data.ok) { console.error('Slack chat.getPermalink error:', data.error); return null; }
+  return data.permalink;
+}
 
 // Posts to Slack via the bot token (chat.postMessage) so any channel can be
 // targeted by ID without needing a separate Incoming Webhook per channel.
@@ -37,4 +50,4 @@ async function postToSlack(channelId, message) {
   return { ts: null }; // incoming webhooks don't return a message ts, no threading possible
 }
 
-module.exports = { postToSlack, CHANNEL_NEW_APPLICATIONS, CHANNEL_INCOMPLETE_LEADS };
+module.exports = { postToSlack, getPermalink, CHANNEL_NEW_APPLICATIONS, CHANNEL_INCOMPLETE_LEADS, CHANNEL_WARM_LEADS };
