@@ -1476,9 +1476,31 @@ function render() {
 <script>
   // ── FORM STATE ──
   const TOTAL_STEPS = 8;
-  let partialTimer = null;
+  let partialTimer = null; // setTimeout handle for the 5-min idle incomplete-lead alert
+  let hasContactInfo = false; // true once phone is captured -- used by the page-leave safety net
   let currentStep = 1;
   const answers = {};
+
+  function partialLeadPayload() {
+    return {
+      name: answers.q1 || '—',
+      phone: answers.q2 || '—', email: answers.q3 || '—',
+      country: '—', experience: '—', budget: '—', looking: '—', goal: '—',
+      lang: lang === 'ar' ? 'Arabic' : 'English',
+      partial: true,
+    };
+  }
+
+  // Fires after 5 min of the form sitting incomplete with a phone number on it.
+  function sendPartialLead() {
+    partialTimer = null;
+    hasContactInfo = false; // fired already -- don't let pagehide send a duplicate
+    fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(partialLeadPayload()),
+    }).catch(() => {});
+  }
 
   function formRenderText() {
     // step counter
@@ -1551,10 +1573,12 @@ function render() {
       answers[`q${currentStep}`] = val;
     }
 
-    // after phone step, store partial data so it can be sent on page leave --
-    // a phone number alone is enough to follow up on, so arm as soon as we have it
+    // after phone step: a phone number alone is enough to follow up on, so start the
+    // 5-min idle timer -- if they finish the form first, submitForm() cancels it.
+    // If they close the tab/navigate away before it fires, pagehide sends it right away.
     if (currentStep === 2) {
-      partialTimer = true; // flag that contact info has been captured
+      hasContactInfo = true;
+      partialTimer = setTimeout(sendPartialLead, 5 * 60 * 1000);
     }
 
     if (currentStep === TOTAL_STEPS) {
@@ -1739,6 +1763,7 @@ function render() {
 
   async function submitForm() {
     if (partialTimer) { clearTimeout(partialTimer); partialTimer = null; }
+    hasContactInfo = false; // fully completed -- no incomplete alert needed
     document.getElementById('formNav').style.display = 'none';
     document.querySelector('.form-steps').style.display = 'none';
     document.querySelector('.form-step-counter').style.display = 'none';
@@ -1814,15 +1839,8 @@ function render() {
 
   // send partial lead if they leave after giving contact info but before finishing
   window.addEventListener('pagehide', () => {
-    if (!partialTimer) return;
-    const data = {
-      name: answers.q1 || '—',
-      phone: answers.q2 || '—', email: answers.q3 || '—',
-      country: '—', experience: '—', budget: '—', looking: '—', goal: '—',
-      lang: lang === 'ar' ? 'Arabic' : 'English',
-      partial: true,
-    };
-    navigator.sendBeacon('/api/submit', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (!hasContactInfo) return;
+    navigator.sendBeacon('/api/submit', new Blob([JSON.stringify(partialLeadPayload())], { type: 'application/json' }));
   });
 </script>
 </body>
