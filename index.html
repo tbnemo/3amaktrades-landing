@@ -1551,8 +1551,9 @@ function render() {
       answers[`q${currentStep}`] = val;
     }
 
-    // after email step, store partial data so it can be sent on page leave
-    if (currentStep === 3) {
+    // after phone step, store partial data so it can be sent on page leave --
+    // a phone number alone is enough to follow up on, so arm as soon as we have it
+    if (currentStep === 2) {
       partialTimer = true; // flag that contact info has been captured
     }
 
