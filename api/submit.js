@@ -31,7 +31,9 @@ module.exports = async function handler(req, res) {
     ]
   };
 
-  await postToSlack(partial ? CHANNEL_INCOMPLETE_LEADS : CHANNEL_NEW_APPLICATIONS, message);
+  const { ts } = await postToSlack(partial ? CHANNEL_INCOMPLETE_LEADS : CHANNEL_NEW_APPLICATIONS, message);
 
-  return res.status(200).json({ ok: true });
+  // ts lets the client thread a later "warm lead" WhatsApp-click ping onto this
+  // exact message instead of posting a separate top-level message.
+  return res.status(200).json({ ok: true, ts });
 };

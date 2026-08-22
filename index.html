@@ -1790,26 +1790,31 @@ function render() {
       lang:       lang === 'ar' ? 'Arabic' : 'English',
     };
 
-    // Wire up the WhatsApp CTA on the confirmation screen with a pre-filled message,
-    // and fire a "warm lead" ping to Slack the moment they actually click through.
+    // Wire up the WhatsApp CTA on the confirmation screen with a pre-filled message.
     const waMsg = lang === 'ar'
       ? `مرحباً، لقد قدمت طلبي على موقعكم. اسمي ${payload.name}.`
       : `Hi, I just applied on your site. My name is ${payload.name}.`;
     const waBtn = document.getElementById('waConfirmBtn');
     waBtn.href = `https://wa.me/14382259193?text=${encodeURIComponent(waMsg)}`;
-    waBtn.addEventListener('click', () => {
-      navigator.sendBeacon('/api/wa-click', new Blob([JSON.stringify({
-        name: payload.name, phone: payload.phone,
-      })], { type: 'application/json' }));
-    }, { once: true });
 
+    let applicationTs = null;
     try {
-      await fetch('/api/submit', {
+      const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      const data = await res.json();
+      applicationTs = data.ts || null;
     } catch(e) { /* silent fail — confirmation still shown */ }
+
+    // Fire a "warm lead" ping to Slack the moment they actually click through --
+    // threaded onto the original application message so it doesn't clutter the channel.
+    waBtn.addEventListener('click', () => {
+      navigator.sendBeacon('/api/wa-click', new Blob([JSON.stringify({
+        name: payload.name, phone: payload.phone, ts: applicationTs,
+      })], { type: 'application/json' }));
+    }, { once: true });
   }
 
   // shake animation

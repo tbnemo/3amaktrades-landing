@@ -20,13 +20,13 @@ async function postToSlack(channelId, message) {
     });
     const data = await res.json();
     if (!data.ok) console.error('Slack chat.postMessage error:', data.error);
-    return;
+    return { ts: data.ts || null }; // ts lets a later reply thread onto this message
   }
 
   const WEBHOOK = process.env.SLACK_WEBHOOK_URL;
   if (!WEBHOOK) {
     console.error('Neither SLACK_BOT_TOKEN nor SLACK_WEBHOOK_URL is set');
-    return;
+    return { ts: null };
   }
   const res = await fetch(WEBHOOK, {
     method: 'POST',
@@ -34,6 +34,7 @@ async function postToSlack(channelId, message) {
     body: JSON.stringify(message),
   });
   if (!res.ok) console.error('Slack webhook error:', await res.text());
+  return { ts: null }; // incoming webhooks don't return a message ts, no threading possible
 }
 
 module.exports = { postToSlack, CHANNEL_NEW_APPLICATIONS, CHANNEL_INCOMPLETE_LEADS };
