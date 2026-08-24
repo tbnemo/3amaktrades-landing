@@ -168,7 +168,7 @@
       50%      { opacity: 1;    transform: scale(1.05); }
     }
     @media (prefers-reduced-motion: reduce) {
-      #hero::after { animation: none; }
+      #hero::after { animation-duration: 20s; } /* slower, not off -- a slow fade isn't the kind of motion this setting is meant to block */
     }
     .hero-content { position: relative; z-index: 2; max-width: 820px; }
 
@@ -213,7 +213,7 @@
       #hero { text-align: start; }
       .hero-content {
         display: flex; flex-direction: row-reverse; align-items: center;
-        gap: 64px; max-width: 1440px;
+        gap: 64px; width: 100%; max-width: 1440px;
       }
       .hero-text { flex: 1 1 44%; min-width: 0; }
       .hero-video { flex: 1 1 56%; max-width: none; margin: 0; }
