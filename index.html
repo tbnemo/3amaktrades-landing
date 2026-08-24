@@ -159,13 +159,14 @@
       overflow: hidden;
     }
     #hero::after {
-      content: ''; position: absolute; inset: 0;
+      content: ''; position: absolute; inset: -10%;
       background: repeating-radial-gradient(circle at 50% 42%,
-        rgba(212,175,55,0.14) 0px, rgba(212,175,55,0.14) 1px,
-        transparent 1px, transparent 56px
+        rgba(212,175,55,0.22) 0px, rgba(212,175,55,0.22) 2px,
+        transparent 2px, transparent 100px
       );
-      -webkit-mask-image: radial-gradient(ellipse 900px 700px at 50% 42%, #000 0%, transparent 72%);
-      mask-image: radial-gradient(ellipse 900px 700px at 50% 42%, #000 0%, transparent 72%);
+      filter: blur(7px);
+      -webkit-mask-image: radial-gradient(ellipse 950px 750px at 50% 42%, #000 0%, transparent 68%);
+      mask-image: radial-gradient(ellipse 950px 750px at 50% 42%, #000 0%, transparent 68%);
       animation: ringPulse 9s ease-in-out infinite;
       pointer-events: none;
     }
