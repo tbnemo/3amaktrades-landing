@@ -153,10 +153,22 @@
       overflow: hidden;
     }
     #hero::after {
-      content: ''; position: absolute; top: -20%; left: 50%; transform: translateX(-50%);
-      width: 700px; height: 500px;
-      background: radial-gradient(ellipse, rgba(212,175,55,0.12) 0%, transparent 70%);
+      content: ''; position: absolute; inset: 0;
+      background: repeating-radial-gradient(circle at 50% 42%,
+        rgba(212,175,55,0.14) 0px, rgba(212,175,55,0.14) 1px,
+        transparent 1px, transparent 56px
+      );
+      -webkit-mask-image: radial-gradient(ellipse 900px 700px at 50% 42%, #000 0%, transparent 72%);
+      mask-image: radial-gradient(ellipse 900px 700px at 50% 42%, #000 0%, transparent 72%);
+      animation: ringPulse 9s ease-in-out infinite;
       pointer-events: none;
+    }
+    @keyframes ringPulse {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50%      { opacity: 1;    transform: scale(1.05); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #hero::after { animation: none; }
     }
     .hero-content { position: relative; z-index: 2; max-width: 820px; }
 
@@ -201,10 +213,11 @@
       #hero { text-align: start; }
       .hero-content {
         display: flex; flex-direction: row-reverse; align-items: center;
-        gap: 64px; max-width: 1180px;
+        gap: 64px; max-width: 1440px;
       }
-      .hero-text { flex: 1 1 48%; min-width: 0; }
-      .hero-video { flex: 1 1 52%; max-width: none; margin: 0; }
+      .hero-text { flex: 1 1 44%; min-width: 0; }
+      .hero-video { flex: 1 1 56%; max-width: none; margin: 0; }
+      .hero-video .video-container { padding-bottom: 75%; } /* taller than the default 16:9 so it reads as a real focal point, not a sliver */
       .hero-badge, .hero-headline, .hero-sub { text-align: start; }
       .hero-sub { margin-inline: 0; }
       .hero-pills { justify-content: flex-start; }
