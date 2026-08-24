@@ -196,6 +196,21 @@
 
     .hero-video { width: 100%; max-width: 720px; margin: 0 auto 48px; }
 
+    /* Desktop: split layout -- copy on the reading-start side, video on the end side */
+    @media (min-width: 1024px) {
+      #hero { text-align: start; }
+      .hero-content {
+        display: flex; flex-direction: row-reverse; align-items: center;
+        gap: 64px; max-width: 1180px;
+      }
+      .hero-text { flex: 1 1 48%; min-width: 0; }
+      .hero-video { flex: 1 1 52%; max-width: none; margin: 0; }
+      .hero-badge, .hero-headline, .hero-sub { text-align: start; }
+      .hero-sub { margin-inline: 0; }
+      .hero-pills { justify-content: flex-start; }
+      .cta-btn { align-items: flex-start; }
+    }
+
     /* animated chart */
     .hero-chart {
       position: absolute; bottom: 0; left: 0; right: 0;
@@ -1150,20 +1165,22 @@ function render() {
         </div>
       </div>
     </div>
-    <div class="hero-badge">
-      <span class="hero-badge-text"></span>
+    <div class="hero-text">
+      <div class="hero-badge">
+        <span class="hero-badge-text"></span>
+      </div>
+      <h1 class="hero-headline">
+        <span class="hero-h1"></span>
+        <span class="hero-h1-g g"></span>
+      </h1>
+      <p class="hero-sub"></p>
+      <div class="hero-pills">
+        <span class="pill"></span>
+        <span class="pill"></span>
+        <span class="pill"></span>
+      </div>
+      <a href="#apply" class="cta-btn"><span class="main"></span><span class="sub"></span></a>
     </div>
-    <h1 class="hero-headline">
-      <span class="hero-h1"></span>
-      <span class="hero-h1-g g"></span>
-    </h1>
-    <p class="hero-sub"></p>
-    <div class="hero-pills">
-      <span class="pill"></span>
-      <span class="pill"></span>
-      <span class="pill"></span>
-    </div>
-    <a href="#apply" class="cta-btn"><span class="main"></span><span class="sub"></span></a>
   </div>
   <div class="hero-chart">
     <svg viewBox="0 0 1400 180" preserveAspectRatio="none">
