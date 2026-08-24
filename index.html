@@ -728,7 +728,7 @@
     .foot-logo { font-size: 16px; font-weight: 900; letter-spacing: 3px; color: #2a2a2a; text-transform: uppercase; margin-bottom: 8px; }
     .foot-logo span { color: var(--green); opacity: 0.5; }
     .foot-social { display: flex; justify-content: center; gap: 18px; margin: 18px 0 14px; }
-    .foot-social a { color: #555; transition: color 0.15s; display: inline-flex; }
+    .foot-social a { color: #555; transition: color 0.15s; display: inline-flex; align-items: center; justify-content: center; padding: 11px; margin: -11px; }
     .foot-social a:hover { color: var(--green); }
     .foot-social svg { width: 19px; height: 19px; }
     footer p { font-size: 11px; color: #2a2a2a; }
@@ -1253,6 +1253,10 @@ function render() {
     </div>
 
     <div class="form-box fade-up">
+      <!-- Honeypot: hidden from real users, bots that auto-fill every field will trip it -->
+      <input type="text" id="f_website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+        style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;" />
+
       <div class="form-progress"><div class="form-progress-fill" id="formProgress" style="width:12.5%"></div></div>
 
       <div class="form-step-counter">
@@ -1785,9 +1789,11 @@ function render() {
       country:    answers.q4  || '—',
       experience: expMap[answers.q5]         || answers.q5  || '—',
       budget:     budgetMap[answers.q6]      || answers.q6  || '—',
+      budgetCode: answers.q6 || '', // raw code (e.g. "3k+") so the server can tier leads regardless of language
       looking:    lookingMap[answers.q7]     || answers.q7  || '—',
       goal:       goalMap[answers.q8]        || answers.q8  || '—',
       lang:       lang === 'ar' ? 'Arabic' : 'English',
+      website:    document.getElementById('f_website').value, // honeypot, should always be empty
     };
 
     // Wire up the WhatsApp CTA on the confirmation screen with a pre-filled message.
@@ -1807,6 +1813,11 @@ function render() {
       const data = await res.json();
       applicationTs = data.ts || null;
     } catch(e) { /* silent fail — confirmation still shown */ }
+
+    // Ad-pixel conversion event. Inert until the pixel scripts in <head> are
+    // uncommented with real Pixel IDs -- fbq/ttq won't exist before that.
+    if (typeof fbq === 'function') fbq('track', 'Lead');
+    if (typeof ttq !== 'undefined' && ttq.track) ttq.track('SubmitForm');
 
     // Fire a "warm lead" ping to Slack the moment they actually click through --
     // threaded onto the original application message so it doesn't clutter the channel.
