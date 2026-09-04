@@ -1945,10 +1945,11 @@ function render() {
       const seedCandle = () => {
         const open = price;
         // Momentum clusters produce recognizable trends, pullbacks and occasional breakouts.
-        seedTrend = seedTrend * 0.72 + (Math.random() - 0.5) * 26;
-        const breakout = Math.random() < 0.1 ? (Math.random() - 0.5) * 78 : 0;
-        price = Math.max(190, Math.min(510, open + seedTrend + (Math.random() - 0.5) * 20 + breakout));
-        const wick = 7 + Math.random() * 22;
+        seedTrend = seedTrend * 0.72 + (Math.random() - 0.5) * 34;
+        const breakout = Math.random() < 0.1 ? (Math.random() - 0.5) * 108 : 0;
+        const rawClose = open + seedTrend + (Math.random() - 0.5) * 30 + breakout;
+        price = Math.max(155, Math.min(545, Math.max(open - 90, Math.min(open + 90, rawClose))));
+        const wick = 12 + Math.random() * 30;
         return {
           open, close: price,
           high: Math.min(open, price) - wick * (0.45 + Math.random()),
@@ -1967,7 +1968,7 @@ function render() {
           const candleWidth = c.width || BASE_WIDTH;
           const x = BASE_X + i * SPACING + (BASE_WIDTH - candleWidth) / 2;
           const top = Math.min(c.open, c.close);
-          const h = Math.max(5, Math.abs(c.close - c.open));
+          const h = Math.max(7, Math.abs(c.close - c.open));
           const up = c.close <= c.open; // svg y grows downward, so a lower close = price rose
           const active = i === candles.length - 1;
           const color = up ? '#15c89a' : '#ff5364';
@@ -1998,7 +1999,7 @@ function render() {
           node.setAttribute('transform', `translate(0 ${candleWave(index, now).toFixed(2)})`);
         });
         const top = Math.min(active.open, active.close);
-        const h = Math.max(5, Math.abs(active.close - active.open));
+        const h = Math.max(7, Math.abs(active.close - active.open));
         const color = active.close <= active.open ? '#15c89a' : '#ff5364';
         const wick = activeNode.querySelector('line');
         const body = activeNode.querySelector('rect');
@@ -2034,7 +2035,7 @@ function render() {
         lastFrame = now;
         if (now >= directionChangesAt) {
           // Momentum persists for a while, then turns naturally like a live market.
-          velocityTarget = (Math.random() - 0.5) * 3.2;
+          velocityTarget = (Math.random() - 0.5) * 3.8;
           directionChangesAt = now + 420 + Math.random() * 900;
         }
         velocity += (velocityTarget - velocity) * 0.035;
