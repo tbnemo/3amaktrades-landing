@@ -1948,7 +1948,9 @@ function render() {
         price = Math.max(205, Math.min(495, open + (Math.random() - 0.49) * 62));
         return { open, close: price, high: Math.min(open, price) - 12 - Math.random() * 18, low: Math.max(open, price) + 12 + Math.random() * 18 };
       };
-      let candles = Array.from({ length: VISIBLE }, seedCandle);
+      // Keep the actively-forming candle inside the 1600px viewport. The extra
+      // off-screen slot is used only during the close-and-scroll transition.
+      let candles = Array.from({ length: VISIBLE - 1 }, seedCandle);
       candles.push({ open: price, close: price, high: price, low: price });
 
       function drawAll() {
