@@ -1973,8 +1973,12 @@ function render() {
         const candleProgress = Math.min(1, (now - candleStartedAt) / CANDLE_MS);
         const scrollPx = candleProgress * slot;
         const visible = session.slice(-(visibleCount + 1));
-        const extrema = visible.flatMap(c => [c.high, c.low]);
-        let minPrice = Math.min(...extrema), maxPrice = Math.max(...extrema);
+        let minPrice = Infinity, maxPrice = -Infinity;
+        for (let i = 0; i < visible.length; i++) {
+          const c = visible[i];
+          if (c.high > maxPrice) maxPrice = c.high;
+          if (c.low < minPrice) minPrice = c.low;
+        }
         const padding = Math.max(28, (maxPrice - minPrice) * 0.16);
         minPrice -= padding; maxPrice += padding;
         const y = p => 18 + (maxPrice - p) / (maxPrice - minPrice) * (plotBottom - 30);
@@ -2003,7 +2007,10 @@ function render() {
         }
         ctx.setLineDash([]);
 
-        const maxVolume = Math.max(...visible.map(c => c.volume));
+        let maxVolume = 0;
+        for (let i = 0; i < visible.length; i++) {
+          if (visible[i].volume > maxVolume) maxVolume = visible[i].volume;
+        }
         visible.forEach((c, i) => {
           const x = i * slot + slot / 2 - scrollPx;
           const up = c.close >= c.open;
