@@ -1957,7 +1957,7 @@ function render() {
       resizeChart();
       new ResizeObserver(resizeChart).observe(chartCanvas);
 
-      function drawSession() {
+      function drawSession(now) {
         ctx.clearRect(0, 0, chartW, chartH);
         const scaleW = chartW < 700 ? 44 : 62;
         const volumeH = Math.max(48, chartH * 0.16);
@@ -1998,13 +1998,19 @@ function render() {
           const x = i * slot + slot / 2;
           const up = c.close >= c.open;
           const color = up ? '#15c89a' : '#ff5364';
+          const recency = visible.length - 1 - i;
+          // The newest cluster stays visibly alive while older history remains stable.
+          const liveOffset = recency < 10
+            ? Math.sin(now / 210 + i * 0.72) * (10 - recency) * 0.7
+              + Math.sin(now / 95 + i * 1.13) * 1.8
+            : 0;
           ctx.strokeStyle = color;
           ctx.fillStyle = color;
           ctx.globalAlpha = i === visible.length - 1 ? 1 : 0.82;
           ctx.lineWidth = Math.max(1, bodyW * 0.1);
-          ctx.beginPath(); ctx.moveTo(x, y(c.high)); ctx.lineTo(x, y(c.low)); ctx.stroke();
-          const top = y(Math.max(c.open, c.close));
-          const bottom = y(Math.min(c.open, c.close));
+          ctx.beginPath(); ctx.moveTo(x, y(c.high) + liveOffset); ctx.lineTo(x, y(c.low) + liveOffset); ctx.stroke();
+          const top = y(Math.max(c.open, c.close)) + liveOffset;
+          const bottom = y(Math.min(c.open, c.close)) + liveOffset;
           ctx.fillRect(x - bodyW / 2, top, bodyW, Math.max(2.5, bottom - top));
           const vh = (c.volume / maxVolume) * (volumeH - 8);
           ctx.globalAlpha = 0.28;
@@ -2012,7 +2018,10 @@ function render() {
         });
         ctx.globalAlpha = 1;
 
-        const priceY = y(marketPrice);
+        const activeIndex = visible.length - 1;
+        const activeOffset = Math.sin(now / 210 + activeIndex * 0.72) * 7
+          + Math.sin(now / 95 + activeIndex * 1.13) * 1.8;
+        const priceY = y(marketPrice) + activeOffset;
         ctx.strokeStyle = 'rgba(212,175,55,0.68)';
         ctx.setLineDash([6, 5]);
         ctx.beginPath(); ctx.moveTo(0, priceY); ctx.lineTo(plotRight, priceY); ctx.stroke();
@@ -2028,10 +2037,10 @@ function render() {
         const dt = Math.min(34, now - lastFrame);
         lastFrame = now;
         if (now >= turnAt) {
-          velocityTarget = (Math.random() - 0.5) * 1.7;
-          turnAt = now + 360 + Math.random() * 820;
+          velocityTarget = (Math.random() - 0.5) * 2.8;
+          turnAt = now + 120 + Math.random() * 320;
         }
-        velocity += (velocityTarget - velocity) * 0.045;
+        velocity += (velocityTarget - velocity) * 0.12;
         marketPrice += velocity * (dt / 16.67);
         const active = session[session.length - 1];
         active.close = marketPrice;
@@ -2044,7 +2053,7 @@ function render() {
           if (session.length > 120) session.shift();
           candleStartedAt = now;
         }
-        drawSession();
+        drawSession(now);
         requestAnimationFrame(animateSession);
       }
       requestAnimationFrame(animateSession);
