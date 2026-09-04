@@ -229,29 +229,39 @@
       .cta-btn { align-items: flex-start; }
     }
 
-    /* animated chart */
+    /* Full-bleed live market backdrop */
     .hero-chart {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      height: 180px; z-index: 1; pointer-events: none; opacity: 0.15;
+      position: absolute; inset: 0;
+      z-index: 1; pointer-events: none; overflow: hidden;
+      opacity: 0.42;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 3%, #000 24%, #000 78%, transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 3%, #000 24%, #000 78%, transparent 100%);
     }
-    .hero-chart svg { width: 100%; height: 100%; }
-    .candle { animation: candleBob 2.2s ease-in-out infinite; animation-delay: var(--d, 0s); }
-    .candle rect {
-      transform-box: fill-box; transform-origin: center;
-      animation: candleBody 2.2s ease-in-out infinite; animation-delay: var(--d, 0s);
+    .hero-chart::before {
+      content: ''; position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(212,175,55,0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(212,175,55,0.045) 1px, transparent 1px);
+      background-size: 82px 82px;
+      animation: marketGrid 28s linear infinite;
     }
-    @keyframes candleBob {
-      0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(-6px); }
+    .hero-chart::after {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 55% at 50% 48%, transparent 0%, rgba(5,5,5,0.18) 58%, rgba(5,5,5,0.82) 100%),
+        linear-gradient(90deg, rgba(5,5,5,0.68), transparent 26%, transparent 74%, rgba(5,5,5,0.68));
     }
-    @keyframes candleBody {
-      0%, 100% { transform: scaleY(1); }
-      45%      { transform: scaleY(1.18); }
-      70%      { transform: scaleY(0.92); }
+    .hero-chart svg { position: relative; width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(212,175,55,0.18)); }
+    .candle { opacity: 0.78; }
+    .candle rect { filter: drop-shadow(0 0 5px rgba(212,175,55,0.3)); }
+    @keyframes marketGrid {
+      from { transform: translateX(0); }
+      to { transform: translateX(-82px); }
     }
     .chart-path {
       stroke-dasharray: 2000; stroke-dashoffset: 2000;
       animation: drawChart 4s ease forwards 0.5s;
+      opacity: 0.32;
     }
     @keyframes drawChart { to { stroke-dashoffset: 0; } }
 
@@ -1240,16 +1250,16 @@ function render() {
     </div>
   </div>
   <div class="hero-chart">
-    <svg viewBox="0 0 1400 180" preserveAspectRatio="none">
+    <svg viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
         <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.3"/>
+          <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.18"/>
           <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <path class="chart-path" d="M0,150 L100,138 L200,143 L300,125 L450,108 L550,92 L650,78 L750,65 L870,52 L980,38 L1100,22 L1250,12 L1400,4" fill="none" stroke="#D4AF37" stroke-width="2.5"/>
-      <path d="M0,150 L100,138 L200,143 L300,125 L450,108 L550,92 L650,78 L750,65 L870,52 L980,38 L1100,22 L1250,12 L1400,4 L1400,180 L0,180Z" fill="url(#cg)"/>
-      <g id="liveCandles" opacity="0.45"></g>
+      <path class="chart-path" d="M0,535 C140,510 210,555 330,470 S540,435 650,390 S860,430 970,325 S1180,350 1290,245 S1470,260 1600,175" fill="none" stroke="#D4AF37" stroke-width="2"/>
+      <path d="M0,535 C140,510 210,555 330,470 S540,435 650,390 S860,430 970,325 S1180,350 1290,245 S1470,260 1600,175 L1600,700 L0,700Z" fill="url(#cg)"/>
+      <g id="liveCandles"></g>
     </svg>
   </div>
 </section>
@@ -1955,13 +1965,18 @@ function render() {
     // fixed shapes: this replicates an actual trading session running in the background.
     const liveGroup = document.getElementById('liveCandles');
     if (liveGroup) {
-      const SPACING = 100, WIDTH = 12, VISIBLE = 13, BASE_X = 60, TICK_MS = 1800, SHIFT_MS = 1500;
-      let lastClose = 90;
+      const SPACING = 88, WIDTH = 14, VISIBLE = 19, BASE_X = -40, TICK_MS = 1900, SHIFT_MS = 1650;
+      let lastClose = 420;
       const nextCandle = () => {
         const open = lastClose;
-        const close = Math.max(10, Math.min(170, open + (Math.random() - 0.47) * 34));
+        const close = Math.max(150, Math.min(560, open + (Math.random() - 0.49) * 76));
         lastClose = close;
-        return { open, close };
+        const spread = 16 + Math.random() * 34;
+        return {
+          open, close,
+          high: Math.max(118, Math.min(open, close) - spread * (0.45 + Math.random())),
+          low: Math.min(592, Math.max(open, close) + spread * (0.45 + Math.random()))
+        };
       };
       let candles = Array.from({ length: VISIBLE + 1 }, nextCandle);
 
@@ -1975,12 +1990,11 @@ function render() {
           const top = Math.min(c.open, c.close);
           const h = Math.max(4, Math.abs(c.close - c.open));
           const up = c.close <= c.open; // svg y grows downward, so a lower close = price rose
-          const color = up ? '#D4AF37' : 'rgba(255,255,255,0.85)';
+          const color = up ? '#D4AF37' : 'rgba(255,255,255,0.58)';
           const cx = x + WIDTH / 2;
-          markup += `<g class="candle" style="--d:0s">
-            <line x1="${cx}" y1="${top - 8}" x2="${cx}" y2="${top}" stroke="${color}" stroke-width="1.5"/>
-            <rect x="${x}" y="${top}" width="${WIDTH}" height="${h}" fill="${color}" rx="1"/>
-            <line x1="${cx}" y1="${top + h}" x2="${cx}" y2="${top + h + 8}" stroke="${color}" stroke-width="1.5"/>
+          markup += `<g class="candle">
+            <line x1="${cx}" y1="${c.high}" x2="${cx}" y2="${c.low}" stroke="${color}" stroke-width="2"/>
+            <rect x="${x}" y="${top}" width="${WIDTH}" height="${h}" fill="${color}" rx="2"/>
           </g>`;
         }
         liveGroup.innerHTML = markup;
