@@ -1964,13 +1964,20 @@ function render() {
         const plotRight = chartW - scaleW;
         const plotBottom = chartH - volumeH - 18;
         const visibleCount = Math.max(34, Math.floor(plotRight / 25));
-        const visible = session.slice(-visibleCount);
+        const slot = plotRight / visibleCount;
+        // Continuous horizontal scroll: instead of the whole chart jumping left by one
+        // slot the instant a new candle spawns, it drifts smoothly the entire time the
+        // rightmost candle is forming, reaching exactly one slot by the time it closes --
+        // at which point the new candle in the array lines up perfectly with offset back
+        // at 0. Slicing one extra candle keeps the leading edge filled while it scrolls in.
+        const candleProgress = Math.min(1, (now - candleStartedAt) / CANDLE_MS);
+        const scrollPx = candleProgress * slot;
+        const visible = session.slice(-(visibleCount + 1));
         const extrema = visible.flatMap(c => [c.high, c.low]);
         let minPrice = Math.min(...extrema), maxPrice = Math.max(...extrema);
         const padding = Math.max(28, (maxPrice - minPrice) * 0.16);
         minPrice -= padding; maxPrice += padding;
         const y = p => 18 + (maxPrice - p) / (maxPrice - minPrice) * (plotBottom - 30);
-        const slot = plotRight / visibleCount;
         const bodyW = Math.max(7, Math.min(17, slot * 0.66));
 
         ctx.lineWidth = 1;
@@ -1986,8 +1993,11 @@ function render() {
           ctx.fillStyle = 'rgba(255,255,255,0.38)';
           ctx.fillText(value.toFixed(1), plotRight + 7, gy);
         }
-        for (let col = 0; col < visibleCount; col += 6) {
-          const gx = col * slot + slot / 2;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, plotRight, chartH); ctx.clip();
+
+        for (let col = 0; col < visibleCount + 1; col += 6) {
+          const gx = col * slot + slot / 2 - scrollPx;
           ctx.strokeStyle = 'rgba(212,175,55,0.07)';
           ctx.beginPath(); ctx.moveTo(gx, 18); ctx.lineTo(gx, chartH); ctx.stroke();
         }
@@ -1995,7 +2005,7 @@ function render() {
 
         const maxVolume = Math.max(...visible.map(c => c.volume));
         visible.forEach((c, i) => {
-          const x = i * slot + slot / 2;
+          const x = i * slot + slot / 2 - scrollPx;
           const up = c.close >= c.open;
           const color = up ? '#15c89a' : '#ff5364';
           const recency = visible.length - 1 - i;
@@ -2017,6 +2027,7 @@ function render() {
           ctx.fillRect(x - bodyW / 2, chartH - vh, bodyW, vh);
         });
         ctx.globalAlpha = 1;
+        ctx.restore();
 
         const activeIndex = visible.length - 1;
         const activeOffset = Math.sin(now / 210 + activeIndex * 0.72) * 7
