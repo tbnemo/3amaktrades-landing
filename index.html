@@ -1975,10 +1975,19 @@ function render() {
           <text class="live-price-label" x="${Math.min(activeX + 16, 1520)}" y="${price - 10}">${(18240 - price * 3.2).toFixed(2)}</text>`;
       }
 
-      function drawLiveTick() {
+      function candleWave(index, now) {
+        // Adjacent candles move as a continuous price wave instead of bobbing in sync.
+        return Math.sin(now / 620 + index * 0.58) * 11
+          + Math.sin(now / 1450 + index * 0.31) * 7;
+      }
+
+      function drawLiveTick(now) {
         const active = candles[candles.length - 1];
         const activeNode = document.getElementById('activeCandle');
         if (!activeNode) return;
+        liveGroup.querySelectorAll('.candle').forEach((node, index) => {
+          node.setAttribute('transform', `translate(0 ${candleWave(index, now).toFixed(2)})`);
+        });
         const top = Math.min(active.open, active.close);
         const h = Math.max(5, Math.abs(active.close - active.open));
         const color = active.close <= active.open ? '#15c89a' : '#ff5364';
@@ -1990,21 +1999,21 @@ function render() {
         body.setAttribute('y', top);
         body.setAttribute('height', h);
         body.setAttribute('fill', color);
-        livePrice.querySelector('line').setAttribute('y1', price);
-        livePrice.querySelector('line').setAttribute('y2', price);
         const activeX = BASE_X + (candles.length - 1) * SPACING + WIDTH / 2;
+        const activeY = price + candleWave(candles.length - 1, now);
+        livePrice.querySelector('line').setAttribute('y1', activeY);
+        livePrice.querySelector('line').setAttribute('y2', activeY);
         const dot = livePrice.querySelector('circle');
         dot.setAttribute('cx', activeX);
-        dot.setAttribute('cy', price);
+        dot.setAttribute('cy', activeY);
         const label = livePrice.querySelector('text');
         label.setAttribute('x', Math.min(activeX + 16, 1520));
-        label.setAttribute('y', price - 10);
+        label.setAttribute('y', activeY - 10);
         label.textContent = (18240 - price * 3.2).toFixed(2);
       }
 
       function closeCandle(now) {
-        // Start a fresh candle in the same screen position. The historical chart
-        // remains completely fixed; only this live candle changes.
+        // Start a fresh candle in the same horizontal position.
         candles[candles.length - 1] = { open: price, close: price, high: price, low: price };
         candleStartedAt += CANDLE_MS;
         if (now - candleStartedAt >= CANDLE_MS) candleStartedAt = now;
@@ -2033,7 +2042,7 @@ function render() {
         active.close = price;
         active.high = Math.min(active.high, price);
         active.low = Math.max(active.low, price);
-        drawLiveTick();
+        drawLiveTick(now);
 
         if (now - candleStartedAt >= CANDLE_MS) {
           closeCandle(now);
