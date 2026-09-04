@@ -223,7 +223,7 @@
     .hero-chart {
       position: absolute; inset: 0;
       z-index: 1; pointer-events: none; overflow: hidden;
-      opacity: 0.42;
+      opacity: 0.52;
       -webkit-mask-image: linear-gradient(to bottom, transparent 3%, #000 24%, #000 78%, transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 3%, #000 24%, #000 78%, transparent 100%);
     }
@@ -242,8 +242,8 @@
         linear-gradient(90deg, rgba(5,5,5,0.68), transparent 26%, transparent 74%, rgba(5,5,5,0.68));
     }
     .hero-chart svg { position: relative; width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(212,175,55,0.18)); }
-    .candle { opacity: 0.78; }
-    .candle rect { filter: drop-shadow(0 0 5px rgba(212,175,55,0.3)); }
+    .candle { opacity: 0.86; }
+    .candle rect { filter: drop-shadow(0 0 4px rgba(212,175,55,0.2)); }
     .live-price-line { stroke: rgba(212,175,55,0.48); stroke-width: 1; stroke-dasharray: 7 8; }
     .live-price-dot { fill: #D4AF37; filter: drop-shadow(0 0 7px rgba(212,175,55,0.9)); }
     .live-price-label { fill: #D4AF37; font: 700 13px 'Inter', sans-serif; letter-spacing: 0.04em; }
@@ -1931,7 +1931,7 @@ function render() {
     const liveGroup = document.getElementById('liveCandles');
     const livePrice = document.getElementById('livePrice');
     if (liveGroup && livePrice) {
-      const SPACING = 88, WIDTH = 15, VISIBLE = 19, BASE_X = -36;
+      const SPACING = 52, BASE_WIDTH = 22, VISIBLE = 32, BASE_X = -2;
       const CANDLE_MS = 4200;
       const clampPrice = value => Math.max(155, Math.min(545, value));
       let price = 410;
@@ -1940,36 +1940,45 @@ function render() {
       let lastFrame = performance.now();
       let candleStartedAt = lastFrame;
       let directionChangesAt = lastFrame;
+      let seedTrend = -3;
 
       const seedCandle = () => {
         const open = price;
-        // Seed inside a slightly narrower band so the live chart never starts pinned to an edge.
-        price = Math.max(205, Math.min(495, open + (Math.random() - 0.49) * 62));
-        return { open, close: price, high: Math.min(open, price) - 12 - Math.random() * 18, low: Math.max(open, price) + 12 + Math.random() * 18 };
+        // Momentum clusters produce recognizable trends, pullbacks and occasional breakouts.
+        seedTrend = seedTrend * 0.72 + (Math.random() - 0.5) * 26;
+        const breakout = Math.random() < 0.1 ? (Math.random() - 0.5) * 78 : 0;
+        price = Math.max(190, Math.min(510, open + seedTrend + (Math.random() - 0.5) * 20 + breakout));
+        const wick = 7 + Math.random() * 22;
+        return {
+          open, close: price,
+          high: Math.min(open, price) - wick * (0.45 + Math.random()),
+          low: Math.max(open, price) + wick * (0.45 + Math.random()),
+          width: 16 + Math.random() * 10
+        };
       };
-      // Keep the actively-forming candle inside the 1600px viewport. The extra
-      // off-screen slot is used only during the close-and-scroll transition.
-      let candles = Array.from({ length: VISIBLE - 1 }, seedCandle);
-      candles.push({ open: price, close: price, high: price, low: price });
+      // Keep the actively-forming candle comfortably inside the 1600px viewport.
+      let candles = Array.from({ length: VISIBLE - 2 }, seedCandle);
+      candles.push({ open: price, close: price, high: price, low: price, width: BASE_WIDTH });
 
       function drawAll() {
         let markup = '';
         for (let i = 0; i < candles.length; i++) {
           const c = candles[i];
-          const x = BASE_X + i * SPACING;
+          const candleWidth = c.width || BASE_WIDTH;
+          const x = BASE_X + i * SPACING + (BASE_WIDTH - candleWidth) / 2;
           const top = Math.min(c.open, c.close);
           const h = Math.max(5, Math.abs(c.close - c.open));
           const up = c.close <= c.open; // svg y grows downward, so a lower close = price rose
           const active = i === candles.length - 1;
           const color = up ? '#15c89a' : '#ff5364';
-          const cx = x + WIDTH / 2;
-          markup += `<g class="candle"${active ? ' id="activeCandle"' : ''} opacity="${active ? 1 : 0.7}">
-            <line x1="${cx}" y1="${c.high}" x2="${cx}" y2="${c.low}" stroke="${color}" stroke-width="2"/>
-            <rect x="${x}" y="${top}" width="${WIDTH}" height="${h}" fill="${color}" rx="1"/>
+          const cx = BASE_X + i * SPACING + BASE_WIDTH / 2;
+          markup += `<g class="candle"${active ? ' id="activeCandle"' : ''} opacity="${active ? 1 : 0.82}">
+            <line x1="${cx}" y1="${c.high}" x2="${cx}" y2="${c.low}" stroke="${color}" stroke-width="2.4"/>
+            <rect x="${x}" y="${top}" width="${candleWidth}" height="${h}" fill="${color}" rx="1"/>
           </g>`;
         }
         liveGroup.innerHTML = markup;
-        const activeX = BASE_X + (candles.length - 1) * SPACING + WIDTH / 2;
+        const activeX = BASE_X + (candles.length - 1) * SPACING + BASE_WIDTH / 2;
         livePrice.innerHTML = `<line class="live-price-line" x1="0" y1="${price}" x2="1600" y2="${price}"/>
           <circle class="live-price-dot" cx="${activeX}" cy="${price}" r="4"/>
           <text class="live-price-label" x="${Math.min(activeX + 16, 1520)}" y="${price - 10}">${(18240 - price * 3.2).toFixed(2)}</text>`;
@@ -1999,7 +2008,7 @@ function render() {
         body.setAttribute('y', top);
         body.setAttribute('height', h);
         body.setAttribute('fill', color);
-        const activeX = BASE_X + (candles.length - 1) * SPACING + WIDTH / 2;
+        const activeX = BASE_X + (candles.length - 1) * SPACING + BASE_WIDTH / 2;
         const activeY = price + candleWave(candles.length - 1, now);
         livePrice.querySelector('line').setAttribute('y1', activeY);
         livePrice.querySelector('line').setAttribute('y2', activeY);
@@ -2014,7 +2023,7 @@ function render() {
 
       function closeCandle(now) {
         // Start a fresh candle in the same horizontal position.
-        candles[candles.length - 1] = { open: price, close: price, high: price, low: price };
+        candles[candles.length - 1] = { open: price, close: price, high: price, low: price, width: BASE_WIDTH };
         candleStartedAt += CANDLE_MS;
         if (now - candleStartedAt >= CANDLE_MS) candleStartedAt = now;
         drawAll();
