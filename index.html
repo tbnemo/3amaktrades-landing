@@ -1932,7 +1932,7 @@ function render() {
     const livePrice = document.getElementById('livePrice');
     if (liveGroup && livePrice) {
       const SPACING = 88, WIDTH = 15, VISIBLE = 19, BASE_X = -36;
-      const CANDLE_MS = 4200, SHIFT_MS = 760;
+      const CANDLE_MS = 4200;
       const clampPrice = value => Math.max(155, Math.min(545, value));
       let price = 410;
       let velocity = -0.32;
@@ -1940,7 +1940,6 @@ function render() {
       let lastFrame = performance.now();
       let candleStartedAt = lastFrame;
       let directionChangesAt = lastFrame;
-      let scrolling = false;
 
       const seedCandle = () => {
         const open = price;
@@ -1993,29 +1992,23 @@ function render() {
         body.setAttribute('fill', color);
         livePrice.querySelector('line').setAttribute('y1', price);
         livePrice.querySelector('line').setAttribute('y2', price);
-        livePrice.querySelector('circle').setAttribute('cy', price);
+        const activeX = BASE_X + (candles.length - 1) * SPACING + WIDTH / 2;
+        const dot = livePrice.querySelector('circle');
+        dot.setAttribute('cx', activeX);
+        dot.setAttribute('cy', price);
         const label = livePrice.querySelector('text');
+        label.setAttribute('x', Math.min(activeX + 16, 1520));
         label.setAttribute('y', price - 10);
         label.textContent = (18240 - price * 3.2).toFixed(2);
       }
 
       function closeCandle(now) {
-        if (scrolling) return;
-        scrolling = true;
-        candleStartedAt = now;
-        candles.push({ open: price, close: price, high: price, low: price });
+        // Start a fresh candle in the same screen position. The historical chart
+        // remains completely fixed; only this live candle changes.
+        candles[candles.length - 1] = { open: price, close: price, high: price, low: price };
+        candleStartedAt += CANDLE_MS;
+        if (now - candleStartedAt >= CANDLE_MS) candleStartedAt = now;
         drawAll();
-        liveGroup.style.transition = `transform ${SHIFT_MS}ms linear`;
-        livePrice.style.transition = `transform ${SHIFT_MS}ms linear`;
-        liveGroup.style.transform = `translateX(-${SPACING}px)`;
-        livePrice.style.transform = `translateX(-${SPACING}px)`;
-        setTimeout(() => {
-          candles.shift();
-          liveGroup.style.transition = livePrice.style.transition = 'none';
-          liveGroup.style.transform = livePrice.style.transform = 'translateX(0)';
-          drawAll();
-          scrolling = false;
-        }, SHIFT_MS);
       }
 
       function animateMarket(now) {
