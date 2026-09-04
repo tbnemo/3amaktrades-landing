@@ -159,22 +159,12 @@
       overflow: hidden;
     }
     #hero::after {
-      content: ''; position: absolute; inset: -10%;
-      background: repeating-radial-gradient(circle at 50% 42%,
-        rgba(212,175,55,0.22) 0px, rgba(212,175,55,0.22) 2px,
-        transparent 2px, transparent 100px
-      );
-      filter: blur(7px);
-      -webkit-mask-image: radial-gradient(ellipse 950px 750px at 50% 42%, #000 0%, transparent 68%);
-      mask-image: radial-gradient(ellipse 950px 750px at 50% 42%, #000 0%, transparent 68%);
-      animation: ringPulse 9s ease-in-out infinite;
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 68% 48%, rgba(212,175,55,0.07), transparent 70%),
+        linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.42));
       pointer-events: none;
     }
-    @keyframes ringPulse {
-      0%, 100% { opacity: 0.55; scale: 1; }
-      50%      { opacity: 1;    scale: 1.05; }
-    }
-    #hero::after { translate: var(--rx, 0px) var(--ry, 0px); }
     .hero-content { position: relative; z-index: 2; max-width: 820px; }
 
     .hero-badge {
@@ -254,17 +244,13 @@
     .hero-chart svg { position: relative; width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(212,175,55,0.18)); }
     .candle { opacity: 0.78; }
     .candle rect { filter: drop-shadow(0 0 5px rgba(212,175,55,0.3)); }
+    .live-price-line { stroke: rgba(212,175,55,0.48); stroke-width: 1; stroke-dasharray: 7 8; }
+    .live-price-dot { fill: #D4AF37; filter: drop-shadow(0 0 7px rgba(212,175,55,0.9)); }
+    .live-price-label { fill: #D4AF37; font: 700 13px 'Inter', sans-serif; letter-spacing: 0.04em; }
     @keyframes marketGrid {
       from { transform: translateX(0); }
       to { transform: translateX(-82px); }
     }
-    .chart-path {
-      stroke-dasharray: 2000; stroke-dashoffset: 2000;
-      animation: drawChart 4s ease forwards 0.5s;
-      opacity: 0.32;
-    }
-    @keyframes drawChart { to { stroke-dashoffset: 0; } }
-
     /* ══ CTA BTN ══ */
     .cta-btn {
       display: inline-flex; flex-direction: column; align-items: center;
@@ -1252,14 +1238,10 @@ function render() {
   <div class="hero-chart">
     <svg viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
-        <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.18"/>
-          <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"/>
-        </linearGradient>
+        <filter id="softGlow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
-      <path class="chart-path" d="M0,535 C140,510 210,555 330,470 S540,435 650,390 S860,430 970,325 S1180,350 1290,245 S1470,260 1600,175" fill="none" stroke="#D4AF37" stroke-width="2"/>
-      <path d="M0,535 C140,510 210,555 330,470 S540,435 650,390 S860,430 970,325 S1180,350 1290,245 S1470,260 1600,175 L1600,700 L0,700Z" fill="url(#cg)"/>
       <g id="liveCandles"></g>
+      <g id="livePrice"></g>
     </svg>
   </div>
 </section>
@@ -1936,22 +1918,6 @@ function render() {
     }, { threshold: 0.1 });
     document.querySelectorAll('.fade-up:not(.visible)').forEach(el => observer.observe(el));
 
-    // Cursor-reactive parallax on the hero ring glow (desktop only -- no touch/hover means no cursor to react to)
-    const heroEl = document.getElementById('hero');
-    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-      heroEl.addEventListener('mousemove', (e) => {
-        const r = heroEl.getBoundingClientRect();
-        const px = (e.clientX - r.left) / r.width - 0.5;  // -0.5..0.5
-        const py = (e.clientY - r.top) / r.height - 0.5;
-        heroEl.style.setProperty('--rx', `${px * 40}px`);
-        heroEl.style.setProperty('--ry', `${py * 40}px`);
-      });
-      heroEl.addEventListener('mouseleave', () => {
-        heroEl.style.setProperty('--rx', '0px');
-        heroEl.style.setProperty('--ry', '0px');
-      });
-    }
-
     // Scroll progress bar
     const progressBar = document.getElementById('scrollProgress');
     window.addEventListener('scroll', () => {
@@ -1960,54 +1926,74 @@ function render() {
       progressBar.style.width = `${pct}%`;
     }, { passive: true });
 
-    // Live candlestick ticker -- a real random-walk price series that continuously
-    // scrolls right-to-left, new candle entering as the oldest exits. Not decorative
-    // fixed shapes: this replicates an actual trading session running in the background.
+    // Live candlestick chart: the open candle ticks up/down in real time, its body and
+    // wicks reform on every tick, then it closes and the chart scrolls for a new candle.
     const liveGroup = document.getElementById('liveCandles');
-    if (liveGroup) {
-      const SPACING = 88, WIDTH = 14, VISIBLE = 19, BASE_X = -40, TICK_MS = 1900, SHIFT_MS = 1650;
-      let lastClose = 420;
-      const nextCandle = () => {
-        const open = lastClose;
-        const close = Math.max(150, Math.min(560, open + (Math.random() - 0.49) * 76));
-        lastClose = close;
-        const spread = 16 + Math.random() * 34;
-        return {
-          open, close,
-          high: Math.max(118, Math.min(open, close) - spread * (0.45 + Math.random())),
-          low: Math.min(592, Math.max(open, close) + spread * (0.45 + Math.random()))
-        };
-      };
-      let candles = Array.from({ length: VISIBLE + 1 }, nextCandle);
+    const livePrice = document.getElementById('livePrice');
+    if (liveGroup && livePrice) {
+      const SPACING = 88, WIDTH = 15, VISIBLE = 19, BASE_X = -36;
+      const TICK_MS = 280, TICKS_PER_CANDLE = 13, SHIFT_MS = 620;
+      const clampPrice = value => Math.max(135, Math.min(565, value));
+      let price = 410;
+      let momentum = -2;
 
-      function draw(offsetX) {
-        liveGroup.style.transition = offsetX ? `transform ${SHIFT_MS}ms linear` : 'none';
-        liveGroup.style.transform = `translateX(${offsetX}px)`;
+      const seedCandle = () => {
+        const open = price;
+        price = clampPrice(open + (Math.random() - 0.49) * 62);
+        return { open, close: price, high: Math.min(open, price) - 12 - Math.random() * 18, low: Math.max(open, price) + 12 + Math.random() * 18 };
+      };
+      let candles = Array.from({ length: VISIBLE }, seedCandle);
+      candles.push({ open: price, close: price, high: price, low: price });
+      let ticks = 0;
+
+      function draw() {
         let markup = '';
         for (let i = 0; i < candles.length; i++) {
           const c = candles[i];
           const x = BASE_X + i * SPACING;
           const top = Math.min(c.open, c.close);
-          const h = Math.max(4, Math.abs(c.close - c.open));
+          const h = Math.max(5, Math.abs(c.close - c.open));
           const up = c.close <= c.open; // svg y grows downward, so a lower close = price rose
-          const color = up ? '#D4AF37' : 'rgba(255,255,255,0.58)';
+          const active = i === candles.length - 1;
+          const color = up ? '#D4AF37' : 'rgba(255,255,255,0.68)';
           const cx = x + WIDTH / 2;
-          markup += `<g class="candle">
+          markup += `<g class="candle" opacity="${active ? 1 : 0.74}">
             <line x1="${cx}" y1="${c.high}" x2="${cx}" y2="${c.low}" stroke="${color}" stroke-width="2"/>
             <rect x="${x}" y="${top}" width="${WIDTH}" height="${h}" fill="${color}" rx="2"/>
           </g>`;
         }
         liveGroup.innerHTML = markup;
+        const activeX = BASE_X + (candles.length - 1) * SPACING + WIDTH / 2;
+        livePrice.innerHTML = `<line class="live-price-line" x1="0" y1="${price}" x2="1600" y2="${price}"/>
+          <circle class="live-price-dot" cx="${activeX}" cy="${price}" r="4"/>
+          <text class="live-price-label" x="${Math.min(activeX + 16, 1520)}" y="${price - 10}">${(18240 - price * 3.2).toFixed(2)}</text>`;
       }
 
-      draw(0);
+      draw();
       setInterval(() => {
-        candles.push(nextCandle());
-        draw(-SPACING);
-        setTimeout(() => {
-          candles.shift();
-          draw(0);
-        }, SHIFT_MS);
+        momentum = momentum * 0.72 + (Math.random() - 0.5) * 18;
+        price = clampPrice(price + momentum);
+        const active = candles[candles.length - 1];
+        active.close = price;
+        active.high = Math.min(active.high, price);
+        active.low = Math.max(active.low, price);
+        ticks++;
+        draw();
+
+        if (ticks >= TICKS_PER_CANDLE) {
+          ticks = 0;
+          candles.push({ open: price, close: price, high: price, low: price });
+          liveGroup.style.transition = `transform ${SHIFT_MS}ms cubic-bezier(.45,0,.55,1)`;
+          livePrice.style.transition = `transform ${SHIFT_MS}ms cubic-bezier(.45,0,.55,1)`;
+          liveGroup.style.transform = `translateX(-${SPACING}px)`;
+          livePrice.style.transform = `translateX(-${SPACING}px)`;
+          setTimeout(() => {
+            candles.shift();
+            liveGroup.style.transition = livePrice.style.transition = 'none';
+            liveGroup.style.transform = livePrice.style.transform = 'translateX(0)';
+            draw();
+          }, SHIFT_MS);
+        }
       }, TICK_MS);
     }
   });
