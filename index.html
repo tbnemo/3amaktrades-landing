@@ -241,12 +241,10 @@
         radial-gradient(ellipse 60% 55% at 50% 48%, transparent 0%, rgba(5,5,5,0.18) 58%, rgba(5,5,5,0.82) 100%),
         linear-gradient(90deg, rgba(5,5,5,0.68), transparent 26%, transparent 74%, rgba(5,5,5,0.68));
     }
-    .hero-chart svg { position: relative; width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(212,175,55,0.18)); }
-    .candle { opacity: 0.86; }
-    .candle rect { filter: drop-shadow(0 0 4px rgba(212,175,55,0.2)); }
-    .live-price-line { stroke: rgba(212,175,55,0.48); stroke-width: 1; stroke-dasharray: 7 8; }
-    .live-price-dot { fill: #D4AF37; filter: drop-shadow(0 0 7px rgba(212,175,55,0.9)); }
-    .live-price-label { fill: #D4AF37; font: 700 13px 'Inter', sans-serif; letter-spacing: 0.04em; }
+    .hero-chart canvas {
+      position: relative; display: block; width: 100%; height: 100%;
+      filter: drop-shadow(0 0 10px rgba(212,175,55,0.12));
+    }
     @keyframes marketGrid {
       from { transform: translateX(0); }
       to { transform: translateX(-82px); }
@@ -1236,13 +1234,7 @@ function render() {
     </div>
   </div>
   <div class="hero-chart">
-    <svg viewBox="0 0 1600 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <defs>
-        <filter id="softGlow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-      </defs>
-      <g id="liveCandles"></g>
-      <g id="livePrice"></g>
-    </svg>
+    <canvas id="liveChartCanvas" aria-hidden="true"></canvas>
   </div>
 </section>
 
@@ -1926,142 +1918,136 @@ function render() {
       progressBar.style.width = `${pct}%`;
     }, { passive: true });
 
-    // Live candlestick chart: the open candle ticks up/down in real time, its body and
-    // wicks reform on every tick, then it closes and the chart scrolls for a new candle.
-    const liveGroup = document.getElementById('liveCandles');
-    const livePrice = document.getElementById('livePrice');
-    if (liveGroup && livePrice) {
-      const SPACING = 52, BASE_WIDTH = 22, VISIBLE = 32, BASE_X = -2;
-      const CANDLE_MS = 4200;
-      const clampPrice = value => Math.max(155, Math.min(545, value));
-      let price = 410;
-      let velocity = -0.32;
-      let velocityTarget = -0.32;
-      let lastFrame = performance.now();
-      let candleStartedAt = lastFrame;
-      let directionChangesAt = lastFrame;
-      let seedTrend = -3;
+    // TradingView-style session: historical OHLC candles, volume, price grid/scale,
+    // and one genuinely live candle whose body and wicks form tick by tick.
+    const chartCanvas = document.getElementById('liveChartCanvas');
+    if (chartCanvas) {
+      const ctx = chartCanvas.getContext('2d');
+      const CANDLE_MS = 4800;
+      let dpr = 1, chartW = 0, chartH = 0;
+      let marketPrice = 18342.6, trend = 0, velocity = 0, velocityTarget = 0;
+      let lastFrame = performance.now(), candleStartedAt = lastFrame, turnAt = lastFrame;
+      let session = [];
 
-      const seedCandle = () => {
-        const open = price;
-        // Momentum clusters produce recognizable trends, pullbacks and occasional breakouts.
-        seedTrend = seedTrend * 0.72 + (Math.random() - 0.5) * 34;
-        const breakout = Math.random() < 0.1 ? (Math.random() - 0.5) * 108 : 0;
-        const rawClose = open + seedTrend + (Math.random() - 0.5) * 30 + breakout;
-        price = Math.max(155, Math.min(545, Math.max(open - 90, Math.min(open + 90, rawClose))));
-        const wick = 12 + Math.random() * 30;
+      function historicCandle() {
+        const open = marketPrice;
+        trend = trend * 0.76 + (Math.random() - 0.49) * 15;
+        const breakout = Math.random() < 0.07 ? (Math.random() - 0.5) * 95 : 0;
+        marketPrice = open + trend + (Math.random() - 0.5) * 22 + breakout;
+        const wick = 7 + Math.random() * 23;
         return {
-          open, close: price,
-          high: Math.min(open, price) - wick * (0.45 + Math.random()),
-          low: Math.max(open, price) + wick * (0.45 + Math.random()),
-          width: 16 + Math.random() * 10
+          open, close: marketPrice,
+          high: Math.max(open, marketPrice) + wick * (0.35 + Math.random()),
+          low: Math.min(open, marketPrice) - wick * (0.35 + Math.random()),
+          volume: 25 + Math.random() * 65 + Math.abs(marketPrice - open) * 0.7
         };
-      };
-      // Keep the actively-forming candle comfortably inside the 1600px viewport.
-      let candles = Array.from({ length: VISIBLE - 2 }, seedCandle);
-      candles.push({ open: price, close: price, high: price, low: price, width: BASE_WIDTH });
+      }
+      for (let i = 0; i < 86; i++) session.push(historicCandle());
+      session.push({ open: marketPrice, close: marketPrice, high: marketPrice, low: marketPrice, volume: 18 });
 
-      function drawAll() {
-        let markup = '';
-        for (let i = 0; i < candles.length; i++) {
-          const c = candles[i];
-          const candleWidth = c.width || BASE_WIDTH;
-          const x = BASE_X + i * SPACING + (BASE_WIDTH - candleWidth) / 2;
-          const top = Math.min(c.open, c.close);
-          const h = Math.max(7, Math.abs(c.close - c.open));
-          const up = c.close <= c.open; // svg y grows downward, so a lower close = price rose
-          const active = i === candles.length - 1;
-          const color = up ? '#15c89a' : '#ff5364';
-          const cx = BASE_X + i * SPACING + BASE_WIDTH / 2;
-          markup += `<g class="candle"${active ? ' id="activeCandle"' : ''} opacity="${active ? 1 : 0.82}">
-            <line x1="${cx}" y1="${c.high}" x2="${cx}" y2="${c.low}" stroke="${color}" stroke-width="2.4"/>
-            <rect x="${x}" y="${top}" width="${candleWidth}" height="${h}" fill="${color}" rx="1"/>
-          </g>`;
+      function resizeChart() {
+        const rect = chartCanvas.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        chartW = Math.max(1, rect.width);
+        chartH = Math.max(1, rect.height);
+        chartCanvas.width = Math.round(chartW * dpr);
+        chartCanvas.height = Math.round(chartH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resizeChart();
+      new ResizeObserver(resizeChart).observe(chartCanvas);
+
+      function drawSession() {
+        ctx.clearRect(0, 0, chartW, chartH);
+        const scaleW = chartW < 700 ? 44 : 62;
+        const volumeH = Math.max(48, chartH * 0.16);
+        const plotRight = chartW - scaleW;
+        const plotBottom = chartH - volumeH - 18;
+        const visibleCount = Math.max(34, Math.floor(plotRight / 25));
+        const visible = session.slice(-visibleCount);
+        const extrema = visible.flatMap(c => [c.high, c.low]);
+        let minPrice = Math.min(...extrema), maxPrice = Math.max(...extrema);
+        const padding = Math.max(28, (maxPrice - minPrice) * 0.16);
+        minPrice -= padding; maxPrice += padding;
+        const y = p => 18 + (maxPrice - p) / (maxPrice - minPrice) * (plotBottom - 30);
+        const slot = plotRight / visibleCount;
+        const bodyW = Math.max(7, Math.min(17, slot * 0.66));
+
+        ctx.lineWidth = 1;
+        ctx.font = `600 ${chartW < 700 ? 9 : 11}px Inter, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        for (let row = 0; row <= 6; row++) {
+          const gy = 18 + row * (plotBottom - 30) / 6;
+          const value = maxPrice - row * (maxPrice - minPrice) / 6;
+          ctx.strokeStyle = 'rgba(212,175,55,0.10)';
+          ctx.setLineDash([2, 5]);
+          ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(plotRight, gy); ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.38)';
+          ctx.fillText(value.toFixed(1), plotRight + 7, gy);
         }
-        liveGroup.innerHTML = markup;
-        const activeX = BASE_X + (candles.length - 1) * SPACING + BASE_WIDTH / 2;
-        livePrice.innerHTML = `<line class="live-price-line" x1="0" y1="${price}" x2="1600" y2="${price}"/>
-          <circle class="live-price-dot" cx="${activeX}" cy="${price}" r="4"/>
-          <text class="live-price-label" x="${Math.min(activeX + 16, 1520)}" y="${price - 10}">${(18240 - price * 3.2).toFixed(2)}</text>`;
-      }
+        for (let col = 0; col < visibleCount; col += 6) {
+          const gx = col * slot + slot / 2;
+          ctx.strokeStyle = 'rgba(212,175,55,0.07)';
+          ctx.beginPath(); ctx.moveTo(gx, 18); ctx.lineTo(gx, chartH); ctx.stroke();
+        }
+        ctx.setLineDash([]);
 
-      function candleWave(index, now) {
-        // Adjacent candles move as a continuous price wave instead of bobbing in sync.
-        return Math.sin(now / 620 + index * 0.58) * 11
-          + Math.sin(now / 1450 + index * 0.31) * 7;
-      }
-
-      function drawLiveTick(now) {
-        const active = candles[candles.length - 1];
-        const activeNode = document.getElementById('activeCandle');
-        if (!activeNode) return;
-        liveGroup.querySelectorAll('.candle').forEach((node, index) => {
-          node.setAttribute('transform', `translate(0 ${candleWave(index, now).toFixed(2)})`);
+        const maxVolume = Math.max(...visible.map(c => c.volume));
+        visible.forEach((c, i) => {
+          const x = i * slot + slot / 2;
+          const up = c.close >= c.open;
+          const color = up ? '#15c89a' : '#ff5364';
+          ctx.strokeStyle = color;
+          ctx.fillStyle = color;
+          ctx.globalAlpha = i === visible.length - 1 ? 1 : 0.82;
+          ctx.lineWidth = Math.max(1, bodyW * 0.1);
+          ctx.beginPath(); ctx.moveTo(x, y(c.high)); ctx.lineTo(x, y(c.low)); ctx.stroke();
+          const top = y(Math.max(c.open, c.close));
+          const bottom = y(Math.min(c.open, c.close));
+          ctx.fillRect(x - bodyW / 2, top, bodyW, Math.max(2.5, bottom - top));
+          const vh = (c.volume / maxVolume) * (volumeH - 8);
+          ctx.globalAlpha = 0.28;
+          ctx.fillRect(x - bodyW / 2, chartH - vh, bodyW, vh);
         });
-        const top = Math.min(active.open, active.close);
-        const h = Math.max(7, Math.abs(active.close - active.open));
-        const color = active.close <= active.open ? '#15c89a' : '#ff5364';
-        const wick = activeNode.querySelector('line');
-        const body = activeNode.querySelector('rect');
-        wick.setAttribute('y1', active.high);
-        wick.setAttribute('y2', active.low);
-        wick.setAttribute('stroke', color);
-        body.setAttribute('y', top);
-        body.setAttribute('height', h);
-        body.setAttribute('fill', color);
-        const activeX = BASE_X + (candles.length - 1) * SPACING + BASE_WIDTH / 2;
-        const activeY = price + candleWave(candles.length - 1, now);
-        livePrice.querySelector('line').setAttribute('y1', activeY);
-        livePrice.querySelector('line').setAttribute('y2', activeY);
-        const dot = livePrice.querySelector('circle');
-        dot.setAttribute('cx', activeX);
-        dot.setAttribute('cy', activeY);
-        const label = livePrice.querySelector('text');
-        label.setAttribute('x', Math.min(activeX + 16, 1520));
-        label.setAttribute('y', activeY - 10);
-        label.textContent = (18240 - price * 3.2).toFixed(2);
+        ctx.globalAlpha = 1;
+
+        const priceY = y(marketPrice);
+        ctx.strokeStyle = 'rgba(212,175,55,0.68)';
+        ctx.setLineDash([6, 5]);
+        ctx.beginPath(); ctx.moveTo(0, priceY); ctx.lineTo(plotRight, priceY); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#D4AF37';
+        ctx.fillRect(plotRight, priceY - 11, scaleW, 22);
+        ctx.fillStyle = '#050505';
+        ctx.font = `800 ${chartW < 700 ? 9 : 11}px Inter, sans-serif`;
+        ctx.fillText(marketPrice.toFixed(1), plotRight + 7, priceY);
       }
 
-      function closeCandle(now) {
-        // Start a fresh candle in the same horizontal position.
-        candles[candles.length - 1] = { open: price, close: price, high: price, low: price, width: BASE_WIDTH };
-        candleStartedAt += CANDLE_MS;
-        if (now - candleStartedAt >= CANDLE_MS) candleStartedAt = now;
-        drawAll();
-      }
-
-      function animateMarket(now) {
+      function animateSession(now) {
         const dt = Math.min(34, now - lastFrame);
         lastFrame = now;
-        if (now >= directionChangesAt) {
-          // Momentum persists for a while, then turns naturally like a live market.
-          velocityTarget = (Math.random() - 0.5) * 3.8;
-          directionChangesAt = now + 420 + Math.random() * 900;
+        if (now >= turnAt) {
+          velocityTarget = (Math.random() - 0.5) * 1.7;
+          turnAt = now + 360 + Math.random() * 820;
         }
-        velocity += (velocityTarget - velocity) * 0.035;
-        price = clampPrice(price + velocity * (dt / 16.67));
-        if (price <= 156) {
-          velocity = Math.abs(velocity) + 0.3;
-          velocityTarget = Math.abs(velocityTarget) + 0.5;
-        } else if (price >= 544) {
-          velocity = -Math.abs(velocity) - 0.3;
-          velocityTarget = -Math.abs(velocityTarget) - 0.5;
-        }
-
-        const active = candles[candles.length - 1];
-        active.close = price;
-        active.high = Math.min(active.high, price);
-        active.low = Math.max(active.low, price);
-        drawLiveTick(now);
+        velocity += (velocityTarget - velocity) * 0.045;
+        marketPrice += velocity * (dt / 16.67);
+        const active = session[session.length - 1];
+        active.close = marketPrice;
+        active.high = Math.max(active.high, marketPrice);
+        active.low = Math.min(active.low, marketPrice);
+        active.volume += dt * (0.004 + Math.random() * 0.003);
 
         if (now - candleStartedAt >= CANDLE_MS) {
-          closeCandle(now);
+          session.push({ open: marketPrice, close: marketPrice, high: marketPrice, low: marketPrice, volume: 18 });
+          if (session.length > 120) session.shift();
+          candleStartedAt = now;
         }
-        requestAnimationFrame(animateMarket);
+        drawSession();
+        requestAnimationFrame(animateSession);
       }
-
-      drawAll();
-      requestAnimationFrame(animateMarket);
+      requestAnimationFrame(animateSession);
     }
   });
 
