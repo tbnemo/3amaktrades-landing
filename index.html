@@ -645,6 +645,30 @@
     .mentor-bio p { color: #aaa; font-size: 14px; line-height: 1.85; margin-bottom: 12px; }
     html[lang="ar"] .mentor-bio p { line-height: 2; font-size: 15px; }
 
+    .mentor-certs { margin-top: 24px; }
+    .mentor-certs-label {
+      font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--green); font-weight: 700; margin-bottom: 10px;
+    }
+    html[lang="ar"] .mentor-certs-label { text-transform: none; letter-spacing: 0; font-size: 13px; }
+    .mentor-certs-row {
+      display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mentor-certs-row img {
+      height: 78px; width: auto; flex-shrink: 0;
+      border-radius: 4px; border: 1px solid #1e1e1e;
+      cursor: pointer; transition: transform 0.2s, border-color 0.2s;
+    }
+    .mentor-certs-row img:hover { transform: translateY(-3px); border-color: rgba(212,175,55,0.4); }
+    #certLightbox {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 2000;
+      display: none; align-items: center; justify-content: center; padding: 32px;
+      cursor: zoom-out;
+    }
+    #certLightbox.open { display: flex; }
+    #certLightbox img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+
     /* ══ DECIDE ══ */
     #decide { padding: 100px 20px; background: var(--dark-2); }
 
@@ -840,6 +864,7 @@ const t = {
     mentor_h: "تعرف على",
     mentor_h_g: "3AMAK",
     mentor_tag: "متداول محترف ومرشد",
+    mentor_certs_label: "شهادات موثّقة",
     mentor_name: "3AMAK",
     mentor_title: "يحول المبتدئين إلى متداولين ثابتين",
     mstat1_n: "20+", mstat1_l: "طالب",
@@ -955,6 +980,7 @@ const t = {
     mentor_h: "Meet",
     mentor_h_g: "3AMAK",
     mentor_tag: "Full-Time Trader & Mentor",
+    mentor_certs_label: "Verified Certifications",
     mentor_name: "3AMAK",
     mentor_title: "Turning beginners into consistent traders",
     mstat1_n: "20+", mstat1_l: "Students",
@@ -1083,6 +1109,20 @@ function render() {
     });
   }
 
+  // Certificate lightbox: click a thumbnail to view it full-size
+  const certLightbox = document.getElementById('certLightbox');
+  if (certLightbox) {
+    document.querySelectorAll('.mentor-certs-row img').forEach(img => {
+      img.addEventListener('click', () => {
+        const full = certLightbox.querySelector('img');
+        full.src = img.src;
+        full.alt = img.alt;
+        certLightbox.classList.add('open');
+      });
+    });
+    certLightbox.addEventListener('click', () => certLightbox.classList.remove('open'));
+  }
+
   // Stats
   document.querySelectorAll('.stat-number')[0].textContent = txt('stat1_n');
   document.querySelectorAll('.stat-label')[0].textContent = txt('stat1_l');
@@ -1113,6 +1153,7 @@ function render() {
   document.querySelector('.mentor-h').textContent = txt('mentor_h') + ' ';
   document.querySelector('.mentor-h-g').textContent = txt('mentor_h_g');
   document.querySelector('.mentor-tag').textContent = txt('mentor_tag');
+  document.querySelector('.mentor-certs-label').textContent = txt('mentor_certs_label');
   document.querySelector('.mentor-name').textContent = txt('mentor_name');
   document.querySelector('.mentor-title').textContent = txt('mentor_title');
   document.querySelectorAll('.mstat-num')[0].textContent = txt('mstat1_n');
@@ -1255,9 +1296,22 @@ function render() {
           <div class="mstat"><div class="mstat-num"></div><div class="mstat-lbl"></div></div>
         </div>
         <div class="mentor-bio"><p></p><p></p><p></p></div>
+        <div class="mentor-certs">
+          <div class="mentor-certs-label"></div>
+          <div class="mentor-certs-row">
+            <img src="/certs/topstep.jpg" alt="TopStep — Certified Funded Trader" loading="lazy">
+            <img src="/certs/aquafutures-1.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy">
+            <img src="/certs/fundednext.jpg" alt="FundedNext Futures — Rising Trader" loading="lazy">
+            <img src="/certs/aquafutures-2.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy">
+            <img src="/certs/tradingpit.jpg" alt="The Trading Pit — Challenge Passed" loading="lazy">
+            <img src="/certs/fundedfutures.jpg" alt="Funded Futures Family — Certificate of Funding" loading="lazy">
+            <img src="/certs/myfundedfutures.jpg" alt="My Funded Futures — Builder 50K Passing Certificate" loading="lazy">
+          </div>
+        </div>
       </div>
     </div>
   </div>
+  <div id="certLightbox"><img src="" alt=""></div>
 </section>
 
 <div class="section-divider"></div>
