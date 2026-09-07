@@ -191,10 +191,10 @@
       #hero { text-align: start; }
       .hero-content {
         display: flex; flex-direction: row-reverse; align-items: center;
-        gap: 64px; width: 100%; max-width: 1440px;
+        gap: 64px; width: 100%; max-width: 1640px;
       }
-      .hero-text { flex: 1 1 44%; min-width: 0; }
-      .hero-video { flex: 1 1 56%; max-width: none; margin: 0; }
+      .hero-text { flex: 1 1 38%; min-width: 0; }
+      .hero-video { flex: 1 1 62%; max-width: none; margin: 0; }
       .hero-video .video-container { padding-bottom: 75%; } /* taller than the default 16:9 so it reads as a real focal point, not a sliver */
       .hero-badge, .hero-headline, .hero-sub { text-align: start; }
       .hero-sub { margin-inline: 0; }
@@ -671,6 +671,7 @@
 
     /* ══ PROP FIRM EXPLAINED ══ */
     .propfirm-body { max-width: 720px; margin: 0 auto; }
+    .propfirm-body .pf-facts { margin: 28px 0; }
     .propfirm-body p { color: #aaa; font-size: 15px; line-height: 1.9; margin-bottom: 16px; }
     html[lang="ar"] .propfirm-body p { line-height: 2.1; font-size: 16px; }
     .pf-subhead {
@@ -721,46 +722,6 @@
     }
 
     .decide-cta { text-align: center; margin-top: 48px; }
-
-    /* ══ TESTIMONIALS ══ */
-    #testimonials { padding: 100px 20px; background: var(--dark); }
-    .testi-grid {
-      max-width: 880px; margin: 52px auto 0;
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-    }
-    .testi-card {
-      background: var(--dark-3); border: 1px solid #1e1e1e;
-      border-radius: 4px; padding: 22px; font-size: 13px;
-      line-height: 1.65; color: #bbb;
-      transition: transform 0.2s, border-color 0.2s; position: relative;
-    }
-    html[lang="ar"] .testi-card { font-size: 14px; line-height: 1.85; }
-    .testi-card::before {
-      content: '"'; position: absolute; top: 12px;
-      font-size: 48px; color: var(--green); opacity: 0.12;
-      font-family: Georgia, serif; line-height: 1;
-    }
-    html[lang="ar"] .testi-card::before { right: 18px; left: auto; content: '»'; }
-    html[lang="en"] .testi-card::before { right: auto; left: 18px; }
-    .testi-card:hover { transform: translateY(-3px); border-color: rgba(212,175,55,0.2); }
-    .testi-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-    .testi-avatar {
-      width: 38px; height: 38px; border-radius: 50%;
-      background: var(--dark-4); border: 1px solid #222;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 15px; font-weight: 700; color: var(--green); flex-shrink: 0;
-      font-family: 'Inter', sans-serif;
-    }
-    .testi-name { font-weight: 700; font-size: 14px; color: #fff; }
-    .testi-date { font-size: 11px; color: var(--gray); margin-top: 1px; }
-    .testi-win {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(212,175,55,0.08); border: 1px solid rgba(212,175,55,0.2);
-      color: var(--green); font-size: 11px; font-weight: 700;
-      padding: 4px 10px; border-radius: 4px; margin-top: 12px;
-      font-family: 'Inter', sans-serif;
-    }
-    .testi-win::before { content: '↑'; font-size: 12px; }
 
     /* ══ FAQ ══ */
     #faq { padding: 100px 20px; background: var(--dark-2); }
@@ -836,7 +797,7 @@
 
     /* ══ RESPONSIVE ══ */
     @media (max-width: 700px) {
-      .proof-grid, .testi-grid, .stats-grid { grid-template-columns: 1fr; }
+      .proof-grid, .stats-grid { grid-template-columns: 1fr; }
       .mentor-grid { grid-template-columns: 1fr; }
       .stat-item + .stat-item::before { display: none; }
       .mentor-stats { flex-wrap: wrap; }
@@ -891,7 +852,15 @@ const t = {
     pf_p4: "هون بتصير الفكرة أكثر إثارة.",
     pf_p5: "خلّينا نفترض إنك عندك حساب مموّل وحققت 3,000 دولار أرباح. حسب قوانين الشركة ونسبة تقاسم الأرباح، ممكن تكون مؤهل تسحب جزء كبير من هالربح كدفعة.",
     pf_p6: "يعني ممكن شخص يبلش بحوالي 100 دولار كرسوم تقييم، وإذا نجح بالاختبار وحافظ على حسابه وحقق أرباح، يصير قادر يسحب مئات أو حتى آلاف الدولارات كمدفوعات.",
+    pf_fact1_n: "80–90%",
+    pf_fact1_l: "نسبة تقاسم الأرباح",
+    pf_fact2_n: "14",
+    pf_fact2_l: "يوم بين كل سحب",
+    pf_fact3_n: "بنكي / رقمي",
+    pf_fact3_l: "طريقة الدفع",
+    pf_p6b: "بس في شرط مهم: أغلب الشركات بتطلب منك تتداول لعدد معيّن من الأيام (عادةً بين 5 و10 أيام تداول) قبل ما تصير مؤهل لأول سحب، وهيك بيتأكدوا إن نتيجتك مش مجرد صفقة حظ وحدة.",
     pf_p7: "والموضوع مش محصور بدفعة وحدة. إذا ضليت مربح والتزمت بالقواعد، فيك تعمل أكتر من دفعة من نفس الحساب. وهون الهدف الحقيقي: مش بس إنك تعدّي الاختبار، الهدف إنك تحافظ على الحساب المموّل وتقدر تسحب منه بشكل مستمر.",
+    pf_scaling: "وكمان أغلب الشركات عندها خطة تكبير للحساب: كل ما ضليت مربح والتزمت بالقواعد لفترة، بيزيدوا حجم حسابك — من 50 ألف لـ100 ألف، ولـ200 ألف دولار مثلاً — وهيك بيكبر سقف الأرباح والمدفوعات اللي فيك تحققها من نفس مستوى أدائك.",
     pf_p8: "وهاد الشي ممكن فعلاً يصير، وشركات التمويل بتدفع للمتداولين المؤهلين بشكل مستمر، بس أكيد مش مضمون. لازم تكون مربح، تلتزم بقواعد المخاطرة والحد الأقصى للخسارة، وتحقق كل شروط السحب الخاصة بالشركة.",
     pf_p9: "يعني بدل ما تحتاج 50 ألف دولار من رأس مالك الشخصي، شركات التمويل بتعطيك فرصة تبلش بمبلغ صغير نسبياً وتستخدم مهارتك بالتداول عشان توصل لحساب أكبر وإمكانية تحقيق مدفوعات حقيقية.",
     pf_closing: "بس بالنهاية، السر مش إنك تعدّي الحساب بسرعة… السر إنك تعرف كيف تحافظ عليه، تدير المخاطر، وتحقق مدفوعات بشكل مستدام.",
@@ -924,18 +893,6 @@ const t = {
     drow4_good: "دخل ثابت مبني على مهارة حقيقية",
     cta3: "تقدم مجاناً — اكتشف إذا كنت مؤهلاً",
     cta3_sub: "بدون التزام · دقيقتان",
-    testi_label: "يثق بنا الطلاب",
-    testi_h: "أشخاص حقيقيون.",
-    testi_h_g: "نتائج حقيقية.",
-    t1_name: "جردان م.", t1_date: "منذ أسبوعين",
-    t1_text: '"انتقلت من تدمير 3 حسابات إلى الاتساق أخيراً. طريقة شرحه للدخول وإدارة المخاطر وضحت لي كل شيء."',
-    t1_win: "+$1,800 أول شهر مربح",
-    t2_name: "كاري ل.", t2_date: "منذ شهر",
-    t2_text: '"كنت متشككاً لكن الكولات المباشرة وحدها تستحق الأمر. لا يريك فقط ماذا تتداول — بل كيف تفكر."',
-    t2_win: "ترك وظيفته الجزئية بعد 45 يوماً",
-    t3_name: "داريوس ت.", t3_date: "منذ 3 أسابيع",
-    t3_text: '"غير وضعي المالي تماماً. المجتمع نشيط، المرشد متجاوب، والنتائج تتكلم."',
-    t3_win: "$3,200 في شهر واحد",
     faq_label: "الأسئلة الشائعة",
     faq_h: "أسئلة",
     faq_h_g: "يسألها الجميع",
@@ -1021,7 +978,15 @@ const t = {
     pf_p4: "This is where it gets interesting.",
     pf_p5: "Say you're on a funded account and you make $3,000 in profit. Depending on the firm's rules and profit split, you could be eligible to withdraw a big chunk of that as a payout.",
     pf_p6: "So someone can start with roughly $100 in evaluation fees, and if they pass the challenge, keep the account, and stay profitable, they can end up withdrawing hundreds — or even thousands — of dollars in payouts.",
+    pf_fact1_n: "80–90%",
+    pf_fact1_l: "Profit Split",
+    pf_fact2_n: "14",
+    pf_fact2_l: "Days Between Payouts",
+    pf_fact3_n: "Bank / Crypto",
+    pf_fact3_l: "Payout Method",
+    pf_p6b: "There's one important condition though: most firms require a minimum number of trading days (usually 5–10) before you're eligible for your first payout — it's how they confirm your result wasn't just one lucky trade.",
     pf_p7: "And it's not limited to one payout. If you stay profitable and follow the rules, you can take multiple payouts from the same account. That's the real goal — not just passing the challenge, but keeping the funded account alive and withdrawing from it consistently.",
+    pf_scaling: "Most firms also run a scaling plan: stay profitable and follow the rules for a set stretch, and they'll grow your account size — say from $50K to $100K to $200K — which raises how much you can actually earn and withdraw at the same skill level.",
     pf_p8: "This genuinely happens — prop firms pay qualified traders on an ongoing basis — but it's never guaranteed. You have to stay profitable, respect the risk and drawdown rules, and meet every payout requirement the firm sets.",
     pf_p9: "So instead of needing $50,000 of your own money, prop firms give you a shot at starting with a relatively small amount and using your trading skill to access a much bigger account — and real payouts.",
     pf_closing: "But at the end of the day, the secret isn't passing the account fast… it's knowing how to keep it, manage risk, and generate payouts sustainably.",
@@ -1054,18 +1019,6 @@ const t = {
     drow4_good: "Consistent income built on real skill",
     cta3: "Apply For Free — See If You Qualify",
     cta3_sub: "No commitment · Takes 2 minutes",
-    testi_label: "Trusted By Students",
-    testi_h: "Real People.",
-    testi_h_g: "Real Results.",
-    t1_name: "Jordan M.", t1_date: "2 weeks ago",
-    t1_text: '"Went from blowing 3 accounts to finally being consistent. The way he explains entries and risk management just clicked for me."',
-    t1_win: "+$1,800 first profitable month",
-    t2_name: "Kari L.", t2_date: "1 month ago",
-    t2_text: '"I was skeptical but the live calls alone are worth it. He doesn\'t just show you what to trade — he shows you how to think."',
-    t2_win: "Quit part-time job after 45 days",
-    t3_name: "Darius T.", t3_date: "3 weeks ago",
-    t3_text: '"Straight up changed my financial situation. Community is active, mentor is responsive, results speak."',
-    t3_win: "$3.2K month in winnings",
     faq_label: "FAQ",
     faq_h: "Frequently Asked",
     faq_h_g: "Questions",
@@ -1214,11 +1167,10 @@ function render() {
   document.querySelector('#propfirm .section-label').textContent = txt('propfirm_label');
   document.querySelector('.propfirm-h').textContent = txt('propfirm_h') + ' ';
   document.querySelector('.propfirm-h-g').textContent = txt('propfirm_h_g');
-  const pfParas = document.querySelectorAll('.propfirm-body p');
-  const pfKeys = ['pf_p1','pf_p2','pf_p3','pf_p4','pf_p5','pf_p6','pf_p7','pf_p8','pf_p9'];
-  pfKeys.forEach((k, i) => { pfParas[i].textContent = txt(k); });
-  document.querySelector('.pf-subhead').textContent = txt('pf_subhead');
-  document.querySelector('.pf-closing').textContent = txt('pf_closing');
+  document.querySelectorAll('#propfirm [data-key]').forEach(el => {
+    const k = el.dataset.key;
+    if (t[lang][k] !== undefined) el.textContent = t[lang][k];
+  });
 
   // Decide
   document.querySelector('#decide .section-label').textContent = txt('decide_label');
@@ -1226,23 +1178,6 @@ function render() {
   document.querySelector('.decide-h-g').textContent = txt('decide_h_g');
   document.querySelector('.decide-cta .cta-btn .main').textContent = txt('cta3');
   document.querySelector('.decide-cta .cta-btn .sub').textContent = txt('cta3_sub');
-
-  // Testimonials
-  document.querySelector('#testimonials .section-label').textContent = txt('testi_label');
-  document.querySelector('.testi-h').textContent = txt('testi_h') + ' ';
-  document.querySelector('.testi-h-g').textContent = txt('testi_h_g');
-  document.querySelectorAll('.testi-name')[0].textContent = txt('t1_name');
-  document.querySelectorAll('.testi-date')[0].textContent = txt('t1_date');
-  document.querySelectorAll('.testi-text')[0].textContent = txt('t1_text');
-  document.querySelectorAll('.testi-win')[0].textContent = txt('t1_win');
-  document.querySelectorAll('.testi-name')[1].textContent = txt('t2_name');
-  document.querySelectorAll('.testi-date')[1].textContent = txt('t2_date');
-  document.querySelectorAll('.testi-text')[1].textContent = txt('t2_text');
-  document.querySelectorAll('.testi-win')[1].textContent = txt('t2_win');
-  document.querySelectorAll('.testi-name')[2].textContent = txt('t3_name');
-  document.querySelectorAll('.testi-date')[2].textContent = txt('t3_date');
-  document.querySelectorAll('.testi-text')[2].textContent = txt('t3_text');
-  document.querySelectorAll('.testi-win')[2].textContent = txt('t3_win');
 
   // FAQ
   document.querySelector('#faq .section-label').textContent = txt('faq_label');
@@ -1378,10 +1313,24 @@ function render() {
       <h2><span class="propfirm-h"></span><span class="propfirm-h-g g"></span></h2>
     </div>
     <div class="propfirm-body fade-up">
-      <p></p><p></p><p></p>
-      <h3 class="pf-subhead"></h3>
-      <p></p><p></p><p></p><p></p><p></p><p></p>
-      <p class="pf-closing"></p>
+      <p data-key="pf_p1"></p>
+      <p data-key="pf_p2"></p>
+      <p data-key="pf_p3"></p>
+      <h3 class="pf-subhead" data-key="pf_subhead"></h3>
+      <p data-key="pf_p4"></p>
+      <p data-key="pf_p5"></p>
+      <p data-key="pf_p6"></p>
+      <div class="mentor-stats pf-facts">
+        <div class="mstat"><div class="mstat-num" data-key="pf_fact1_n"></div><div class="mstat-lbl" data-key="pf_fact1_l"></div></div>
+        <div class="mstat"><div class="mstat-num" data-key="pf_fact2_n"></div><div class="mstat-lbl" data-key="pf_fact2_l"></div></div>
+        <div class="mstat"><div class="mstat-num" data-key="pf_fact3_n"></div><div class="mstat-lbl" data-key="pf_fact3_l"></div></div>
+      </div>
+      <p data-key="pf_p6b"></p>
+      <p data-key="pf_p7"></p>
+      <p data-key="pf_scaling"></p>
+      <p data-key="pf_p8"></p>
+      <p data-key="pf_p9"></p>
+      <p class="pf-closing" data-key="pf_closing"></p>
     </div>
   </div>
 </section>
@@ -1576,23 +1525,6 @@ function render() {
       </div>
     </div>
     <div class="decide-cta fade-up"><a href="#apply" class="cta-btn"><span class="main"></span><span class="sub"></span></a></div>
-  </div>
-</section>
-
-<div class="section-divider"></div>
-
-<!-- TESTIMONIALS -->
-<section id="testimonials">
-  <div class="container">
-    <div class="section-header fade-up">
-      <span class="section-label"></span>
-      <h2><span class="testi-h"></span><span class="testi-h-g g"></span></h2>
-    </div>
-    <div class="testi-grid">
-      <div class="testi-card fade-up"><div class="testi-header"><div class="testi-avatar">J</div><div><div class="testi-name"></div><div class="testi-date"></div></div></div><span class="testi-text"></span><div class="testi-win"></div></div>
-      <div class="testi-card fade-up"><div class="testi-header"><div class="testi-avatar">K</div><div><div class="testi-name"></div><div class="testi-date"></div></div></div><span class="testi-text"></span><div class="testi-win"></div></div>
-      <div class="testi-card fade-up"><div class="testi-header"><div class="testi-avatar">D</div><div><div class="testi-name"></div><div class="testi-date"></div></div></div><span class="testi-text"></span><div class="testi-win"></div></div>
-    </div>
   </div>
 </section>
 
