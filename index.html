@@ -382,7 +382,13 @@
     html[lang="ar"] .stat-label { text-transform: none; letter-spacing: 0; font-size: 13px; }
 
     /* ══ PROOF ══ */
-    #proof { padding: 100px 20px; background: var(--dark); }
+    #proof { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
+    #proof::before {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); width: 700px; height: 450px;
+      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
     .proof-grid {
       max-width: 880px; margin: 0 auto;
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
@@ -613,7 +619,13 @@
     .form-confirm .cta-btn-wa { border-color: rgba(37,211,102,0.35); }
 
     /* ══ MENTOR ══ */
-    #mentor { padding: 100px 20px; background: var(--dark); }
+    #mentor { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
+    #mentor::before {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); width: 700px; height: 450px;
+      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
     .mentor-grid {
       max-width: 820px; margin: 52px auto 0;
       display: grid; grid-template-columns: 260px 1fr;
@@ -670,6 +682,13 @@
     #certLightbox img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
 
     /* ══ PROP FIRM EXPLAINED ══ */
+    #propfirm { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
+    #propfirm::before {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); width: 700px; height: 450px;
+      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
     .propfirm-body { max-width: 720px; margin: 0 auto; }
     .propfirm-body .pf-facts { margin: 28px 0; }
     .pf-example {
@@ -701,7 +720,13 @@
     html[lang="ar"] .pf-closing { font-size: 17px !important; }
 
     /* ══ DECIDE ══ */
-    #decide { padding: 100px 20px; background: var(--dark-2); }
+    #decide { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
+    #decide::before {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); width: 700px; height: 450px;
+      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
 
     .decide-cols-header, .decide-row {
       display: grid; grid-template-columns: 160px 1fr 1fr; gap: 20px; align-items: center;
@@ -738,7 +763,13 @@
     .decide-cta { text-align: center; margin-top: 48px; }
 
     /* ══ FAQ ══ */
-    #faq { padding: 100px 20px; background: var(--dark-2); }
+    #faq { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
+    #faq::before {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); width: 700px; height: 450px;
+      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
     .faq-list { max-width: 660px; margin: 52px auto 0; display: flex; flex-direction: column; gap: 10px; }
     details {
       background: var(--dark-3); border: 1px solid #1e1e1e;
