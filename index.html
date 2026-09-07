@@ -672,6 +672,20 @@
     /* ══ PROP FIRM EXPLAINED ══ */
     .propfirm-body { max-width: 720px; margin: 0 auto; }
     .propfirm-body .pf-facts { margin: 28px 0; }
+    .pf-example {
+      text-align: center; background: var(--dark-3); border: 1px solid rgba(212,175,55,0.2);
+      border-radius: 6px; padding: 28px 24px; margin: 28px 0;
+    }
+    .pf-example-num {
+      font-size: clamp(40px, 7vw, 56px); font-weight: 900; color: var(--green);
+      font-family: 'Inter', sans-serif; line-height: 1;
+    }
+    .pf-example-sub {
+      font-size: 13px; color: #ccc; font-weight: 700; letter-spacing: 0.5px;
+      margin-top: 8px; text-transform: uppercase;
+    }
+    html[lang="ar"] .pf-example-sub { text-transform: none; font-size: 14px; }
+    .pf-example-pitch { color: #aaa !important; font-size: 14px !important; margin: 14px 0 0 !important; }
     .propfirm-body p { color: #aaa; font-size: 15px; line-height: 1.9; margin-bottom: 16px; }
     html[lang="ar"] .propfirm-body p { line-height: 2.1; font-size: 16px; }
     .pf-subhead {
@@ -858,6 +872,8 @@ const t = {
     pf_fact2_l: "يوم بين كل سحب",
     pf_fact3_n: "بنكي / رقمي",
     pf_fact3_l: "طريقة الدفع",
+    pf_example_sub: "على حساب 50 ألف دولار = 1,000 دولار ربح",
+    pf_example_pitch: "يعني مش لازم تضاعف حسابك أو تلاحق أرقام خيالية — حركة صغيرة ومحسوبة بالسوق كفيلة توصلك لأول سحب.",
     pf_p6b: "بس في شرط مهم: أغلب الشركات بتطلب منك تتداول لعدد معيّن من الأيام (عادةً بين 5 و10 أيام تداول) قبل ما تصير مؤهل لأول سحب، وهيك بيتأكدوا إن نتيجتك مش مجرد صفقة حظ وحدة.",
     pf_p7: "والموضوع مش محصور بدفعة وحدة. إذا ضليت مربح والتزمت بالقواعد، فيك تعمل أكتر من دفعة من نفس الحساب. وهون الهدف الحقيقي: مش بس إنك تعدّي الاختبار، الهدف إنك تحافظ على الحساب المموّل وتقدر تسحب منه بشكل مستمر.",
     pf_scaling: "وكمان أغلب الشركات عندها خطة تكبير للحساب: كل ما ضليت مربح والتزمت بالقواعد لفترة، بيزيدوا حجم حسابك — من 50 ألف لـ100 ألف، ولـ200 ألف دولار مثلاً — وهيك بيكبر سقف الأرباح والمدفوعات اللي فيك تحققها من نفس مستوى أدائك.",
@@ -984,6 +1000,8 @@ const t = {
     pf_fact2_l: "Days Between Payouts",
     pf_fact3_n: "Bank / Crypto",
     pf_fact3_l: "Payout Method",
+    pf_example_sub: "$50,000 account = $1,000 profit",
+    pf_example_pitch: "You don't need to double your account or chase crazy numbers — one small, controlled move in the market is enough to get you to your first payout.",
     pf_p6b: "There's one important condition though: most firms require a minimum number of trading days (usually 5–10) before you're eligible for your first payout — it's how they confirm your result wasn't just one lucky trade.",
     pf_p7: "And it's not limited to one payout. If you stay profitable and follow the rules, you can take multiple payouts from the same account. That's the real goal — not just passing the challenge, but keeping the funded account alive and withdrawing from it consistently.",
     pf_scaling: "Most firms also run a scaling plan: stay profitable and follow the rules for a set stretch, and they'll grow your account size — say from $50K to $100K to $200K — which raises how much you can actually earn and withdraw at the same skill level.",
@@ -1324,6 +1342,11 @@ function render() {
         <div class="mstat"><div class="mstat-num" data-key="pf_fact1_n"></div><div class="mstat-lbl" data-key="pf_fact1_l"></div></div>
         <div class="mstat"><div class="mstat-num" data-key="pf_fact2_n"></div><div class="mstat-lbl" data-key="pf_fact2_l"></div></div>
         <div class="mstat"><div class="mstat-num" data-key="pf_fact3_n"></div><div class="mstat-lbl" data-key="pf_fact3_l"></div></div>
+      </div>
+      <div class="pf-example">
+        <div class="pf-example-num">2%</div>
+        <div class="pf-example-sub" data-key="pf_example_sub"></div>
+        <p class="pf-example-pitch" data-key="pf_example_pitch"></p>
       </div>
       <p data-key="pf_p6b"></p>
       <p data-key="pf_p7"></p>
