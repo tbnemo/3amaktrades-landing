@@ -77,30 +77,13 @@
     html[lang="ar"] body { font-family: 'Cairo', sans-serif; }
     html[lang="en"] body { font-family: 'Inter', system-ui, sans-serif; }
 
-    /* ══ TICKER ══ */
+    /* ══ SCROLL PROGRESS ══ */
     #scrollProgress {
       position: fixed; top: 0; left: 0; height: 3px; width: 0%;
       background: linear-gradient(90deg, var(--green-dim), var(--green) 60%, #fff);
       box-shadow: 0 0 12px var(--green-glow);
       z-index: 1000; transition: width 0.1s linear;
     }
-    .ticker {
-      background: var(--green);
-      color: #000;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      padding: 8px 0;
-      overflow: hidden;
-      white-space: nowrap;
-    }
-    .ticker-inner {
-      display: inline-flex;
-      animation: ticker 30s linear infinite;
-    }
-    .ticker-item { padding: 0 28px; display: inline-flex; align-items: center; gap: 8px; }
-    .ticker-item .dot { width: 5px; height: 5px; border-radius: 50%; background: #000; opacity: 0.4; }
-    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
     /* ══ NAV ══ */
     nav {
@@ -828,7 +811,6 @@
 const t = {
   ar: {
     nav_apply: "تقدم الآن",
-    ticker: ["EUR/USD +0.42%","ناسداك +1.2%","GBP/USD +0.18%","ذهب +0.87%","USD/JPY -0.31%","S&P500 +0.95%","نفط +1.4%","BTC +2.1%"],
     hero_badge: "نقبل الطلبات الآن",
     hero_h1: "السوق يكافئ",
     hero_h1_g: "من يدرسه.",
@@ -944,7 +926,6 @@ const t = {
   },
   en: {
     nav_apply: "Apply Now",
-    ticker: ["EURUSD +0.42%","NASDAQ +1.2%","GBPUSD +0.18%","GOLD +0.87%","USDJPY -0.31%","SP500 +0.95%","OIL +1.4%","BTC +2.1%"],
     hero_badge: "Now accepting applications",
     hero_h1: "The Market Rewards",
     hero_h1_g: "Those Who Study It.",
@@ -1074,13 +1055,6 @@ function setLang(l) {
 function txt(key) { return t[lang][key] || ''; }
 
 function render() {
-  // Ticker
-  const tItems = t[lang].ticker;
-  const doubled = [...tItems, ...tItems];
-  document.querySelector('.ticker-inner').innerHTML = doubled.map(i =>
-    `<span class="ticker-item"><span class="dot"></span>${i}</span>`
-  ).join('');
-
   // Nav
   document.querySelector('.nav-cta').textContent = txt('nav_apply');
 
@@ -1205,9 +1179,6 @@ function render() {
 
 <!-- SCROLL PROGRESS -->
 <div id="scrollProgress"></div>
-
-<!-- TICKER -->
-<div class="ticker"><div class="ticker-inner"></div></div>
 
 <!-- NAV -->
 <nav>
