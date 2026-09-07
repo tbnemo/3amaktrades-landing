@@ -664,11 +664,17 @@
     }
     html[lang="ar"] .mentor-certs-label { text-transform: none; letter-spacing: 0; font-size: 13px; }
     .mentor-certs-row {
-      display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;
+      display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;
       -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin; scrollbar-color: rgba(212,175,55,0.3) transparent;
     }
+    .mentor-certs-row::-webkit-scrollbar { height: 4px; }
+    .mentor-certs-row::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+    .mentor-certs-row::-webkit-scrollbar-track { background: transparent; }
+    .mentor-certs-row::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 2px; }
+    .mentor-certs-row::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.5); }
     .mentor-certs-row img {
-      height: 78px; width: auto; flex-shrink: 0;
+      height: 108px; width: auto; flex-shrink: 0;
       border-radius: 4px; border: 1px solid #1e1e1e;
       cursor: pointer; transition: transform 0.2s, border-color 0.2s;
     }
