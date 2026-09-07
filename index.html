@@ -669,6 +669,22 @@
     #certLightbox.open { display: flex; }
     #certLightbox img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
 
+    /* ══ PROP FIRM EXPLAINED ══ */
+    .propfirm-body { max-width: 720px; margin: 0 auto; }
+    .propfirm-body p { color: #aaa; font-size: 15px; line-height: 1.9; margin-bottom: 16px; }
+    html[lang="ar"] .propfirm-body p { line-height: 2.1; font-size: 16px; }
+    .pf-subhead {
+      color: #fff; font-size: clamp(19px, 3vw, 24px); font-weight: 900;
+      margin: 40px 0 18px; padding-inline-start: 14px;
+      border-inline-start: 3px solid var(--green);
+    }
+    .pf-closing {
+      color: var(--green) !important; font-size: 16px !important; font-weight: 700;
+      font-style: italic; margin-top: 28px !important; padding-top: 24px;
+      border-top: 1px solid #1e1e1e; text-align: center;
+    }
+    html[lang="ar"] .pf-closing { font-size: 17px !important; }
+
     /* ══ DECIDE ══ */
     #decide { padding: 100px 20px; background: var(--dark-2); }
 
@@ -865,6 +881,20 @@ const t = {
     mentor_h_g: "3AMAK",
     mentor_tag: "متداول محترف ومرشد",
     mentor_certs_label: "شهادات موثّقة",
+    propfirm_label: "الأساسيات",
+    propfirm_h: "شركات التمويل",
+    propfirm_h_g: "بالتفصيل",
+    pf_p1: "فكرة شركات التمويل بسيطة: مش لازم يكون عندك رأس مال كبير من جيبتك عشان تبلش بالتداول.",
+    pf_p2: "بتدفع عادةً بين 50 و200 دولار، حسب الشركة وحجم الحساب، عشان تدخل مرحلة التقييم وتثبت إنك قادر تحقق هدف ربح معيّن من دون ما تتجاوز حدود المخاطرة المسموح فيها.",
+    pf_p3: "مثلاً، ممكن تدفع حوالي 100 دولار لاختبار تقييم على حساب بقيمة 50 ألف دولار. إذا نجحت بالاختبار والتزمت بكل الشروط، بتنتقل لحساب مموّل وتصير مؤهل تحقق أرباح وتسحبها.",
+    pf_subhead: "طيب كيف بتشتغل المدفوعات؟",
+    pf_p4: "هون بتصير الفكرة أكثر إثارة.",
+    pf_p5: "خلّينا نفترض إنك عندك حساب مموّل وحققت 3,000 دولار أرباح. حسب قوانين الشركة ونسبة تقاسم الأرباح، ممكن تكون مؤهل تسحب جزء كبير من هالربح كدفعة.",
+    pf_p6: "يعني ممكن شخص يبلش بحوالي 100 دولار كرسوم تقييم، وإذا نجح بالاختبار وحافظ على حسابه وحقق أرباح، يصير قادر يسحب مئات أو حتى آلاف الدولارات كمدفوعات.",
+    pf_p7: "والموضوع مش محصور بدفعة وحدة. إذا ضليت مربح والتزمت بالقواعد، فيك تعمل أكتر من دفعة من نفس الحساب. وهون الهدف الحقيقي: مش بس إنك تعدّي الاختبار، الهدف إنك تحافظ على الحساب المموّل وتقدر تسحب منه بشكل مستمر.",
+    pf_p8: "وهاد الشي ممكن فعلاً يصير، وشركات التمويل بتدفع للمتداولين المؤهلين بشكل مستمر، بس أكيد مش مضمون. لازم تكون مربح، تلتزم بقواعد المخاطرة والحد الأقصى للخسارة، وتحقق كل شروط السحب الخاصة بالشركة.",
+    pf_p9: "يعني بدل ما تحتاج 50 ألف دولار من رأس مالك الشخصي، شركات التمويل بتعطيك فرصة تبلش بمبلغ صغير نسبياً وتستخدم مهارتك بالتداول عشان توصل لحساب أكبر وإمكانية تحقيق مدفوعات حقيقية.",
+    pf_closing: "بس بالنهاية، السر مش إنك تعدّي الحساب بسرعة… السر إنك تعرف كيف تحافظ عليه، تدير المخاطر، وتحقق مدفوعات بشكل مستدام.",
     mentor_name: "3AMAK",
     mentor_title: "يحول المبتدئين إلى متداولين ثابتين",
     mstat1_n: "20+", mstat1_l: "طالب",
@@ -981,6 +1011,20 @@ const t = {
     mentor_h_g: "3AMAK",
     mentor_tag: "Full-Time Trader & Mentor",
     mentor_certs_label: "Verified Certifications",
+    propfirm_label: "The Basics",
+    propfirm_h: "Prop Firms",
+    propfirm_h_g: "Explained",
+    pf_p1: "The idea behind prop firms is simple: you don't need a big personal capital to start trading.",
+    pf_p2: "You typically pay around $50–$200, depending on the firm and account size, to enter an evaluation and prove you can hit a specific profit target without breaking the risk and drawdown limits.",
+    pf_p3: "For example, you might pay about $100 for a challenge on a $50,000 account. If you pass the evaluation and follow every rule, you move to a funded account and become eligible to generate profits and withdraw them.",
+    pf_subhead: "So how do payouts actually work?",
+    pf_p4: "This is where it gets interesting.",
+    pf_p5: "Say you're on a funded account and you make $3,000 in profit. Depending on the firm's rules and profit split, you could be eligible to withdraw a big chunk of that as a payout.",
+    pf_p6: "So someone can start with roughly $100 in evaluation fees, and if they pass the challenge, keep the account, and stay profitable, they can end up withdrawing hundreds — or even thousands — of dollars in payouts.",
+    pf_p7: "And it's not limited to one payout. If you stay profitable and follow the rules, you can take multiple payouts from the same account. That's the real goal — not just passing the challenge, but keeping the funded account alive and withdrawing from it consistently.",
+    pf_p8: "This genuinely happens — prop firms pay qualified traders on an ongoing basis — but it's never guaranteed. You have to stay profitable, respect the risk and drawdown rules, and meet every payout requirement the firm sets.",
+    pf_p9: "So instead of needing $50,000 of your own money, prop firms give you a shot at starting with a relatively small amount and using your trading skill to access a much bigger account — and real payouts.",
+    pf_closing: "But at the end of the day, the secret isn't passing the account fast… it's knowing how to keep it, manage risk, and generate payouts sustainably.",
     mentor_name: "3AMAK",
     mentor_title: "Turning beginners into consistent traders",
     mstat1_n: "20+", mstat1_l: "Students",
@@ -1166,6 +1210,16 @@ function render() {
   document.querySelectorAll('.mentor-bio p')[1].textContent = txt('mentor_bio2');
   document.querySelectorAll('.mentor-bio p')[2].textContent = txt('mentor_bio3');
 
+  // Prop Firm Explained
+  document.querySelector('#propfirm .section-label').textContent = txt('propfirm_label');
+  document.querySelector('.propfirm-h').textContent = txt('propfirm_h') + ' ';
+  document.querySelector('.propfirm-h-g').textContent = txt('propfirm_h_g');
+  const pfParas = document.querySelectorAll('.propfirm-body p');
+  const pfKeys = ['pf_p1','pf_p2','pf_p3','pf_p4','pf_p5','pf_p6','pf_p7','pf_p8','pf_p9'];
+  pfKeys.forEach((k, i) => { pfParas[i].textContent = txt(k); });
+  document.querySelector('.pf-subhead').textContent = txt('pf_subhead');
+  document.querySelector('.pf-closing').textContent = txt('pf_closing');
+
   // Decide
   document.querySelector('#decide .section-label').textContent = txt('decide_label');
   document.querySelector('.decide-h').textContent = txt('decide_h') + ' ';
@@ -1312,6 +1366,24 @@ function render() {
     </div>
   </div>
   <div id="certLightbox"><img src="" alt=""></div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- PROP FIRM EXPLAINED -->
+<section id="propfirm">
+  <div class="container">
+    <div class="section-header fade-up">
+      <span class="section-label"></span>
+      <h2><span class="propfirm-h"></span><span class="propfirm-h-g g"></span></h2>
+    </div>
+    <div class="propfirm-body fade-up">
+      <p></p><p></p><p></p>
+      <h3 class="pf-subhead"></h3>
+      <p></p><p></p><p></p><p></p><p></p><p></p>
+      <p class="pf-closing"></p>
+    </div>
+  </div>
 </section>
 
 <div class="section-divider"></div>
