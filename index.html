@@ -632,6 +632,16 @@
       gap: 28px; align-items: start; justify-items: center;
     }
     .mentor-grid > div { min-width: 0; width: 100%; }
+    @media (min-width: 1024px) {
+      .mentor-grid {
+        max-width: 900px; display: flex; flex-direction: row-reverse;
+        gap: 56px; align-items: flex-start;
+      }
+      .mentor-grid > div { width: auto; flex: 1 1 auto; }
+      .mentor-photo { flex: 0 0 240px; max-width: 240px; margin: 0; }
+      .mentor-tag, .mentor-name, .mentor-title { text-align: start; }
+      .mentor-stats { justify-content: flex-start; }
+    }
     .mentor-photo {
       width: 100%; max-width: 260px; margin: 0 auto;
       aspect-ratio: 3/4; background: var(--dark-3);
