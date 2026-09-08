@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>3AMAK Trades — PRODUCT.md &amp; DESIGN.md</title>
+<style>
+  body { background:#050505; color:#eee; font-family: 'Segoe UI', system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 60px 24px 120px; line-height: 1.7; }
+  h1 { color:#D4AF37; font-size: 32px; border-bottom: 1px solid #333; padding-bottom: 16px; }
+  h2 { color:#D4AF37; margin-top: 48px; font-size: 22px; }
+  h3 { color:#f0d878; margin-top: 28px; font-size: 17px; }
+  a { color:#D4AF37; }
+  code { background:#171717; padding: 2px 6px; border-radius: 4px; color:#f0d878; }
+  pre { background:#0d0d0d; border:1px solid #222; border-radius: 6px; padding: 16px; overflow-x:auto; }
+  strong { color:#fff; }
+  ul, ol { padding-left: 24px; }
+  .doc { background:#0d0d0d; border:1px solid #1e1e1e; border-radius: 8px; padding: 40px; margin-bottom: 60px; }
+  .badge { display:inline-block; background: rgba(212,175,55,0.1); color:#D4AF37; border:1px solid rgba(212,175,55,0.3); padding: 4px 12px; border-radius: 4px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="doc">
+<span class="badge">PRODUCT.md</span>
+<h1>Product</h1>
+<!-- impeccable:product-schema 1 -->
+
+<h2>Platform</h2>
+<p>web</p>
+<h2>Users</h2>
+<p>Mixed primary audience, no single persona: complete beginners with zero trading experience, and people who already tried trading or prop firm challenges on their own (often blew accounts) and now want real structure and mentorship instead of guessing. Primarily Arabic-speaking (site defaults to Arabic, colloquial Levantine/Gulf-leaning copy) with a full English translation available via toggle.</p>
+<h2>Product Purpose</h2>
+<p>Bilingual (Arabic default / English toggle) VSL-driven landing page for 3AMAK Trades, a prop-firm trading education and mentorship business run by mentor Omar (Omar Alhalabi). The page's job is to convert visitors into one of two funnels: (1) a free/VIP Discord community application, or (2) a Group Coaching / 1-on-1 Mentorship application (delivered on Skool). Success is a qualified application routed to Slack, or a paid VIP Discord membership via Stripe.</p>
+<h2>Positioning</h2>
+<p>The pitch is a real, currently-active trader's lived system, not recycled "guru" content. Proof is mechanical, not testimonial: the mentor's own verifiable credentials (7 real funded-trader certificates from named prop firms, $500K+ in funded capital, 20+ students trained, $100K+ in verified student payouts) carry the credibility, not claimed success stories. The teaching angle is explicitly risk management, psychology, and a repeatable system — not "find the perfect strategy."</p>
+<h2>Operating Context</h2>
+<p>Visitor flow: Hero (VSL video + live animated candlestick chart backdrop) → Stats → Mentor bio + real certifications → "Prop Firm Explained" (demystifies prop-firm mechanics for beginners: evaluation fees, funded accounts, payout math, profit split) → Proof → 8-step application form → Decide (comparison table) → FAQ → Final CTA.</p>
+<p>Backend: Vercel serverless functions route form submissions into Slack with dedup, a honeypot, and priority tagging by budget — #1-new-applications (completed), #2-incomplete-leads (abandoned mid-form), #2-warm-leads (clicked WhatsApp on the confirmation screen).</p>
+<p>Community structure: a Discord server (bilingual Arabic/English channel names) with a public Free Community tier and a paid VIP tier ($99/month, Stripe-gated role). Group Coaching and 1-on-1 Mentorship are deliberately NOT sold through Discord automation — they live on Skool instead, reached via a Discord "apply-coaching" channel that funnels back to the site's application form, because that offer needs human vetting rather than instant self-serve checkout.</p>
+<p>Stripe: the VIP product and $99/month price already exist live in Stripe. The payment link itself is blocked until the client activates payment methods (e.g. Cards) in their Stripe Dashboard — a client-side account setting, not something fixable via API.</p>
+<h2>Capabilities and Constraints</h2>
+<ul>
+<li>Single static <code>index.html</code> (no framework), plus a few Vercel serverless functions under <code>/api</code>. Deployed via Vercel, auto-deploying from the <code>main</code> branch on GitHub.</li>
+<li>Bilingual toggle (Arabic default, English) driven by one JS translation object holding every string. Every piece of on-page copy must exist as a fully separate, natural translation in each language — mixing English trading jargon into Arabic sentences (code-switching) is a defect, not a style choice, even though the source material this business speaks/writes in casually mixes languages.</li>
+<li>Legal/compliance constraint: must never imply guaranteed profit or guaranteed income anywhere on the site — only ever teach a process/system.</li>
+<li>No fabricated evidence: names, results, and testimonials must be real or explicitly absent. A placeholder testimonials section (invented names/results) was found and removed for this reason.</li>
+</ul>
+<h2>Brand Commitments</h2>
+<ul>
+<li>Name: 3AMAK Trades (brand name stays in Latin script even in Arabic copy). Mentor: Omar (Omar Alhalabi).</li>
+<li>Palette: gold (~#D4AF37) and black. This is a deliberate, fixed identity decision — a full palette swap (e.g. to white/blue) was explicitly considered and rejected to preserve brand identity; visual exploration should happen within gold/black, not by replacing it.</li>
+<li>Visual and motion language was benchmarked against salesfirstclass.com (a reference site) for layout/motion inspiration only — never copy its content or claims.</li>
+<li>Voice: casual, warm colloquial Arabic (Levantine-leaning, not stiff MSA) with clean grammar; the English version is a full independent rewrite matching the same meaning, never a transliteration of the Arabic.</li>
+</ul>
+<h2>Evidence on Hand</h2>
+<ul>
+<li>Real VSL video (YouTube, unlisted): the hero's click-to-play video.</li>
+<li>Real mentor photo at <code>/mentor.jpg</code> (background-cleaned via inpainting from a raw source photo).</li>
+<li>7 real funded-trader certificates in <code>/certs/</code> from TopStep, AquaFutures (x2), FundedNext, The Trading Pit, Funded Futures Family, and My Funded Futures.</li>
+<li>Real, current stats: 2+ years experience, 20+ students trained, $100K+ in student payouts, $500K+ in funded trading capital.</li>
+<li>No case studies, press, or testimonials beyond the above — future work must not reintroduce a testimonials section without real, verifiable ones.</li>
+</ul>
+<h2>Product Principles</h2>
+<ol>
+<li>Proof over claims — every credibility signal (certificates, stats, bio facts) must be real and verifiable, never invented.</li>
+<li>Bilingual as two first-class languages — Arabic and English copy are each written to read naturally on their own; never code-switched or transliterated from one into the other.</li>
+<li>Educate before you sell — jargon (prop firm, funded account, payout, drawdown) gets explained in plain terms before it's used to build trust, especially for the beginner half of the audience.</li>
+<li>Route by intent, not by tier — VIP is self-serve and automated (Stripe), while Group/1-on-1 coaching is human-vetted (apply, don't just checkout), because a high-touch offer shouldn't be sold like a vending machine.</li>
+<li>Gold/black premium identity is fixed — it signals "elite trader," not generic fintech; exploration happens inside that palette.</li>
+</ol>
+</div>
+<div class="doc">
+<span class="badge">DESIGN.md</span>
+<h1>Design System: 3AMAK Trades</h1>
+<h2>Overview</h2>
+<p><strong>Creative North Star: "The Gold Ticker"</strong></p>
+<p>The whole system reads as a live trading terminal at rest: a near-void black session backdrop with one moving, glowing element — gold — that stands in for the market itself. The live candlestick chart behind the hero isn't decoration bolted onto a marketing page; it's the thesis of the design made literal. Everything else (typography, cards, dividers) borrows the same restraint: dark, quiet, and confident, with gold reserved for the things that matter (headlines' second word, CTAs, proof numbers, dividers between sections).</p>
+<p>The palette is fixed by brand commitment (see PRODUCT.md) — gold and black are not a starting point to explore away from. Visual work happens <em>within</em> this system, not by replacing it. A full palette swap (e.g. to white/blue) was explicitly considered and rejected during this project's life: it read as generic fintech instead of "elite trader," which is the opposite of the point.</p>
+<p><strong>Key Characteristics:</strong>
+- Near-void black backdrop (flat and subtly-gradiented variants alternate by section) with a single gold accent used sparingly and purposefully
+- Two headline fonts doing two different jobs: Montserrat (uppercase, heavy, English/display) vs. Cairo (Arabic body/display) — never the same font family serving both languages
+- A gold divider line with a soft radial glow marks every section boundary, standing in for "shadows" in a system that otherwise has none
+- Motion is restrained and purposeful: a CTA shimmer sweep, fade-up reveals on scroll, a live candlestick chart — never decorative animation for its own sake</p>
+<h2>Colors</h2>
+<p>The palette is almost monochrome by design: one accent color carries all of the system's warmth and attention.</p>
+<h3>Primary</h3>
+<ul>
+<li><strong>Ticker Gold</strong> (<code>#D4AF37</code>): the entire system's accent. Second word of every major headline (via the <code>.g</code> class), all primary CTA buttons, section-label eyebrows, stat numbers, dividers, focus glows. Used sparingly — it reads as valuable because it's rare, not because it's everywhere.</li>
+<li><strong>Ticker Gold Dim</strong> (<code>#B8960C</code>): the darker step of the same hue, used for hover/pressed states and gradient endpoints so gold never feels flat.</li>
+</ul>
+<h3>Neutral</h3>
+<ul>
+<li><strong>Session Black</strong> (<code>#050505</code>): the flat, primary page background and the background for roughly half of all sections (Proof, Mentor, Prop Firm).</li>
+<li><strong>Session Black Drift</strong> (<code>linear-gradient(180deg, #0c0c0c 0%, #060606 100%)</code>): a barely-perceptible vertical gradient used to alternate section backgrounds (Decide, FAQ) so consecutive sections read as distinct without a hard seam or a lighter color.</li>
+<li><strong>Card Charcoal</strong> (<code>linear-gradient(155deg, #171717 0%, #0d0d0d 55%, #0a0a0a 100%)</code>): the surface for every card-like container (mini-stats, testimonial-style chips, FAQ items) — one step up from the page background, never a flat gray.</li>
+<li><strong>Card Charcoal Bright</strong> (<code>linear-gradient(155deg, #212121 0%, #161616 55%, #131313 100%)</code>): a second, brighter charcoal step reserved for hover/active card states.</li>
+<li><strong>Paper White</strong> (<code>#ffffff</code>): primary text color on the dark backdrop.</li>
+<li><strong>Ticker Gray</strong> (<code>#777777</code>): secondary/muted text — subheads, captions, metadata.</li>
+<li><strong>Loss Red</strong> (<code>#ef4444</code>): the system's only non-gold semantic color, reserved for negative/comparison states (the "without this program" column in Decide, "✗" icons). Never used decoratively.</li>
+</ul>
+<h3>Named Rules</h3>
+<p><strong>The One Accent Rule.</strong> Gold is the only color allowed to draw the eye. If something new needs emphasis, it either becomes gold or it doesn't get emphasis — a second accent color is not the answer.</p>
+<p><strong>The Chart Exception.</strong> The live candlestick chart uses its own literal market green/red (<code>#15c89a</code> up, <code>#ff5364</code> down) instead of the site's Ticker Gold / Loss Red pair. This is deliberate and scoped only to that one component — real market data reads correctly with real market colors; it does not license a second UI-wide accent pair anywhere else.</p>
+<h2>Typography</h2>
+<p><strong>Display Font (English):</strong> Montserrat (with system sans-serif fallback)
+<strong>Display Font (Arabic):</strong> Cairo (with generic sans-serif fallback)
+<strong>Body Font (English):</strong> Inter (with system-ui, sans-serif fallback)
+<strong>Body Font (Arabic):</strong> Cairo (with sans-serif fallback)</p>
+<p><strong>Character:</strong> Heavy, uppercase, tightly-tracked Montserrat for English headlines reads as a confident financial-brand voice; Cairo carries the same weight and confidence into Arabic without trying to force a Latin display face onto Arabic script. The two languages are genuinely two typographic systems, not one translated into the other — matching the project's bilingual-as-two-first-class-languages principle.</p>
+<h3>Hierarchy</h3>
+<ul>
+<li><strong>Display</strong> (900, <code>clamp(36px, 6vw, 68px)</code>, line-height 1.1): hero headline only. English gets uppercase + <code>1px</code> letter-spacing via Montserrat; Arabic stays natural case with <code>0</code> letter-spacing.</li>
+<li><strong>Headline</strong> (900, <code>clamp(26px, 4vw, 42px)</code>, line-height 1.1): every section's <code>h2</code>. Same English/Arabic split as Display.</li>
+<li><strong>Label</strong> (700, <code>11px</code>, <code>1.5px</code> letter-spacing, uppercase in English / natural case at <code>12-13px</code> in Arabic): section eyebrows, stat labels, mentor tag — small, gold, always uppercase-tracked in English.</li>
+<li><strong>Body</strong> (400, <code>14-16px</code>, line-height 1.6 English / 1.9-2.1 Arabic): paragraph copy. Arabic consistently gets a taller line-height across the whole system — Cairo needs more vertical room to read comfortably than Inter does.</li>
+</ul>
+<h3>Named Rules</h3>
+<p><strong>The Gold Word Rule.</strong> Nearly every headline is two segments: a plain white/dark phrase, then a <code>.g</code>-classed final word in Ticker Gold. This is the system's single most repeated typographic device — new headlines should default to using it, not invent a different emphasis technique.</p>
+<h2>Layout</h2>
+<p>Single-column, center-aligned sections at a <code>900px</code> max-width container (<code>padding: 0 24px</code>), <code>100px</code> vertical padding per section. The hero breaks this pattern deliberately: on desktop (<code>≥1024px</code>) it splits into a text column and a video column so the VSL gets real width instead of living inside the narrow reading column; every other section stays in the standard centered container.</p>
+<p>Sections alternate between two background treatments (flat Session Black vs. the barely-there Session Black Drift gradient) purely to create a seam between adjacent sections — never a visible color jump. A thin gold divider line with a soft radial glow (<code>.section-divider</code>) sits between every section as the primary way this system marks a boundary, doing the job a hard rule or drop shadow would do in a lighter system.</p>
+<p>Mobile collapses multi-column grids (stats, proof, decide, mentor) to a single centered column; the hero's split layout also collapses to stacked (video-first, text below).</p>
+<h2>Elevation &amp; Depth</h2>
+<p>This system is flat by design — there is no shadow vocabulary. Depth is conveyed instead through:
+1. <strong>Tonal layering</strong> — Card Charcoal sits one step lighter than Session Black, Card Charcoal Bright one step lighter again for hover states, all without a single <code>box-shadow</code>.
+2. <strong>A soft radial gold glow</strong> (<code>radial-gradient(ellipse, rgba(212,175,55,0.05-0.4) 0%, transparent 70%)</code>) placed behind key elements (section dividers, the Apply/Final CTA sections, and — after a later pass — every other section too) stands in for the "lift" a shadow would normally provide, staying entirely in the brand's gold rather than a neutral gray shadow.</p>
+<h3>Named Rules</h3>
+<p><strong>The No-Shadow Rule.</strong> Never reach for <code>box-shadow</code> to create depth in this system. Reach for a tonal step (Session Black → Card Charcoal → Card Charcoal Bright) or a gold radial glow instead.</p>
+<h2>Shapes</h2>
+<p>Corners are consistently small and businesslike: <code>4px</code> is the default radius for nearly every rectangular surface (buttons, cards, form fields, certificate thumbnails); <code>6px</code> appears only on a couple of larger surfaces (the lightbox image, video container). Nothing in the system uses a pill/fully-rounded shape or a sharp <code>0px</code> corner — <code>4px</code> reads as "considered" without softening the brand's serious tone into something playful.</p>
+<h2>Components</h2>
+<h3>Buttons</h3>
+<ul>
+<li><strong>Shape:</strong> <code>4px</code> radius, <code>16px 44px</code> padding.</li>
+<li><strong>Primary:</strong> solid Ticker Gold background, black text, <code>800</code> weight, uppercase with <code>0.5px</code> letter-spacing in English (natural case, <code>16px</code>, no tracking in Arabic). A diagonal white-highlight gradient overlay plus a continuously-animated diagonal shimmer sweep (<code>3.2s ease-in-out infinite</code>) run across every primary CTA — buttons are meant to feel alive even before anyone touches them, per the tactile-and-confident directive.</li>
+<li><strong>Hover / Focus:</strong> subtle transform/box-shadow transition (<code>0.15s</code>) — kept understated since the shimmer already carries most of the button's personality.</li>
+</ul>
+<h3>Cards / Stat Boxes (<code>.mstat</code>, similar containers)</h3>
+<ul>
+<li><strong>Corner Style:</strong> <code>4px</code>.</li>
+<li><strong>Background:</strong> Card Charcoal, <code>1px solid #1e1e1e</code> border.</li>
+<li><strong>Content:</strong> a bold gold number (Inter, for numeral clarity in both languages) over a small gray/gold label beneath it — the system's standard way to present a proof metric (years, students, payouts, funded capital).</li>
+</ul>
+<h3>Section Header</h3>
+<ul>
+<li><strong>Style:</strong> a small gold uppercase Label eyebrow (plain text, no background chip — an earlier pill/chip treatment was deliberately removed), then a two-tone Headline (<code>plain-word</code> + <code>.g gold-word</code>), centered, <code>52px</code> bottom margin before the section body.</li>
+</ul>
+<h3>Certificate / Proof Thumbnails</h3>
+<ul>
+<li><strong>Style:</strong> small (<code>~78-92px</code> tall) rounded (<code>4px</code>) images in a horizontal scroll row with a thin custom gold-tinted scrollbar (never the browser's default scrollbar) — click any one to open a full-size lightbox (<code>rgba(0,0,0,0.92)</code> overlay, <code>6px</code> radius on the enlarged image).</li>
+</ul>
+<h3>Navigation</h3>
+<ul>
+<li>Sticky top nav, transparent-to-solid on scroll not currently implemented — stays a simple fixed bar with the language toggle and a single gold CTA button, consistent across the whole page.</li>
+</ul>
+<h2>Do's and Don'ts</h2>
+<h3>Do:</h3>
+<ul>
+<li><strong>Do</strong> keep gold reserved for emphasis — the moment gold appears on more than roughly one accent per view, it's stopped being an accent.</li>
+<li><strong>Do</strong> write Arabic and English as two independent, natural texts sharing one meaning — never transliterate or code-switch between them in the same string.</li>
+<li><strong>Do</strong> use the <code>.g</code>-word headline pattern (plain phrase + one gold word) as the default emphasis technique for any new headline.</li>
+<li><strong>Do</strong> use a tonal step or a gold radial glow for depth, matching the No-Shadow Rule.</li>
+<li><strong>Do</strong> keep radius at <code>4px</code> for new rectangular surfaces unless there's a specific reason to match the <code>6px</code> large-surface exception.</li>
+</ul>
+<h3>Don't:</h3>
+<ul>
+<li><strong>Don't</strong> introduce a second accent color anywhere outside the live chart's literal market green/red.</li>
+<li><strong>Don't</strong> bring back a background-and-border "chip" treatment on eyebrow labels — that was tried and explicitly removed for looking like generic AI-generated template design.</li>
+<li><strong>Don't</strong> use <code>box-shadow</code> for elevation.</li>
+<li><strong>Don't</strong> fabricate proof (testimonials, results, names) — every credibility element in this system is real and sourced from PRODUCT.md's Evidence on Hand; a previous fabricated-testimonials section was removed for this reason and must not be reintroduced casually.</li>
+</ul>
+</div>
+</body>
+</html>
