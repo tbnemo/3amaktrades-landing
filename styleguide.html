@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>3AMAK Trades — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Inter:wght@400;600;700;800;900&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    background: radial-gradient(ellipse 1400px 900px at 50% -10%, #0f0f0f 0%, #050505 55%) #050505;
+    color: #fff; font-family: 'Inter', sans-serif; margin: 0; padding: 0 0 120px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  header { text-align: center; padding: 80px 24px 60px; }
+  .eyebrow { color: #D4AF37; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; }
+  h1.title { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: clamp(32px,5vw,52px); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px; }
+  h1.title .g { color: #D4AF37; }
+  .subtitle { color: #999; font-size: 15px; max-width: 560px; margin: 0 auto; }
+  .divider { height: 1px; width: 100%; background: linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.55) 50%, transparent 100%); position: relative; margin: 0; }
+  .divider::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 280px; height: 36px; background: radial-gradient(ellipse, rgba(212,175,55,0.4) 0%, transparent 72%); }
+  section { padding: 70px 24px; position: relative; overflow: hidden; }
+  section::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 700px; height: 450px; background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%); pointer-events: none; }
+  section > * { position: relative; z-index: 1; }
+  h2.sechead { font-family: 'Montserrat', sans-serif; font-weight: 900; font-size: clamp(22px,3vw,32px); text-transform: uppercase; letter-spacing: 1px; text-align: center; margin: 0 0 8px; }
+  .secsub { text-align: center; color: #999; font-size: 14px; margin: 0 0 40px; }
+
+  .swatch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; max-width: 900px; margin: 0 auto; }
+  .swatch { border-radius: 6px; overflow: hidden; border: 1px solid #1e1e1e; background: linear-gradient(155deg, #171717 0%, #0d0d0d 55%, #0a0a0a 100%); }
+  .swatch-color { height: 90px; }
+  .swatch-info { padding: 14px 16px; }
+  .swatch-name { font-weight: 700; font-size: 14px; }
+  .swatch-hex { color: #999; font-size: 12px; font-family: monospace; margin-top: 2px; }
+
+  .type-sample { text-align: center; margin-bottom: 48px; }
+  .type-label { color: #D4AF37; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+  .type-en { font-family: 'Montserrat', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
+  .type-ar { font-family: 'Cairo', sans-serif; font-weight: 900; direction: rtl; }
+  .type-meta { color: #999; font-size: 12px; margin-top: 8px; font-family: monospace; }
+
+  .comp-row { display: flex; flex-wrap: wrap; gap: 32px; justify-content: center; align-items: flex-start; margin-bottom: 20px; }
+  .comp-card { background: linear-gradient(155deg, #171717 0%, #0d0d0d 55%, #0a0a0a 100%); border: 1px solid #1e1e1e; border-radius: 6px; padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 16px; min-width: 220px; }
+  .comp-caption { color: #999; font-size: 12px; text-align: center; }
+
+  .ds-btn-primary { display: inline-flex; flex-direction: column; align-items: center; background: #D4AF37; color: #000; border: none; cursor: pointer; border-radius: 4px; padding: 16px 44px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; text-transform: uppercase; position: relative; overflow: hidden; transition: transform 0.15s; font-family: inherit; }
+  .ds-btn-primary::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%); }
+  .ds-btn-primary::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.55) 50%, transparent 60%); background-size: 250% 100%; background-position: 150% 0; animation: ds-shimmer 3.2s ease-in-out infinite; }
+  .ds-btn-primary:hover { transform: translateY(-1px); }
+  .ds-btn-sub { font-size: 11px; font-weight: 600; opacity: 0.65; margin-top: 3px; }
+  @keyframes ds-shimmer { 0%, 35% { background-position: 150% 0; } 65%, 100% { background-position: -50% 0; } }
+
+  .ds-mstat { background: linear-gradient(155deg, #212121 0%, #161616 55%, #131313 100%); border: 1px solid #262626; border-radius: 4px; padding: 16px 22px; text-align: center; min-width: 140px; }
+  .ds-mstat-num { font-size: 24px; font-weight: 900; color: #D4AF37; font-family: 'Inter', sans-serif; }
+  .ds-mstat-lbl { font-size: 11px; color: #9a9a9a; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+  .ds-headline { font-size: 28px; font-weight: 900; letter-spacing: -1px; line-height: 1.1; font-family: 'Montserrat', sans-serif; text-transform: uppercase; color: #fff; margin: 0; }
+  .ds-headline .g { color: #D4AF37; }
+
+  .ds-cert-row { display: flex; gap: 10px; overflow-x: auto; padding: 6px; max-width: 480px; scrollbar-width: thin; scrollbar-color: rgba(212,175,55,0.3) transparent; }
+  .ds-cert-row::-webkit-scrollbar { height: 4px; }
+  .ds-cert-row::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 2px; }
+  .ds-cert-thumb { height: 70px; width: 100px; flex-shrink: 0; border-radius: 4px; border: 1px solid #1e1e1e; background: linear-gradient(135deg,#1a1a1a,#0a0a0a); display:flex; align-items:center; justify-content:center; color:#D4AF37; font-size:11px; font-weight:700; cursor: pointer; transition: transform 0.2s; }
+  .ds-cert-thumb:hover { transform: translateY(-3px); border-color: rgba(212,175,55,0.4); }
+
+  .rules { max-width: 720px; margin: 0 auto; }
+  .rule { background: linear-gradient(155deg, #171717 0%, #0d0d0d 55%, #0a0a0a 100%); border: 1px solid #1e1e1e; border-radius: 6px; padding: 18px 22px; margin-bottom: 14px; }
+  .rule-name { color: #D4AF37; font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+  .rule-body { color: #bbb; font-size: 14px; line-height: 1.6; }
+
+  .dodont { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin: 0 auto; }
+  @media (max-width: 700px) { .dodont { grid-template-columns: 1fr; } }
+  .dodont ul { list-style: none; padding: 0; margin: 0; }
+  .dodont li { font-size: 14px; line-height: 1.6; margin-bottom: 14px; padding-left: 22px; position: relative; color: #ccc; }
+  .do li::before { content: '✓'; position: absolute; left: 0; color: #15c89a; font-weight: 900; }
+  .dont li::before { content: '✗'; position: absolute; left: 0; color: #ef4444; font-weight: 900; }
+  .dodont h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Design System</div>
+  <h1 class="title">The Gold <span class="g">Ticker</span></h1>
+  <p class="subtitle">3AMAK Trades reads as a live trading terminal at rest — a near-void black backdrop with one moving, glowing element standing in for the market itself.</p>
+</header>
+<div class="divider"></div>
+
+<section>
+  <h2 class="sechead">Colors</h2>
+  <p class="secsub">Almost monochrome by design — one accent carries all the warmth.</p>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#D4AF37"></div><div class="swatch-info"><div class="swatch-name">Ticker Gold</div><div class="swatch-hex">#D4AF37</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#B8960C"></div><div class="swatch-info"><div class="swatch-name">Ticker Gold Dim</div><div class="swatch-hex">#B8960C</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#050505;border-bottom:1px solid #222"></div><div class="swatch-info"><div class="swatch-name">Session Black</div><div class="swatch-hex">#050505</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:linear-gradient(155deg,#171717,#0d0d0d,#0a0a0a)"></div><div class="swatch-info"><div class="swatch-name">Card Charcoal</div><div class="swatch-hex">#171717 → #0a0a0a</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#ffffff"></div><div class="swatch-info"><div class="swatch-name">Paper White</div><div class="swatch-hex">#ffffff</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#777777"></div><div class="swatch-info"><div class="swatch-name">Ticker Gray</div><div class="swatch-hex">#777777</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#ef4444"></div><div class="swatch-info"><div class="swatch-name">Loss Red</div><div class="swatch-hex">#ef4444</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:linear-gradient(90deg,#15c89a 50%,#ff5364 50%)"></div><div class="swatch-info"><div class="swatch-name">Chart Up / Down</div><div class="swatch-hex">#15c89a / #ff5364</div></div></div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<section>
+  <h2 class="sechead">Typography</h2>
+  <p class="secsub">Two type systems, one for each language — never one translated into the other.</p>
+  <div class="type-sample">
+    <div class="type-label">Display — English</div>
+    <div class="type-en" style="font-size:44px">Market Rewards<br><span style="color:#D4AF37">Discipline.</span></div>
+    <div class="type-meta">Montserrat 900 · clamp(36px,6vw,68px) · uppercase</div>
+  </div>
+  <div class="type-sample">
+    <div class="type-label">Display — Arabic</div>
+    <div class="type-ar" style="font-size:44px">السوق يكافئ <span style="color:#D4AF37">من يدرسه.</span></div>
+    <div class="type-meta">Cairo 900 · clamp(36px,6vw,68px) · natural case</div>
+  </div>
+  <div class="type-sample">
+    <div class="type-label">Body Text</div>
+    <p style="max-width:520px;margin:0 auto;color:#ccc;font-size:15px;line-height:1.7">The idea behind prop firms is simple: you don't need a big personal capital to start trading.</p>
+    <div class="type-meta">Inter 400 · 15px · line-height 1.7</div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<section>
+  <h2 class="sechead">Components</h2>
+  <p class="secsub">Live-rendered, not described.</p>
+
+  <div class="comp-row">
+    <div class="comp-card">
+      <button class="ds-btn-primary"><span>Apply Now</span><span class="ds-btn-sub">Free · No commitment</span></button>
+      <div class="comp-caption">Primary Button — shimmer sweep runs continuously</div>
+    </div>
+    <div class="comp-card">
+      <div style="display:flex;gap:12px">
+        <div class="ds-mstat"><div class="ds-mstat-num">20+</div><div class="ds-mstat-lbl">Students</div></div>
+        <div class="ds-mstat"><div class="ds-mstat-num">$500K+</div><div class="ds-mstat-lbl">Funded Capital</div></div>
+      </div>
+      <div class="comp-caption">Stat Cards — Card Charcoal Bright surface</div>
+    </div>
+  </div>
+  <div class="comp-row">
+    <div class="comp-card">
+      <h3 class="ds-headline">Prop Firms <span class="g">Explained</span></h3>
+      <div class="comp-caption">Gold-Word Headline pattern</div>
+    </div>
+    <div class="comp-card">
+      <div class="ds-cert-row">
+        <div class="ds-cert-thumb">TopStep</div>
+        <div class="ds-cert-thumb">AquaFutures</div>
+        <div class="ds-cert-thumb">FundedNext</div>
+      </div>
+      <div class="comp-caption">Certificate Scroll Row — thin gold scrollbar</div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<section>
+  <h2 class="sechead">Named Rules</h2>
+  <div class="rules">
+    <div class="rule"><div class="rule-name">The One Accent Rule</div><div class="rule-body">Gold is the only color allowed to draw the eye. A second accent color is not the answer.</div></div>
+    <div class="rule"><div class="rule-name">The Gold Word Rule</div><div class="rule-body">Nearly every headline is a plain phrase plus one gold-colored final word.</div></div>
+    <div class="rule"><div class="rule-name">The No-Shadow Rule</div><div class="rule-body">Never use box-shadow for elevation. Use a tonal step or a gold radial glow instead.</div></div>
+    <div class="rule"><div class="rule-name">The Chart Exception</div><div class="rule-body">The live candlestick chart uses its own literal market green/red — scoped only to that component.</div></div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<section>
+  <h2 class="sechead">Do's and Don'ts</h2>
+  <div class="dodont">
+    <div class="do">
+      <h3>Do</h3>
+      <ul>
+        <li>Keep gold reserved for emphasis</li>
+        <li>Write Arabic and English as two independent, natural texts</li>
+        <li>Use the gold-word headline pattern by default</li>
+        <li>Keep radius at 4px for new surfaces</li>
+      </ul>
+    </div>
+    <div class="dont">
+      <h3>Don't</h3>
+      <ul>
+        <li>Introduce a second accent color</li>
+        <li>Bring back the bordered eyebrow chip</li>
+        <li>Use box-shadow for elevation</li>
+        <li>Fabricate proof, testimonials, or results</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

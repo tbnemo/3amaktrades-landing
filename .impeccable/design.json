@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-07T00:00:00Z",
+  "title": "Design System: 3AMAK Trades",
+  "extensions": {
+    "colorMeta": {
+      "ticker-gold": {
+        "role": "primary",
+        "displayName": "Ticker Gold",
+        "canonical": "#D4AF37",
+        "tonalRamp": ["#3d2e08", "#6b5210", "#a37d18", "#c49a26", "#D4AF37", "#dcc158", "#e6d183", "#f5ecc9"]
+      },
+      "ticker-gold-dim": {
+        "role": "primary-variant",
+        "displayName": "Ticker Gold Dim",
+        "canonical": "#B8960C",
+        "tonalRamp": ["#2e2503", "#4f3f06", "#7a6109", "#9a7c0b", "#B8960C", "#c9a92f", "#dbc164", "#eeddA0"]
+      },
+      "session-black": {
+        "role": "neutral",
+        "displayName": "Session Black",
+        "canonical": "#050505",
+        "tonalRamp": ["#030303", "#0a0a0a", "#1a1a1a", "#2e2e2e", "#4a4a4a", "#6e6e6e", "#9a9a9a", "#d0d0d0"]
+      },
+      "loss-red": {
+        "role": "semantic-negative",
+        "displayName": "Loss Red",
+        "canonical": "#ef4444",
+        "tonalRamp": ["#3d0a0a", "#661616", "#932222", "#c22e2e", "#ef4444", "#f37373", "#f7a3a3", "#fbd4d4"]
+      },
+      "chart-up": {
+        "role": "chart-only",
+        "displayName": "Chart Up Green",
+        "canonical": "#15c89a"
+      },
+      "chart-down": {
+        "role": "chart-only",
+        "displayName": "Chart Down Red",
+        "canonical": "#ff5364"
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headline only, both languages." },
+      "headline": { "displayName": "Headline", "purpose": "Every section's h2." },
+      "label": { "displayName": "Label / Eyebrow", "purpose": "Section eyebrows, stat labels, mentor tag." },
+      "body-en": { "displayName": "Body (English)", "purpose": "Paragraph copy in English." },
+      "body-ar": { "displayName": "Body (Arabic)", "purpose": "Paragraph copy in Arabic, taller line-height than English." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "cta-shimmer", "value": "ctaShimmer 3.2s ease-in-out infinite", "purpose": "Diagonal light sweep across every primary CTA button, running continuously." },
+      { "name": "fade-up", "value": "opacity 0.6s ease, transform 0.6s ease (translateY(24px) -> 0)", "purpose": "Scroll-reveal for section content." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "700px" },
+      { "name": "desktop-split", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Solid gold CTA with a continuous diagonal shimmer sweep. The system's only button style.",
+      "html": "<button class=\"ds-btn-primary\"><span class=\"ds-btn-main\">Apply Now</span><span class=\"ds-btn-sub\">Free · No commitment</span></button>",
+      "css": ".ds-btn-primary { display: inline-flex; flex-direction: column; align-items: center; background: #D4AF37; color: #000; border: none; cursor: pointer; border-radius: 4px; padding: 16px 44px; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; text-transform: uppercase; position: relative; overflow: hidden; transition: transform 0.15s, box-shadow 0.15s; font-family: inherit; } .ds-btn-primary::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%); } .ds-btn-primary::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.55) 50%, transparent 60%); background-size: 250% 100%; background-position: 150% 0; animation: ds-cta-shimmer 3.2s ease-in-out infinite; } .ds-btn-sub { font-size: 11px; font-weight: 600; opacity: 0.65; margin-top: 3px; } .ds-btn-primary:hover { transform: translateY(-1px); } @keyframes ds-cta-shimmer { 0%, 35% { background-position: 150% 0; } 65%, 100% { background-position: -50% 0; } }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "mstat-card",
+      "description": "Proof-metric card: bold gold number over a small gray label. Used for years experience, students trained, payouts, funded capital.",
+      "html": "<div class=\"ds-mstat\"><div class=\"ds-mstat-num\">$500K+</div><div class=\"ds-mstat-lbl\">Funded Capital</div></div>",
+      "css": ".ds-mstat { background: linear-gradient(155deg, #171717 0%, #0d0d0d 55%, #0a0a0a 100%); border: 1px solid #1e1e1e; border-radius: 4px; padding: 12px 16px; text-align: center; } .ds-mstat-num { font-size: 20px; font-weight: 900; color: #D4AF37; font-family: 'Inter', sans-serif; } .ds-mstat-lbl { font-size: 10px; color: #777; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }"
+    },
+    {
+      "name": "Section Eyebrow Label",
+      "kind": "custom",
+      "refersTo": "section-label",
+      "description": "Plain-text gold eyebrow above every section headline. No background chip -- an earlier bordered-pill treatment was deliberately removed.",
+      "html": "<span class=\"ds-section-label\">The Basics</span>",
+      "css": ".ds-section-label { display: inline-block; color: #D4AF37; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; }"
+    },
+    {
+      "name": "Gold-Word Headline",
+      "kind": "custom",
+      "refersTo": "headline-gold-word",
+      "description": "The system's signature headline pattern: a plain phrase followed by one gold word. Used on nearly every section h2.",
+      "html": "<h2 class=\"ds-headline\">Prop Firms <span class=\"ds-g\">Explained</span></h2>",
+      "css": ".ds-headline { font-size: clamp(26px, 4vw, 42px); font-weight: 900; letter-spacing: -1px; line-height: 1.1; font-family: 'Montserrat', sans-serif; text-transform: uppercase; color: #fff; } .ds-g { color: #D4AF37; }"
+    },
+    {
+      "name": "Certificate Scroll Row",
+      "kind": "custom",
+      "refersTo": "cert-scroll-row",
+      "description": "Signature component: horizontal-scrolling row of small certificate/proof thumbnails with a thin custom gold scrollbar, click to open a lightbox.",
+      "html": "<div class=\"ds-cert-row\"><img class=\"ds-cert-thumb\" src=\"cert1.jpg\" alt=\"Certificate\"/><img class=\"ds-cert-thumb\" src=\"cert2.jpg\" alt=\"Certificate\"/></div>",
+      "css": ".ds-cert-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: thin; scrollbar-color: rgba(212,175,55,0.3) transparent; } .ds-cert-row::-webkit-scrollbar { height: 4px; } .ds-cert-row::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 2px; } .ds-cert-thumb { height: 92px; width: auto; flex-shrink: 0; border-radius: 4px; border: 1px solid #1e1e1e; cursor: pointer; transition: transform 0.2s, border-color 0.2s; } .ds-cert-thumb:hover { transform: translateY(-3px); border-color: rgba(212,175,55,0.4); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Gold Ticker",
+    "overview": "The whole system reads as a live trading terminal at rest: a near-void black session backdrop with one moving, glowing element -- gold -- that stands in for the market itself. The live candlestick chart behind the hero isn't decoration bolted onto a marketing page; it's the thesis of the design made literal. Everything else (typography, cards, dividers) borrows the same restraint: dark, quiet, and confident, with gold reserved for the things that matter. The palette is fixed by brand commitment -- gold and black are not a starting point to explore away from. A full palette swap (e.g. to white/blue) was explicitly considered and rejected: it read as generic fintech instead of 'elite trader.'",
+    "keyCharacteristics": [
+      "Near-void black backdrop with a single gold accent used sparingly and purposefully",
+      "Two headline fonts doing two different jobs: Montserrat (English) vs. Cairo (Arabic) -- never the same family serving both",
+      "A gold divider line with a soft radial glow marks every section boundary, standing in for shadows",
+      "Motion is restrained and purposeful: CTA shimmer, fade-up reveals, a live candlestick chart -- never decorative for its own sake"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Gold is the only color allowed to draw the eye. If something new needs emphasis, it either becomes gold or it doesn't get emphasis.", "section": "colors" },
+      { "name": "The Chart Exception", "body": "The live candlestick chart uses its own literal market green/red instead of the site's gold/red pair, scoped only to that component.", "section": "colors" },
+      { "name": "The Gold Word Rule", "body": "Nearly every headline is a plain phrase plus one gold-colored final word (the .g class). New headlines should default to this pattern.", "section": "typography" },
+      { "name": "The No-Shadow Rule", "body": "Never use box-shadow for elevation. Use a tonal step (Session Black to Card Charcoal to Card Charcoal Bright) or a gold radial glow instead.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep gold reserved for emphasis -- if it appears more than roughly once per view, it's stopped being an accent.",
+      "Do write Arabic and English as two independent, natural texts sharing one meaning -- never transliterate or code-switch.",
+      "Do use the gold-word headline pattern as the default emphasis technique for new headlines.",
+      "Do use a tonal step or gold radial glow for depth, per the No-Shadow Rule.",
+      "Do keep radius at 4px for new rectangular surfaces unless matching the 6px large-surface exception."
+    ],
+    "donts": [
+      "Don't introduce a second accent color anywhere outside the live chart's literal market green/red.",
+      "Don't bring back a background-and-border chip treatment on eyebrow labels -- that was tried and removed for looking like generic AI-template design.",
+      "Don't use box-shadow for elevation.",
+      "Don't fabricate proof (testimonials, results, names) -- a previous fabricated-testimonials section was removed and must not be reintroduced casually."
+    ]
+  }
+}
