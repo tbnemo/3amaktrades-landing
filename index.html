@@ -2153,14 +2153,23 @@ function render() {
       }, delay);
     }
     const statsSection = document.getElementById('stats');
-    if (statsSection && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const statsObserver = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting) {
-          document.querySelectorAll('.stat-number').forEach((el, i) => animateCountUp(el, i * 120));
-          statsObserver.disconnect();
-        }
-      }, { threshold: 0.4 });
-      statsObserver.observe(statsSection);
+    if (statsSection) {
+      const runStatsCountUp = () => {
+        document.querySelectorAll('.stat-number').forEach((el, i) => animateCountUp(el, i * 120));
+      };
+      const rect = statsSection.getBoundingClientRect();
+      const alreadyVisible = rect.top < window.innerHeight && rect.bottom > 0;
+      if (alreadyVisible) {
+        runStatsCountUp();
+      } else {
+        const statsObserver = new IntersectionObserver((entries) => {
+          if (entries[0].isIntersecting) {
+            runStatsCountUp();
+            statsObserver.disconnect();
+          }
+        }, { threshold: 0.1 });
+        statsObserver.observe(statsSection);
+      }
     }
 
     // Scroll progress bar
