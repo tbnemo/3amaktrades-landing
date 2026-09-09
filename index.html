@@ -307,7 +307,7 @@
       font-family: 'Montserrat', sans-serif; text-transform: uppercase;
       letter-spacing: 1px; line-height: 1.25;
     }
-    .section-header h2 .g { color: var(--green); }
+    .section-header h2 .g, .apply-header h2 .g { color: var(--green); }
 
     /* ══ VSL ══ */
     #vsl {
@@ -455,7 +455,7 @@
     /* ══ FORM ══ */
     .form-box {
       background: var(--dark-3); border: 1px solid #1e1e1e;
-      border-radius: 4px; overflow: hidden;
+      border-radius: 4px;
       position: relative;
     }
     .form-box::before {
@@ -516,7 +516,7 @@
       transition: border-color 0.2s;
     }
     .form-input:focus { border-color: var(--green); }
-    .form-input::placeholder { color: #333; }
+    .form-input::placeholder { color: #5a5a5a; }
 
     /* Phone with country code — always LTR regardless of page direction */
     .phone-wrap { display: flex; gap: 8px; align-items: stretch; direction: ltr; }
@@ -565,6 +565,7 @@
     html[lang="ar"] .form-choice { font-size: 15px; }
     .form-choice:hover { border-color: rgba(212,175,55,0.3); background: rgba(212,175,55,0.04); }
     .form-choice.selected { border-color: var(--green); background: rgba(212,175,55,0.08); color: var(--green); }
+    .form-choice:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
     .choice-key {
       width: 28px; height: 28px; border-radius: 4px;
       background: #1a1a1a; border: 1px solid #333;
@@ -576,10 +577,16 @@
     .form-choice.selected .choice-key { background: var(--green); border-color: var(--green); color: #000; }
 
     /* nav buttons */
+    .form-error {
+      margin: 0 28px 16px; padding: 10px 14px; font-size: 13px; line-height: 1.6;
+      color: var(--red); background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 4px;
+    }
     .form-nav {
       padding: 0 28px 28px;
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
     }
+    .form-btn-next:disabled { opacity: 0.6; cursor: not-allowed; }
     .form-btn-next {
       background: var(--green); color: #000;
       border: none; border-radius: 4px;
@@ -648,10 +655,6 @@
       border-radius: 4px; border: 1px solid #1e1e1e; overflow: hidden;
       display: flex; align-items: center; justify-content: center;
       color: var(--gray); font-size: 13px; text-align: center; position: relative;
-    }
-    .mentor-photo::after {
-      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
-      background: var(--green); opacity: 0.5;
     }
     .mentor-tag { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 10px; text-align: center; }
     html[lang="ar"] .mentor-tag { text-transform: none; letter-spacing: 0; font-size: 13px; }
@@ -726,8 +729,7 @@
     html[lang="ar"] .propfirm-body p { line-height: 2.1; font-size: 16px; }
     .pf-subhead {
       color: #fff; font-size: clamp(19px, 3vw, 24px); font-weight: 900;
-      margin: 40px 0 18px; padding-inline-start: 14px;
-      border-inline-start: 3px solid var(--green);
+      margin: 40px 0 18px;
     }
     .pf-closing {
       color: var(--green) !important; font-size: 16px !important; font-weight: 700;
@@ -848,14 +850,17 @@
     .foot-social a { color: #555; transition: color 0.15s; display: inline-flex; align-items: center; justify-content: center; padding: 11px; margin: -11px; }
     .foot-social a:hover { color: var(--green); }
     .foot-social svg { width: 19px; height: 19px; }
-    footer p { font-size: 11px; color: #2a2a2a; }
+    footer p { font-size: 11px; color: #8a8a8a; }
     .foot-legal { margin-top: 12px; }
-    .foot-legal a { color: #3a3a3a; font-size: 11px; text-decoration: underline; margin: 0 8px; }
+    .foot-legal a { color: #a0a0a0; font-size: 11px; text-decoration: underline; margin: 0 8px; }
     .foot-legal a:hover { color: var(--green); }
 
     /* ══ FADE UP ══ */
     .fade-up { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
     .fade-up.visible { opacity: 1; transform: translateY(0); }
+    @media (prefers-reduced-motion: reduce) {
+      .fade-up { opacity: 1; transform: none; transition: none; }
+    }
 
     /* ══ RESPONSIVE ══ */
     @media (max-width: 700px) {
@@ -928,7 +933,7 @@ const t = {
     pf_p8: "وهاد الشي ممكن فعلاً يصير، وشركات التمويل بتدفع للمتداولين المؤهلين بشكل مستمر، بس أكيد مش مضمون. لازم تكون مربح، تلتزم بقواعد المخاطرة والحد الأقصى للخسارة، وتحقق كل شروط السحب الخاصة بالشركة.",
     pf_p9: "يعني بدل ما تحتاج 50 ألف دولار من رأس مالك الشخصي، شركات التمويل بتعطيك فرصة تبلش بمبلغ صغير نسبياً وتستخدم مهارتك بالتداول عشان توصل لحساب أكبر وإمكانية تحقيق مدفوعات حقيقية.",
     pf_closing: "بس بالنهاية، السر مش إنك تعدّي الحساب بسرعة… السر إنك تعرف كيف تحافظ عليه، تدير المخاطر، وتحقق مدفوعات بشكل مستدام.",
-    mentor_name: "3AMAK",
+    mentor_name: "عمر",
     mentor_title: "يحول المبتدئين إلى متداولين ثابتين",
     mstat1_n: "20+", mstat1_l: "طالب",
     mstat2_n: "2yr+", mstat2_l: "خبرة",
@@ -975,7 +980,7 @@ const t = {
     final_p: "السوق يتحرك كل يوم. السؤال الوحيد هو: هل أنت على الجانب الصحيح منه؟",
     cta4: "تقدم لمكالمة استراتيجية مجانية",
     cta4_sub: "الأماكن محدودة — لا تتأخر",
-    footer_copy: "© 2025 3AMAK Trades · جميع الحقوق محفوظة · النتائج غير مضمونة · هذا ليس نصيحة مالية",
+    footer_copy: "<bdi dir=\"ltr\">© 2025 3AMAK Trades</bdi> · جميع الحقوق محفوظة · النتائج غير مضمونة · هذا ليس نصيحة مالية",
     footer_privacy: "سياسة الخصوصية",
     footer_terms: "الشروط والأحكام",
     // form
@@ -992,7 +997,13 @@ const t = {
     q9_a: "دخل إضافي جانبي", q9_b: "استبدال دخلي الكامل", q9_c: "أنا أتداول وأريد أن أصبح محترفاً",
     q10: "ما رقم هاتفك؟", q10_ph: "مثال: +966 5xxxxxxxx",
     q11: "ما بريدك الإلكتروني؟", q11_ph: "مثال: name@email.com",
-    btn_next: "التالي", btn_back: "رجوع",
+    btn_next: "التالي", btn_back: "رجوع", btn_submitting: "جارِ الإرسال...",
+    submit_error: "حدث خطأ أثناء الإرسال. تحقق من اتصالك بالإنترنت وحاول مرة أخرى، أو راسلنا مباشرة على واتساب.",
+    submit_retry: "حاول مرة أخرى",
+    err_required: "هذا الحقل مطلوب.",
+    err_name_digits: "الاسم يجب ألا يحتوي على أرقام.",
+    err_phone: "أدخل رقم هاتف صحيح (6 أرقام على الأقل).",
+    err_email: "أدخل بريداً إلكترونياً صحيحاً.",
     confirm_h: "تم استلام طلبك! 🎉",
     confirm_p: "شكراً لك. سنراجع طلبك ونتواصل معك خلال 24 ساعة.",
     confirm_wa_label: "على هاتفك؟ راسلنا مباشرة على واتساب",
@@ -1056,7 +1067,7 @@ const t = {
     pf_p8: "This genuinely happens — prop firms pay qualified traders on an ongoing basis — but it's never guaranteed. You have to stay profitable, respect the risk and drawdown rules, and meet every payout requirement the firm sets.",
     pf_p9: "So instead of needing $50,000 of your own money, prop firms give you a shot at starting with a relatively small amount and using your trading skill to access a much bigger account — and real payouts.",
     pf_closing: "But at the end of the day, the secret isn't passing the account fast… it's knowing how to keep it, manage risk, and generate payouts sustainably.",
-    mentor_name: "3AMAK",
+    mentor_name: "Omar",
     mentor_title: "Turning beginners into consistent traders",
     mstat1_n: "20+", mstat1_l: "Students",
     mstat2_n: "2yr+", mstat2_l: "Experience",
@@ -1120,7 +1131,13 @@ const t = {
     q9_a: "Extra income on the side", q9_b: "Replace my full-time income", q9_c: "Already trading, want to go pro",
     q10: "What's your phone number?", q10_ph: "e.g. +1 555 000 0000",
     q11: "What's your email address?", q11_ph: "e.g. name@email.com",
-    btn_next: "Next", btn_back: "Back",
+    btn_next: "Next", btn_back: "Back", btn_submitting: "Submitting...",
+    submit_error: "Something went wrong sending your application. Check your connection and try again, or message us directly on WhatsApp.",
+    submit_retry: "Try Again",
+    err_required: "This field is required.",
+    err_name_digits: "Name shouldn't contain numbers.",
+    err_phone: "Enter a valid phone number (at least 6 digits).",
+    err_email: "Enter a valid email address.",
     confirm_h: "Application received! 🎉",
     confirm_p: "Thanks! We'll review your application and reach out within 24 hours.",
     confirm_wa_label: "On your phone? Text us on WhatsApp",
@@ -1136,6 +1153,9 @@ function setLang(l) {
   const html = document.documentElement;
   html.lang = l;
   html.dir = l === 'ar' ? 'rtl' : 'ltr';
+  document.title = l === 'ar' ? '3AMAK TRADES — تعلم التداول' : '3AMAK TRADES — Learn to Trade';
+  const ogLocale = document.querySelector('meta[property="og:locale"]');
+  if (ogLocale) ogLocale.content = l === 'ar' ? 'ar_AR' : 'en_US';
   document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
   render();
 }
@@ -1157,35 +1177,6 @@ function render() {
   document.querySelector('#hero .cta-btn .main').textContent = txt('cta1');
   document.querySelector('#hero .cta-btn .sub').textContent = txt('cta1_sub');
 
-  // Click-to-play VSL: stay a static thumbnail (fast initial load, no YouTube JS)
-  // until the visitor actually wants to watch, then swap in the real embed.
-  const vslThumb = document.getElementById('vslThumb');
-  if (vslThumb) {
-    vslThumb.addEventListener('click', () => {
-      const id = vslThumb.dataset.ytId;
-      const iframe = document.createElement('iframe');
-      iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
-      iframe.title = 'VSL';
-      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-      iframe.allowFullscreen = true;
-      vslThumb.replaceWith(iframe);
-    });
-  }
-
-  // Certificate lightbox: click a thumbnail to view it full-size
-  const certLightbox = document.getElementById('certLightbox');
-  if (certLightbox) {
-    document.querySelectorAll('.mentor-certs-row img').forEach(img => {
-      img.addEventListener('click', () => {
-        const full = certLightbox.querySelector('img');
-        full.src = img.src;
-        full.alt = img.alt;
-        certLightbox.classList.add('open');
-      });
-    });
-    certLightbox.addEventListener('click', () => certLightbox.classList.remove('open'));
-  }
-
   // Stats
   document.querySelectorAll('.stat-number')[0].textContent = txt('stat1_n');
   document.querySelectorAll('.stat-label')[0].textContent = txt('stat1_l');
@@ -1196,7 +1187,7 @@ function render() {
 
   // Proof
   document.querySelector('#proof .section-label').textContent = txt('proof_label');
-  document.querySelector('#proof .proof-h').textContent = txt('proof_h');
+  document.querySelector('#proof .proof-h').textContent = txt('proof_h') + ' ';
   document.querySelector('#proof .proof-h-g').textContent = txt('proof_h_g');
   document.querySelectorAll('.proof-tag')[0].textContent = txt('proof1_tag');
   document.querySelectorAll('.proof-title')[0].textContent = txt('proof1_title');
@@ -1207,7 +1198,7 @@ function render() {
 
   // Apply
   document.querySelector('#apply .section-label').textContent = txt('apply_label');
-  document.querySelector('.apply-h').textContent = txt('apply_h');
+  document.querySelector('.apply-h').textContent = txt('apply_h') + ' ';
   document.querySelector('.apply-h-g').textContent = txt('apply_h_g');
   document.querySelector('.apply-header p').textContent = txt('apply_sub');
 
@@ -1268,7 +1259,7 @@ function render() {
   document.querySelector('#final-cta .cta-btn .sub').textContent = txt('cta4_sub');
 
   // Footer
-  document.querySelector('footer p').textContent = txt('footer_copy');
+  document.querySelector('footer p').innerHTML = txt('footer_copy');
 }
 </script>
 
@@ -1277,7 +1268,7 @@ function render() {
 
 <!-- NAV -->
 <nav>
-  <img src="/logo.png" alt="UNC's Trading Floor" class="nav-logo-img" />
+  <img src="/logo.png" alt="3AMAK Trades" class="nav-logo-img" />
   <div class="nav-right">
     <div class="lang-toggle">
       <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')">عربي</button>
@@ -1324,9 +1315,9 @@ function render() {
 <!-- STATS -->
 <section id="stats">
   <div class="stats-grid">
-    <div class="stat-item fade-up"><div class="stat-number"></div><div class="stat-label"></div></div>
-    <div class="stat-item fade-up"><div class="stat-number"></div><div class="stat-label"></div></div>
-    <div class="stat-item fade-up"><div class="stat-number"></div><div class="stat-label"></div></div>
+    <div class="stat-item fade-up"><div class="stat-number" dir="ltr"></div><div class="stat-label"></div></div>
+    <div class="stat-item fade-up"><div class="stat-number" dir="ltr"></div><div class="stat-label"></div></div>
+    <div class="stat-item fade-up"><div class="stat-number" dir="ltr"></div><div class="stat-label"></div></div>
   </div>
 </section>
 
@@ -1346,9 +1337,9 @@ function render() {
         <div class="mentor-name"></div>
         <div class="mentor-title"></div>
         <div class="mentor-stats">
-          <div class="mstat"><div class="mstat-num"></div><div class="mstat-lbl"></div></div>
-          <div class="mstat"><div class="mstat-num"></div><div class="mstat-lbl"></div></div>
-          <div class="mstat"><div class="mstat-num"></div><div class="mstat-lbl"></div></div>
+          <div class="mstat"><div class="mstat-num" dir="ltr"></div><div class="mstat-lbl"></div></div>
+          <div class="mstat"><div class="mstat-num" dir="ltr"></div><div class="mstat-lbl"></div></div>
+          <div class="mstat"><div class="mstat-num" dir="ltr"></div><div class="mstat-lbl"></div></div>
         </div>
         <div class="mentor-bio"><p></p><p></p><p></p></div>
         <div class="mentor-certs">
@@ -1387,12 +1378,12 @@ function render() {
       <p data-key="pf_p5"></p>
       <p data-key="pf_p6"></p>
       <div class="mentor-stats pf-facts">
-        <div class="mstat"><div class="mstat-num" data-key="pf_fact1_n"></div><div class="mstat-lbl" data-key="pf_fact1_l"></div></div>
-        <div class="mstat"><div class="mstat-num" data-key="pf_fact2_n"></div><div class="mstat-lbl" data-key="pf_fact2_l"></div></div>
+        <div class="mstat"><div class="mstat-num" dir="ltr" data-key="pf_fact1_n"></div><div class="mstat-lbl" data-key="pf_fact1_l"></div></div>
+        <div class="mstat"><div class="mstat-num" dir="ltr" data-key="pf_fact2_n"></div><div class="mstat-lbl" data-key="pf_fact2_l"></div></div>
         <div class="mstat"><div class="mstat-num" data-key="pf_fact3_n"></div><div class="mstat-lbl" data-key="pf_fact3_l"></div></div>
       </div>
       <div class="pf-example">
-        <div class="pf-example-num">2.5%</div>
+        <div class="pf-example-num" dir="ltr">2.5%</div>
         <div class="pf-example-sub" data-key="pf_example_sub"></div>
         <p class="pf-example-pitch" data-key="pf_example_pitch"></p>
       </div>
@@ -1443,7 +1434,7 @@ function render() {
 
       <div class="form-step-counter">
         <span id="stepCounterText"></span>
-        <span id="stepCounterFrac" style="font-family:'Inter',sans-serif;"></span>
+        <span id="stepCounterFrac" dir="ltr" style="font-family:'Inter',sans-serif;"></span>
       </div>
 
       <div class="form-steps">
@@ -1488,52 +1479,54 @@ function render() {
         <!-- Step 5: Experience -->
         <div class="form-step" data-step="5">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q5"></span></h3>
-          <div class="form-choices" id="choices_5">
-            <div class="form-choice" data-value="beginner"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
-            <div class="form-choice" data-value="tried-lost"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
-            <div class="form-choice" data-value="some-exp"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
+          <div class="form-choices" id="choices_5" role="radiogroup">
+            <div class="form-choice" data-value="beginner" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
+            <div class="form-choice" data-value="tried-lost" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
+            <div class="form-choice" data-value="some-exp" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
           </div>
         </div>
 
         <!-- Step 6: Budget -->
         <div class="form-step" data-step="6">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q7"></span></h3>
-          <div class="form-choices" id="choices_6">
-            <div class="form-choice" data-value="<500"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
-            <div class="form-choice" data-value="500-1k"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
-            <div class="form-choice" data-value="1k-3k"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
-            <div class="form-choice" data-value="3k+"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
+          <div class="form-choices" id="choices_6" role="radiogroup">
+            <div class="form-choice" data-value="<500" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
+            <div class="form-choice" data-value="500-1k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
+            <div class="form-choice" data-value="1k-3k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
+            <div class="form-choice" data-value="3k+" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
           </div>
         </div>
 
         <!-- Step 7: Looking for -->
         <div class="form-step" data-step="7">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q8"></span></h3>
-          <div class="form-choices" id="choices_7">
-            <div class="form-choice" data-value="videos"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
-            <div class="form-choice" data-value="community"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
-            <div class="form-choice" data-value="1on1"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
-            <div class="form-choice" data-value="all"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
+          <div class="form-choices" id="choices_7" role="radiogroup">
+            <div class="form-choice" data-value="videos" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
+            <div class="form-choice" data-value="community" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
+            <div class="form-choice" data-value="1on1" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
+            <div class="form-choice" data-value="all" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
           </div>
         </div>
 
         <!-- Step 8: Goal -->
         <div class="form-step" data-step="8">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q9"></span></h3>
-          <div class="form-choices" id="choices_8">
-            <div class="form-choice" data-value="side-income"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
-            <div class="form-choice" data-value="replace-income"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
-            <div class="form-choice" data-value="full-time"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
+          <div class="form-choices" id="choices_8" role="radiogroup">
+            <div class="form-choice" data-value="side-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
+            <div class="form-choice" data-value="replace-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
+            <div class="form-choice" data-value="full-time" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
           </div>
         </div>
 
       </div><!-- end form-steps -->
 
+      <p class="form-error" id="formError" role="alert" aria-live="assertive" style="display:none"></p>
+
       <!-- Nav -->
       <div class="form-nav" id="formNav">
         <button class="form-btn-back" id="formBack" onclick="formPrev()" style="visibility:hidden" data-key="btn_back"></button>
         <button class="form-btn-next" id="formNext" onclick="formNext()">
-          <span data-key="btn_next"></span> <span style="font-size:16px">→</span>
+          <span id="formNextLabel" data-key="btn_next"></span> <span id="formNextArrow" style="font-size:16px">→</span>
         </button>
       </div>
 
@@ -1714,30 +1707,42 @@ function render() {
     const target = document.querySelector(`.form-step[data-step="${n}"]`);
     if (target) target.classList.add('active');
     currentStep = n;
+    clearFormError();
     formRenderText();
     const input = target && target.querySelector('.form-input');
     if (input) setTimeout(() => input.focus(), 50);
   }
 
-  function isStepValid() {
+  function stepErrorKey() {
     const step = document.querySelector(`.form-step[data-step="${currentStep}"]`);
     const input = step.querySelector('.form-input');
     if (input) {
       const val = input.value.trim();
-      if (!val.length) return false;
+      if (!val.length) return 'err_required';
       // Step 1: name — letters only (Arabic + Latin), no digits
-      if (currentStep === 1 && /\d/.test(val)) { input.dataset.error = '1'; return false; }
+      if (currentStep === 1 && /\d/.test(val)) return 'err_name_digits';
       // Step 2: phone — number part must have at least 6 digits
-      if (currentStep === 2 && val.replace(/\D/g,'').length < 6) return false;
+      if (currentStep === 2 && val.replace(/\D/g,'').length < 6) return 'err_phone';
       // Step 3: email — basic email format
-      if (currentStep === 3 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return false;
-      return true;
+      if (currentStep === 3 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return 'err_email';
+      return null;
     }
-    return !!answers[`q${currentStep}`];
+    return answers[`q${currentStep}`] ? null : 'err_required';
+  }
+
+  function showFormError(key) {
+    const el = document.getElementById('formError');
+    el.textContent = txt(key);
+    el.style.display = 'block';
+  }
+  function clearFormError() {
+    document.getElementById('formError').style.display = 'none';
   }
 
   function formNext() {
-    if (!isStepValid()) {
+    const errKey = stepErrorKey();
+    if (errKey) {
+      showFormError(errKey);
       // shake the active step
       const step = document.querySelector('.form-step.active');
       step.style.animation = 'none';
@@ -1745,6 +1750,7 @@ function render() {
       step.style.animation = 'shake 0.3s ease';
       return;
     }
+    clearFormError();
     // save text inputs
     const input = document.querySelector(`.form-step[data-step="${currentStep}"] .form-input`);
     if (input) {
@@ -1773,18 +1779,68 @@ function render() {
   }
 
   // choice selection
+  function selectChoice(choice) {
+    const group = choice.closest('.form-choices');
+    group.querySelectorAll('.form-choice').forEach(c => {
+      c.classList.remove('selected');
+      c.setAttribute('aria-checked', 'false');
+    });
+    choice.classList.add('selected');
+    choice.setAttribute('aria-checked', 'true');
+    answers[`q${currentStep}`] = choice.dataset.value;
+    clearFormError();
+  }
+
   document.addEventListener('click', e => {
     const choice = e.target.closest('.form-choice');
     if (!choice) return;
-    const group = choice.closest('.form-choices');
-    group.querySelectorAll('.form-choice').forEach(c => c.classList.remove('selected'));
-    choice.classList.add('selected');
-    answers[`q${currentStep}`] = choice.dataset.value;
+    selectChoice(choice);
   });
 
-  // enter key
+  // clear the error state as soon as someone starts fixing a text step
+  document.addEventListener('input', e => {
+    if (e.target.closest('.form-input')) clearFormError();
+  });
+
+  // keyboard support for radio-style choices: Space/Enter selects, arrows move focus, A-D jump-selects
   document.addEventListener('keydown', e => {
-    if (e.key === 'Enter') formNext();
+    const choice = e.target.closest('.form-choice');
+    if (choice) {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        selectChoice(choice);
+        return;
+      }
+      const group = choice.closest('.form-choices');
+      const items = Array.from(group.querySelectorAll('.form-choice'));
+      const idx = items.indexOf(choice);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        items[(idx + 1) % items.length].focus();
+        return;
+      }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        items[(idx - 1 + items.length) % items.length].focus();
+        return;
+      }
+    }
+    const activeGroup = document.querySelector('.form-step.active .form-choices');
+    if (activeGroup && /^[a-dA-D]$/.test(e.key)) {
+      const items = activeGroup.querySelectorAll('.form-choice');
+      const target = items[e.key.toUpperCase().charCodeAt(0) - 65];
+      if (target) { selectChoice(target); target.focus(); }
+    }
+  });
+
+  // enter key advances the form, but only from plain text/select inputs --
+  // not from inside a radio choice, the country dropdown, or a FAQ <details>
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const el = document.activeElement;
+    if (!el || !el.closest('#apply')) return;
+    if (el.closest('.form-choice') || el.closest('.cc-dropdown') || el.closest('details')) return;
+    formNext();
   });
 
   // ── COUNTRY CODE DROPDOWN ──
@@ -1942,15 +1998,6 @@ function render() {
   buildCCList();
 
   async function submitForm() {
-    if (partialTimer) { clearTimeout(partialTimer); partialTimer = null; }
-    hasContactInfo = false; // fully completed -- no incomplete alert needed
-    document.getElementById('formNav').style.display = 'none';
-    document.querySelector('.form-steps').style.display = 'none';
-    document.querySelector('.form-step-counter').style.display = 'none';
-    document.getElementById('formProgress').style.width = '100%';
-    document.getElementById('formConfirm').classList.add('active');
-    formRenderText();
-
     // map answer values to readable labels for Slack
     // step order: 1=name,2=phone,3=email,4=country,5=experience,6=budget,7=looking,8=goal
     const expMap        = { beginner: txt('q5_a'), 'tried-lost': txt('q5_b'), 'some-exp': txt('q5_c') };
@@ -1972,23 +2019,52 @@ function render() {
       website:    document.getElementById('f_website').value, // honeypot, should always be empty
     };
 
-    // Wire up the WhatsApp CTA on the confirmation screen with a pre-filled message.
     const waMsg = lang === 'ar'
       ? `مرحباً، لقد قدمت طلبي على موقعكم. اسمي ${payload.name}.`
       : `Hi, I just applied on your site. My name is ${payload.name}.`;
-    const waBtn = document.getElementById('waConfirmBtn');
-    waBtn.href = `https://wa.me/14382259193?text=${encodeURIComponent(waMsg)}`;
+    const waLink = `https://wa.me/14382259193?text=${encodeURIComponent(waMsg)}`;
+
+    // loading state -- Enter/click just re-runs submitForm(), so retry needs no extra wiring
+    clearFormError();
+    const nextBtn = document.getElementById('formNext');
+    const nextLabel = document.getElementById('formNextLabel');
+    const prevLabelKey = nextLabel.dataset.key || 'btn_next';
+    nextBtn.disabled = true;
+    nextLabel.textContent = txt('btn_submitting');
 
     let applicationTs = null;
+    let ok = false;
     try {
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error('bad status');
       const data = await res.json();
       applicationTs = data.ts || null;
-    } catch(e) { /* silent fail — confirmation still shown */ }
+      ok = true;
+    } catch (e) {
+      nextBtn.disabled = false;
+      nextLabel.textContent = txt(prevLabelKey);
+      const el = document.getElementById('formError');
+      el.innerHTML = `${txt('submit_error')} <a href="${waLink}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">${txt('confirm_wa_btn')}</a>`;
+      el.style.display = 'block';
+      return;
+    }
+
+    if (partialTimer) { clearTimeout(partialTimer); partialTimer = null; }
+    hasContactInfo = false; // fully completed -- no incomplete alert needed
+    document.getElementById('formNav').style.display = 'none';
+    document.querySelector('.form-steps').style.display = 'none';
+    document.querySelector('.form-step-counter').style.display = 'none';
+    document.getElementById('formProgress').style.width = '100%';
+    document.getElementById('formConfirm').classList.add('active');
+    formRenderText();
+
+    // Wire up the WhatsApp CTA on the confirmation screen with the same pre-filled message.
+    const waBtn = document.getElementById('waConfirmBtn');
+    waBtn.href = waLink;
 
     // Ad-pixel conversion event. Inert until the pixel scripts in <head> are
     // uncommented with real Pixel IDs -- fbq/ttq won't exist before that.
@@ -2009,15 +2085,51 @@ function render() {
   shakeStyle.textContent = '@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }';
   document.head.appendChild(shakeStyle);
 
+  // Click-to-play VSL and certificate lightbox: wired once at load, not on every
+  // language toggle (render() re-runs on setLang() but these elements persist,
+  // so re-binding here would stack duplicate listeners each time you switch language).
+  function wireOneTimeInteractions() {
+    const vslThumb = document.getElementById('vslThumb');
+    if (vslThumb) {
+      vslThumb.addEventListener('click', () => {
+        const id = vslThumb.dataset.ytId;
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+        iframe.title = 'VSL';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        vslThumb.replaceWith(iframe);
+      });
+    }
+
+    const certLightbox = document.getElementById('certLightbox');
+    if (certLightbox) {
+      document.querySelectorAll('.mentor-certs-row img').forEach(img => {
+        img.addEventListener('click', () => {
+          const full = certLightbox.querySelector('img');
+          full.src = img.src;
+          full.alt = img.alt;
+          certLightbox.classList.add('open');
+        });
+      });
+      certLightbox.addEventListener('click', () => certLightbox.classList.remove('open'));
+    }
+  }
+
   // ── INIT ──
   document.addEventListener('DOMContentLoaded', () => {
     render();
     formRenderText();
+    wireOneTimeInteractions();
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((e, i) => {
         if (e.isIntersecting) {
-          setTimeout(() => e.target.classList.add('visible'), i * 80);
+          // Cap the stagger: a fast scroll or an anchor jump (e.g. nav -> #apply)
+          // can intersect a dozen+ elements in one batch, and an uncapped i*80ms
+          // left the tail of the batch invisible for 1.5s+. Past the first few,
+          // everything reveals together instead of getting slower and slower.
+          setTimeout(() => e.target.classList.add('visible'), Math.min(i, 4) * 60);
           observer.unobserve(e.target);
         }
       });
@@ -2038,6 +2150,13 @@ function render() {
     if (chartCanvas) {
       const ctx = chartCanvas.getContext('2d');
       const CANDLE_MS = 4800;
+      // The chart redraws ~90 candles + volume + grid every frame. Once scrolled
+      // past the hero it's invisible but was still burning battery/CPU at 60fps
+      // for the rest of the page's length -- skip the draw work while off-screen.
+      let chartVisible = true;
+      new IntersectionObserver(entries => {
+        chartVisible = entries[0].isIntersecting;
+      }, { threshold: 0 }).observe(chartCanvas);
       let dpr = 1, chartW = 0, chartH = 0;
       let marketPrice = 18342.6, trend = 0, velocity = 0, velocityTarget = 0;
       let lastFrame = performance.now(), candleStartedAt = lastFrame, turnAt = lastFrame;
@@ -2166,6 +2285,11 @@ function render() {
       }
 
       function animateSession(now) {
+        if (!chartVisible) {
+          lastFrame = now;
+          requestAnimationFrame(animateSession);
+          return;
+        }
         const dt = Math.min(34, now - lastFrame);
         lastFrame = now;
         if (now >= turnAt) {
