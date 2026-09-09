@@ -61,7 +61,7 @@
       --dark-3: linear-gradient(155deg, #171717 0%, #0d0d0d 55%, #0a0a0a 100%);
       --dark-4: linear-gradient(155deg, #212121 0%, #161616 55%, #131313 100%);
       --white: #ffffff;
-      --gray: #777;
+      --gray: #8f8f8f;
       --red: #ef4444;
     }
 
@@ -79,10 +79,10 @@
 
     /* ══ SCROLL PROGRESS ══ */
     #scrollProgress {
-      position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+      position: fixed; top: 0; left: 0; height: 3px; width: 100%;
+      transform: scaleX(0); transform-origin: 0 0;
       background: linear-gradient(90deg, var(--green-dim), var(--green) 60%, #fff);
-      box-shadow: 0 0 12px var(--green-glow);
-      z-index: 1000; transition: width 0.1s linear;
+      z-index: 1000; transition: transform 0.1s linear;
     }
 
     /* ══ NAV ══ */
@@ -210,14 +210,6 @@
       -webkit-mask-image: linear-gradient(to bottom, transparent 3%, #000 24%, #000 78%, transparent 100%);
       mask-image: linear-gradient(to bottom, transparent 3%, #000 24%, #000 78%, transparent 100%);
     }
-    .hero-chart::before {
-      content: ''; position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(212,175,55,0.055) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(212,175,55,0.045) 1px, transparent 1px);
-      background-size: 82px 82px;
-      animation: marketGrid 28s linear infinite;
-    }
     .hero-chart::after {
       content: ''; position: absolute; inset: 0;
       background:
@@ -227,10 +219,6 @@
     .hero-chart canvas {
       position: relative; display: block; width: 100%; height: 100%;
       filter: drop-shadow(0 0 10px rgba(212,175,55,0.12));
-    }
-    @keyframes marketGrid {
-      from { transform: translateX(0); }
-      to { transform: translateX(-82px); }
     }
     /* ══ CTA BTN ══ */
     .cta-btn {
@@ -339,7 +327,7 @@
     .play-btn {
       width: 80px; height: 80px; border-radius: 50%; background: var(--green);
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; box-shadow: 0 0 60px var(--green-glow);
+      cursor: pointer; box-shadow: 0 0 20px var(--green-glow);
       transition: transform 0.2s, box-shadow 0.2s; position: relative; z-index: 1;
     }
     .play-btn::before {
@@ -351,7 +339,7 @@
       border: 1px solid rgba(212,175,55,0.15); animation: ripple 2s linear infinite 0.5s;
     }
     @keyframes ripple { 0% { opacity:1; transform:scale(1); } 100% { opacity:0; transform:scale(1.5); } }
-    .play-btn:hover { transform: scale(1.1); box-shadow: 0 0 80px var(--green-glow); }
+    .play-btn:hover { transform: scale(1.1); box-shadow: 0 0 28px var(--green-glow); }
     .play-btn svg { margin-left: 5px; }
     html[lang="ar"] .play-btn svg { margin-left: 0; margin-right: 5px; }
     .vsl-sub { text-align: center; margin-top: 20px; font-size: 13px; color: var(--gray); }
@@ -375,7 +363,6 @@
     .stat-number {
       font-size: 48px; font-weight: 900; color: var(--green); line-height: 1;
       margin-bottom: 8px; letter-spacing: -2px;
-      text-shadow: 0 0 30px rgba(212,175,55,0.4);
     }
     html[lang="ar"] .stat-number { font-family: 'Inter', sans-serif; }
     .stat-label { font-size: 12px; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; }
@@ -469,9 +456,9 @@
       height: 3px; background: #1a1a1a; position: relative;
     }
     .form-progress-fill {
-      height: 100%; background: var(--green);
-      transition: width 0.4s ease;
-      box-shadow: 0 0 8px var(--green-glow);
+      height: 100%; width: 100%; background: var(--green);
+      transform: scaleX(0.125); transform-origin: 0 0;
+      transition: transform 0.4s ease;
     }
 
     /* step counter */
@@ -532,9 +519,9 @@
     .cc-arrow { color: #555; font-size: 11px; }
     .cc-dropdown {
       display: none; position: absolute; top: calc(100% + 6px);
-      left: 0; width: 260px; background: #111; border: 1px solid #2a2a2a;
+      left: 0; width: 260px; background: var(--dark-4); border: 1px solid #2a2a2a;
       border-radius: 4px; overflow: hidden; z-index: 100;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.6); direction: ltr;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5); direction: ltr;
     }
     .cc-dropdown.open { display: block; }
     .cc-search {
@@ -618,7 +605,7 @@
       background: rgba(212,175,55,0.1); border: 2px solid var(--green);
       display: flex; align-items: center; justify-content: center;
       margin: 0 auto 24px; font-size: 30px;
-      box-shadow: 0 0 30px var(--green-glow);
+      box-shadow: 0 0 14px var(--green-glow);
     }
     .form-confirm h3 { font-size: 24px; font-weight: 900; margin-bottom: 12px; }
     .form-confirm p { color: var(--gray); font-size: 15px; line-height: 1.7; }
@@ -1430,7 +1417,7 @@ function render() {
       <input type="text" id="f_website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
         style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;" />
 
-      <div class="form-progress"><div class="form-progress-fill" id="formProgress" style="width:12.5%"></div></div>
+      <div class="form-progress"><div class="form-progress-fill" id="formProgress"></div></div>
 
       <div class="form-step-counter">
         <span id="stepCounterText"></span>
@@ -1680,7 +1667,7 @@ function render() {
     document.getElementById('stepCounterText').textContent = txt('step_label');
     document.getElementById('stepCounterFrac').textContent = `${currentStep} / ${TOTAL_STEPS}`;
     // progress
-    document.getElementById('formProgress').style.width = `${(currentStep / TOTAL_STEPS) * 100}%`;
+    document.getElementById('formProgress').style.transform = `scaleX(${currentStep / TOTAL_STEPS})`;
     // all step-num labels
     document.querySelectorAll('.form-step .step-num').forEach(el => {
       el.textContent = `${txt('step_label')} ${el.closest('.form-step').dataset.step} —`;
@@ -2058,7 +2045,7 @@ function render() {
     document.getElementById('formNav').style.display = 'none';
     document.querySelector('.form-steps').style.display = 'none';
     document.querySelector('.form-step-counter').style.display = 'none';
-    document.getElementById('formProgress').style.width = '100%';
+    document.getElementById('formProgress').style.transform = 'scaleX(1)';
     document.getElementById('formConfirm').classList.add('active');
     formRenderText();
 
@@ -2141,7 +2128,7 @@ function render() {
     window.addEventListener('scroll', () => {
       const scrollable = document.documentElement.scrollHeight - window.innerHeight;
       const pct = scrollable > 0 ? (window.scrollY / scrollable) * 100 : 0;
-      progressBar.style.width = `${pct}%`;
+      progressBar.style.transform = `scaleX(${pct / 100})`;
     }, { passive: true });
 
     // TradingView-style session: historical OHLC candles, volume, price grid/scale,
