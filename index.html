@@ -349,9 +349,16 @@
     #stats {
       background: var(--dark-3);
       border-top: 1px solid #1a1a1a; border-bottom: 1px solid #1a1a1a;
+      position: relative; overflow: hidden;
+    }
+    #stats::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 120' preserveAspectRatio='none'%3E%3Cpolyline points='0,95 40,90 80,98 120,80 160,85 200,60 240,70 280,45 320,55 360,30 400,40 440,20 480,35 520,15 560,25 600,10 640,22 680,8 720,18 760,5 800,12' fill='none' stroke='%23D4AF37' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+      background-size: 100% 100%; background-repeat: no-repeat; background-position: center;
+      opacity: 0.05; pointer-events: none;
     }
     .stats-grid {
-      max-width: 900px; margin: 0 auto;
+      max-width: 900px; margin: 0 auto; position: relative; z-index: 1;
       display: grid; grid-template-columns: repeat(3, 1fr);
     }
     .stat-item { padding: 44px 20px; text-align: center; position: relative; }
@@ -2122,6 +2129,39 @@ function render() {
       });
     }, { threshold: 0.1 });
     document.querySelectorAll('.fade-up:not(.visible)').forEach(el => observer.observe(el));
+
+    // Count-up the hero stats (2+ / 20+ / $100K+) once the strip scrolls into view.
+    // Parses whatever prefix/suffix render() already put there ($, +, K+, etc.)
+    // so it stays correct across both languages without a separate config.
+    function animateCountUp(el, delay) {
+      const raw = el.textContent;
+      const match = raw.match(/^(\D*)(\d+)(.*)$/);
+      if (!match) return;
+      const [, prefix, numStr, suffix] = match;
+      const target = parseInt(numStr, 10);
+      const duration = 1100;
+      setTimeout(() => {
+        const start = performance.now();
+        function tick(now) {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          el.textContent = `${prefix}${Math.round(target * eased)}${suffix}`;
+          if (t < 1) requestAnimationFrame(tick);
+          else el.textContent = raw; // land exactly on the real string, no rounding drift
+        }
+        requestAnimationFrame(tick);
+      }, delay);
+    }
+    const statsSection = document.getElementById('stats');
+    if (statsSection && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const statsObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+          document.querySelectorAll('.stat-number').forEach((el, i) => animateCountUp(el, i * 120));
+          statsObserver.disconnect();
+        }
+      }, { threshold: 0.4 });
+      statsObserver.observe(statsSection);
+    }
 
     // Scroll progress bar
     const progressBar = document.getElementById('scrollProgress');
