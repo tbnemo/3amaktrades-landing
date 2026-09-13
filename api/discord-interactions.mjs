@@ -196,6 +196,18 @@ export default async function handler(req, res) {
     return res.status(400).send('Could not read request body');
   }
 
+  // `config.api.bodyParser` is false below, so the stream should reach us
+  // untouched. If a platform change ever breaks that, the raw bytes would be
+  // gone and every signature check would fail as a confusing 401 — surface that
+  // specific cause in the logs instead of leaving it to guesswork.
+  const declaredLength = Number(req.headers['content-length'] || 0);
+  if (rawBody.length === 0 && declaredLength > 0) {
+    console.error(
+      `[discord-interactions] raw body empty despite content-length ${declaredLength} — ` +
+        'the platform body parser likely consumed the stream; signature verification cannot succeed.'
+    );
+  }
+
   const signature = req.headers['x-signature-ed25519'];
   const timestamp = req.headers['x-signature-timestamp'];
 
