@@ -203,7 +203,11 @@
        infinite timer, so the tape reads as an endless flowing chart with no
        seam -- the outer viewBox stays 1200x400, so nothing else's size moves. */
     .bl-candles { position: absolute; inset: 0; z-index: 0; opacity: .4; pointer-events: none; }
-    .bl-candle { transform-origin: center bottom; animation: bl-grow .7s cubic-bezier(.65,0,.25,1) both; filter: url(#bl-glow); }
+    /* plain CSS filter (not an SVG url(#...) filter reference) deliberately --
+       referenced SVG filters are known to freeze the repaint of an animated
+       ancestor's subtree on mobile WebKit, which silently killed the drift
+       below. drop-shadow() gives the same soft halo and composites cleanly. */
+    .bl-candle { transform-origin: center bottom; animation: bl-grow .7s cubic-bezier(.65,0,.25,1) both; filter: drop-shadow(0 0 2.5px rgba(212,175,55,.55)); }
     @keyframes bl-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
     .bl-candle-live {
       animation: bl-grow .7s cubic-bezier(.65,0,.25,1) both, bl-pulse 3.6s ease-in-out 2s infinite;
@@ -401,25 +405,30 @@
 
     .bl-certs { margin-block-start: clamp(30px,4vw,46px); }
     .bl-certs-h { margin-block-end: 14px; }
+    /* A carousel, not a grid -- 7 certs is prime so it never divides evenly
+       into a fixed column count, and a fixed grid always leaves a widow.
+       One continuously scrollable row sidesteps that entirely, on every
+       breakpoint, with nav buttons for mouse/keyboard and native swipe
+       for touch. */
+    .bl-certs-carousel { position: relative; display: flex; align-items: stretch; gap: 8px; }
     .bl-certs-row {
-      /* fixed column counts, not auto-fit — auto-fit sizes tracks to
-         whatever fits the container width regardless of item count, which
-         leaves phantom empty cells on wide screens since there are exactly
-         7 certs. Locking the count to the real number of items means the
-         full row is always exactly full, no gaps.                        */
-      display: grid; grid-template-columns: repeat(2,1fr);
+      flex: 1 1 auto; min-width: 0; display: flex;
       gap: 1px; background: #241D08; /* the 1px gaps read as hairlines */
+      overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
     }
-    @media (min-width: 480px) { .bl-certs-row { grid-template-columns: repeat(4,1fr); } }
-    @media (min-width: 720px) { .bl-certs-row { grid-template-columns: repeat(7,1fr); } }
-    /* 7 certs is prime -- it never divides evenly into 2 or 4 columns, so
-       below the exact 7-column breakpoint the last cert is always a widow
-       leaving one empty grid cell (the dark row background shows through as
-       a blank box). Span the widow across the row instead of leaving the gap. */
-    @media (max-width: 719.98px) {
-      .bl-certs-row .bl-cert:last-child { grid-column: 1 / -1; aspect-ratio: 21/9; }
+    .bl-certs-row::-webkit-scrollbar { display: none; }
+    .bl-certs-nav {
+      flex: 0 0 auto; width: 40px; padding: 0; font-family: inherit;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--band-2); color: var(--gold); border: 1px solid var(--gold-lo);
+      font-size: 20px; line-height: 1; cursor: pointer;
     }
+    .bl-certs-nav:hover { background: var(--gold); color: var(--ink); }
+    .bl-certs-nav:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    [dir="rtl"] .bl-certs-nav { transform: scaleX(-1); }
     .bl-cert {
+      flex: 0 0 clamp(132px,40vw,200px); scroll-snap-align: start;
       aspect-ratio: 4/3; overflow: hidden;
       /* SIGNATURE: staggered reveal, not a scroller ticker — each slab
          stamps into place in sequence, like entries being logged. Triggers
@@ -427,6 +436,7 @@
       opacity: 0; transform: translateY(16px) scaleY(.9); transform-origin: bottom;
       transition: opacity .5s cubic-bezier(.65,0,.25,1), transform .5s cubic-bezier(.65,0,.25,1);
     }
+    @media (min-width: 720px) { .bl-cert { flex-basis: clamp(150px,13.5vw,190px); } }
     .bl-certs-row.is-in .bl-cert { opacity: 1; transform: translateY(0) scaleY(1); }
     .bl-certs-row.is-in .bl-cert:nth-child(1) { transition-delay: .03s }
     .bl-certs-row.is-in .bl-cert:nth-child(2) { transition-delay: .11s }
@@ -437,6 +447,7 @@
     .bl-certs-row.is-in .bl-cert:nth-child(7) { transition-delay: .51s }
     @media (prefers-reduced-motion: reduce) {
       .bl-cert { opacity: 1; transform: none; transition: none; }
+      .bl-certs-row { scroll-behavior: auto; }
     }
     .bl-cert .bl-slab-t {
       font-family: 'Big Shoulders Display',sans-serif;
@@ -1474,13 +1485,6 @@ function render() {
 <section id="hero" class="bl-pad">
   <svg class="bl-candles" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs>
-      <filter id="bl-glow" x="-60%" y="-60%" width="220%" height="220%">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
-        <feMerge>
-          <feMergeNode in="blur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
       <path id="bl-wave-seg" d="M0,380 C50,365 150,395 200,380 C250,365 350,395 400,380 C450,365 550,395 600,380 C650,365 750,395 800,380 C850,365 950,395 1000,380 C1050,365 1150,395 1200,380" fill="none" stroke="#D4AF37" stroke-width="1"/>
     </defs>
     <line x1="0" y1="330" x2="1200" y2="330" stroke="#241D08" stroke-width="1"/>
@@ -1633,49 +1637,53 @@ function render() {
       </div>
       <div class="bl-certs">
         <p class="bl-mono bl-certs-h" data-key="record_certs_h"></p>
-        <div class="bl-certs-row">
-          <div class="bl-cert">
-            <picture>
-              <source srcset="/certs/topstep.webp" type="image/webp">
-              <img src="/certs/topstep.jpg" alt="TopStep — Certified Funded Trader" loading="lazy" />
-            </picture>
+        <div class="bl-certs-carousel">
+          <button type="button" class="bl-certs-nav bl-certs-prev" aria-label="Previous certificate">‹</button>
+          <div class="bl-certs-row">
+            <div class="bl-cert">
+              <picture>
+                <source srcset="/certs/topstep.webp" type="image/webp">
+                <img src="/certs/topstep.jpg" alt="TopStep — Certified Funded Trader" loading="lazy" />
+              </picture>
+            </div>
+            <div class="bl-cert">
+              <picture>
+                <source srcset="/certs/aquafutures-1.webp" type="image/webp">
+                <img src="/certs/aquafutures-1.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy" />
+              </picture>
+            </div>
+            <div class="bl-cert">
+              <picture>
+                <source srcset="/certs/fundednext.webp" type="image/webp">
+                <img src="/certs/fundednext.jpg" alt="FundedNext Futures — Rising Trader" loading="lazy" />
+              </picture>
+            </div>
+            <div class="bl-cert">
+              <picture>
+                <source srcset="/certs/aquafutures-2.webp" type="image/webp">
+                <img src="/certs/aquafutures-2.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy" />
+              </picture>
+            </div>
+            <div class="bl-cert">
+              <picture>
+                <source srcset="/certs/tradingpit.webp" type="image/webp">
+                <img src="/certs/tradingpit.jpg" alt="The Trading Pit — Challenge Passed" loading="lazy" />
+              </picture>
+            </div>
+            <div class="bl-cert">
+              <picture>
+                <source srcset="/certs/fundedfutures.webp" type="image/webp">
+                <img src="/certs/fundedfutures.jpg" alt="Funded Futures Family — Certificate of Funding" loading="lazy" />
+              </picture>
+            </div>
+            <div class="bl-cert">
+              <picture>
+                <source srcset="/certs/myfundedfutures.webp" type="image/webp">
+                <img src="/certs/myfundedfutures.jpg" alt="My Funded Futures — Builder 50K Passing Certificate" loading="lazy" />
+              </picture>
+            </div>
           </div>
-          <div class="bl-cert">
-            <picture>
-              <source srcset="/certs/aquafutures-1.webp" type="image/webp">
-              <img src="/certs/aquafutures-1.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy" />
-            </picture>
-          </div>
-          <div class="bl-cert">
-            <picture>
-              <source srcset="/certs/fundednext.webp" type="image/webp">
-              <img src="/certs/fundednext.jpg" alt="FundedNext Futures — Rising Trader" loading="lazy" />
-            </picture>
-          </div>
-          <div class="bl-cert">
-            <picture>
-              <source srcset="/certs/aquafutures-2.webp" type="image/webp">
-              <img src="/certs/aquafutures-2.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy" />
-            </picture>
-          </div>
-          <div class="bl-cert">
-            <picture>
-              <source srcset="/certs/tradingpit.webp" type="image/webp">
-              <img src="/certs/tradingpit.jpg" alt="The Trading Pit — Challenge Passed" loading="lazy" />
-            </picture>
-          </div>
-          <div class="bl-cert">
-            <picture>
-              <source srcset="/certs/fundedfutures.webp" type="image/webp">
-              <img src="/certs/fundedfutures.jpg" alt="Funded Futures Family — Certificate of Funding" loading="lazy" />
-            </picture>
-          </div>
-          <div class="bl-cert">
-            <picture>
-              <source srcset="/certs/myfundedfutures.webp" type="image/webp">
-              <img src="/certs/myfundedfutures.jpg" alt="My Funded Futures — Builder 50K Passing Certificate" loading="lazy" />
-            </picture>
-          </div>
+          <button type="button" class="bl-certs-nav bl-certs-next" aria-label="Next certificate">›</button>
         </div>
       </div>
     </div>
@@ -2600,6 +2608,32 @@ function render() {
       });
       certLightbox.addEventListener('click', () => certLightbox.classList.remove('open'));
     }
+
+    // Certs carousel nav: steps to the next/previous card by finding
+    // whichever .bl-cert is closest to the row's screen-space center and
+    // scrolling to its neighbor -- geometry-based, not scrollLeft math, so
+    // it's correct in both dir="ltr" and dir="rtl" without a sign flip.
+    document.querySelectorAll('.bl-certs-carousel').forEach(carousel => {
+      const row = carousel.querySelector('.bl-certs-row');
+      const cards = Array.from(row.querySelectorAll('.bl-cert'));
+      const currentIndex = () => {
+        const center = row.getBoundingClientRect().left + row.getBoundingClientRect().width / 2;
+        let closest = 0, closestDist = Infinity;
+        cards.forEach((card, i) => {
+          const r = card.getBoundingClientRect();
+          const d = Math.abs((r.left + r.width / 2) - center);
+          if (d < closestDist) { closestDist = d; closest = i; }
+        });
+        return closest;
+      };
+      carousel.querySelectorAll('.bl-certs-nav').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dir = btn.classList.contains('bl-certs-next') ? 1 : -1;
+          const idx = Math.max(0, Math.min(cards.length - 1, currentIndex() + dir));
+          cards[idx].scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+        });
+      });
+    });
   }
 
   // ── INIT ──
