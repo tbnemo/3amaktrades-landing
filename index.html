@@ -193,6 +193,20 @@
     }
     .bl-btn-nav:hover { background: var(--bone); opacity: 1; }
 
+    /* secondary/outline, deliberately not gold-filled -- this whole design
+       funnels toward one primary action (Apply Now); Discord needs to be
+       reachable without competing with it visually. */
+    .nav-discord {
+      display: inline-flex; align-items: center;
+      background: transparent; color: var(--gold);
+      border: 1px solid var(--gold-lo); border-radius: 0;
+      font-size: 12px; font-weight: 800; letter-spacing: 0.5px;
+      padding: 8px 16px; text-decoration: none; transition: background .15s, color .15s;
+    }
+    html[lang="ar"] .nav-discord { letter-spacing: 0; }
+    .nav-discord:hover { background: var(--gold); color: var(--ink); }
+    @media (max-width: 620px) { .nav-discord { display: none; } } /* nav is already tight below 880px with links hidden -- Discord lives in the footer here */
+
     /* ══ HERO — BAND 2 (Bullion) ══ */
     #hero {
       position: relative; background: var(--void);
@@ -802,6 +816,7 @@
     [dir="rtl"] .form-confirm h3 { font-family: 'Changa', sans-serif; text-transform: none; line-height: 1.3; }
     .form-confirm p { color: var(--dim); font-size: 15.5px; line-height: 1.66; max-width: 46ch; }
     .confirm-wa-label { margin-top: 28px; margin-bottom: 14px; }
+    .confirm-btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
     .form-confirm .cta-btn-wa { border-color: var(--gold-lo); color: var(--gold); border-radius: 0; }
     .form-confirm .cta-btn-wa:hover { border-color: var(--gold); background: var(--gold); color: var(--ink); }
     .form-confirm .cta-btn-wa svg { fill: currentColor; }
@@ -1129,6 +1144,7 @@
 const t = {
   ar: {
     nav_apply: "تقدم الآن",
+    nav_discord: "ديسكورد",
     nav_system: "النظام",
     nav_mentor: "المرشد",
     nav_proof: "الإثبات",
@@ -1268,12 +1284,16 @@ const t = {
     err_email: "أدخل بريداً إلكترونياً صحيحاً.",
     confirm_h: "تم استلام طلبك! 🎉",
     confirm_p: "شكراً لك. سنراجع طلبك ونتواصل معك خلال 24 ساعة.",
-    confirm_wa_label: "على هاتفك؟ راسلنا مباشرة على واتساب",
+    confirm_wa_label: "بتفضل تتواصل معنا وين؟ واتساب أو إنستغرام",
     confirm_wa_btn: "تواصل عبر واتساب",
+    confirm_ig_btn: "تواصل عبر إنستغرام",
+    confirm_discord_label: "بدك تنضم عالمجتمع هلق؟",
+    confirm_discord_btn: "انضم لسيرفر الديسكورد",
     step_of: "من",
   },
   en: {
     nav_apply: "Apply Now",
+    nav_discord: "Discord",
     nav_system: "System",
     nav_mentor: "Mentor",
     nav_proof: "Proof",
@@ -1413,8 +1433,11 @@ const t = {
     err_email: "Enter a valid email address.",
     confirm_h: "Application received! 🎉",
     confirm_p: "Thanks! We'll review your application and reach out within 24 hours.",
-    confirm_wa_label: "On your phone? Text us on WhatsApp",
+    confirm_wa_label: "Where do you want to keep talking? WhatsApp or Instagram",
     confirm_wa_btn: "Chat on WhatsApp",
+    confirm_ig_btn: "Chat on Instagram",
+    confirm_discord_label: "Want to join the community now?",
+    confirm_discord_btn: "Join Discord",
     step_of: "of",
   }
 };
@@ -1465,6 +1488,7 @@ function render() {
       <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')">عربي</button>
       <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
     </div>
+    <a href="https://discord.gg/eSFMrBB7K" class="nav-discord" target="_blank" rel="noopener" data-key="nav_discord"></a>
     <a href="#apply" class="nav-cta bl-btn-nav" data-key="nav_apply"></a>
   </div>
 </nav>
@@ -2011,10 +2035,21 @@ function render() {
         <div class="confirm-icon">✓</div>
         <h3 data-key="confirm_h"></h3>
         <p data-key="confirm_p"></p>
-        <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_wa_label"></p>
-        <a href="#" id="waConfirmBtn" class="cta-btn-wa" target="_blank" rel="noopener">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Zm0 2a7 7 0 0 1 6 10.6l-.2.3.3 2-2-.5-.3.2A7 7 0 1 1 12 5Zm-2.5 3.4c-.2 0-.5 0-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1.1 2.6c.1.2 1.8 2.9 4.5 3.9 2.2.9 2.7.7 3.1.7.5 0 1.6-.6 1.8-1.2.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.5-.3l-2-1c-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6l.4-.5.3-.4c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.5-.4-.4-.6-.4h-.5Z"/></svg>
-          <span data-key="confirm_wa_btn"></span>
+        <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_wa_label" id="confirmWaLabel"></p>
+        <div class="confirm-btn-row" id="confirmTalkRow">
+          <a href="#" id="waConfirmBtn" class="cta-btn-wa" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Zm0 2a7 7 0 0 1 6 10.6l-.2.3.3 2-2-.5-.3.2A7 7 0 1 1 12 5Zm-2.5 3.4c-.2 0-.5 0-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1.1 2.6c.1.2 1.8 2.9 4.5 3.9 2.2.9 2.7.7 3.1.7.5 0 1.6-.6 1.8-1.2.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.5-.3l-2-1c-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6l.4-.5.3-.4c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.5-.4-.4-.6-.4h-.5Z"/></svg>
+            <span data-key="confirm_wa_btn"></span>
+          </a>
+          <a href="https://ig.me/m/3amaktrades" class="cta-btn-wa" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+            <span data-key="confirm_ig_btn"></span>
+          </a>
+        </div>
+        <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_discord_label"></p>
+        <a href="https://discord.gg/eSFMrBB7K" class="cta-btn-wa cta-btn-discord" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.3 5.3A18 18 0 0 0 15.6 4a12.3 12.3 0 0 0-.6 1.2 16.5 16.5 0 0 0-5 0A12.3 12.3 0 0 0 9.4 4a18 18 0 0 0-4.7 1.4C1.9 9.3 1.2 13 1.5 16.6a18 18 0 0 0 5.5 2.7c.4-.6.8-1.3 1.2-2a11.6 11.6 0 0 1-1.9-.9l.5-.4a12.9 12.9 0 0 0 10.4 0l.5.4c-.6.3-1.2.6-1.9.9.3.7.8 1.4 1.2 2a18 18 0 0 0 5.5-2.7c.4-4.2-.7-7.8-2.2-11.3ZM9 14.3c-.8 0-1.5-.8-1.5-1.7S8.1 11 9 11s1.5.8 1.5 1.7-.7 1.6-1.5 1.6Zm6 0c-.8 0-1.5-.8-1.5-1.7S14.2 11 15 11s1.5.8 1.5 1.7-.7 1.6-1.5 1.6Z"/></svg>
+          <span data-key="confirm_discord_btn"></span>
         </a>
       </div>
 
@@ -2132,6 +2167,9 @@ function render() {
         </a>
         <a href="https://wa.me/14382259193" target="_blank" rel="noopener" aria-label="WhatsApp">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Zm0 2a7 7 0 0 1 6 10.6l-.2.3.3 2-2-.5-.3.2A7 7 0 1 1 12 5Zm-2.5 3.4c-.2 0-.5 0-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1.1 2.6c.1.2 1.8 2.9 4.5 3.9 2.2.9 2.7.7 3.1.7.5 0 1.6-.6 1.8-1.2.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.5-.3l-2-1c-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6l.4-.5.3-.4c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.5-.4-.4-.6-.4h-.5Z"/></svg>
+        </a>
+        <a href="https://discord.gg/eSFMrBB7K" target="_blank" rel="noopener" aria-label="Discord">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.3 5.3A18 18 0 0 0 15.6 4a12.3 12.3 0 0 0-.6 1.2 16.5 16.5 0 0 0-5 0A12.3 12.3 0 0 0 9.4 4a18 18 0 0 0-4.7 1.4C1.9 9.3 1.2 13 1.5 16.6a18 18 0 0 0 5.5 2.7c.4-.6.8-1.3 1.2-2a11.6 11.6 0 0 1-1.9-.9l.5-.4a12.9 12.9 0 0 0 10.4 0l.5.4c-.6.3-1.2.6-1.9.9.3.7.8 1.4 1.2 2a18 18 0 0 0 5.5-2.7c.4-4.2-.7-7.8-2.2-11.3ZM9 14.3c-.8 0-1.5-.8-1.5-1.7S8.1 11 9 11s1.5.8 1.5 1.7-.7 1.6-1.5 1.6Zm6 0c-.8 0-1.5-.8-1.5-1.7S14.2 11 15 11s1.5.8 1.5 1.7-.7 1.6-1.5 1.6Z"/></svg>
         </a>
       </div>
     </div>
@@ -2589,6 +2627,14 @@ function render() {
     // Wire up the WhatsApp CTA on the confirmation screen with the same pre-filled message.
     const waBtn = document.getElementById('waConfirmBtn');
     waBtn.href = waLink;
+
+    // <$500 leads skip the WhatsApp sales conversation entirely -- pushing
+    // a paid-program pitch on someone who just said they can't afford it
+    // either wastes the sales side's time or feels like a mismatch. Discord
+    // (always shown, just above) gives them a free way to stay engaged.
+    const isLowBudget = payload.budgetCode === '<500';
+    document.getElementById('confirmWaLabel').style.display = isLowBudget ? 'none' : '';
+    document.getElementById('confirmTalkRow').style.display = isLowBudget ? 'none' : '';
 
     // Ad-pixel conversion event. Inert until the pixel scripts in <head> are
     // uncommented with real Pixel IDs -- fbq/ttq won't exist before that.
