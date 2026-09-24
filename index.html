@@ -159,6 +159,10 @@
        gaps -- .bl-b1's own space-between now has just two children (mark,
        nav-right), so it's one flexible gap plus this tight internal rhythm,
        not four/five unevenly-sized items each fighting for equal space. */
+    /* the logo stays anchored to the physical left in both languages --
+       toggling language shouldn't make the brand mark jump sides. Only the
+       cluster of everything else mirrors with the reading direction. */
+    [dir="rtl"] .bl-b1 { flex-direction: row-reverse; }
     .bl-nav-right { display: flex; align-items: center; gap: clamp(20px,3vw,40px); }
     .bl-nav { display: flex; gap: clamp(14px,2vw,28px); }
     .bl-nav a {
@@ -226,6 +230,18 @@
     @media (max-width: 700px) { .bl-candles { opacity: .28; } }
 
     .bl-b2-inner { position: relative; z-index: 2; max-width: min(1536px,100%); }
+
+    .bl-hero-cta { margin-block-start: clamp(22px,3vw,30px); }
+    /* same solid-gold/black-text primary-action convention as .decide-cta
+       .cta-btn and .bl-final .cta-btn -- reuses cta3/cta3_sub verbatim
+       (already the Decide section's apply CTA) rather than new copy. */
+    .bl-hero-cta .cta-btn {
+      background: var(--gold); color: var(--ink); border-radius: 0;
+      font-family: 'Big Shoulders Display','Changa',sans-serif;
+    }
+    [dir="rtl"] .bl-hero-cta .cta-btn { font-family: 'Changa', sans-serif; }
+    .bl-hero-cta .cta-btn::before, .bl-hero-cta .cta-btn::after { content: none; }
+    .bl-hero-cta .cta-btn:hover { background: var(--bone); transform: none; box-shadow: none; }
 
     /* hero split: copy on one side, VSL on the other. Text is a hard-pinned
        572px column; the video gets whatever's left, up to 900px, and shrinks
@@ -1589,6 +1605,9 @@ function render() {
           <span class="lg"><span data-key="hero_h1_a"></span> <em data-key="hero_h1_em"></em></span>
         </h1>
         <p class="bl-sub" data-key="hero_sub"></p>
+        <div class="bl-hero-cta">
+          <a href="#apply" class="cta-btn"><span class="main" data-key="cta3"></span><span class="sub" data-key="cta3_sub"></span></a>
+        </div>
       </div>
 
       <div class="bl-hero-media">
