@@ -155,6 +155,11 @@
       font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 19px;
       letter-spacing: .1em; direction: ltr; color: var(--bone);
     }
+    /* everything but the logo clusters on one side with consistent, modest
+       gaps -- .bl-b1's own space-between now has just two children (mark,
+       nav-right), so it's one flexible gap plus this tight internal rhythm,
+       not four/five unevenly-sized items each fighting for equal space. */
+    .bl-nav-right { display: flex; align-items: center; gap: clamp(20px,3vw,40px); }
     .bl-nav { display: flex; gap: clamp(14px,2vw,28px); }
     .bl-nav a {
       font-size: 12.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
@@ -162,9 +167,6 @@
     }
     .bl-nav a:hover { color: var(--gold); }
     html[lang="ar"] .bl-nav a { letter-spacing: 0; text-transform: none; }
-    .bl-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); }
-    .bl-status i { display: block; width: 6px; height: 6px; border-radius: 50%; background: #2F5D3A; flex: none; }
-    @media (max-width: 620px) { .bl-status span { display: none; } }
     @media (max-width: 880px) { .bl-nav { display: none; } }
 
     /* language toggle and nav CTA -- migrated onto the Bullion token system.
@@ -1107,7 +1109,6 @@ const t = {
     nav_system: "النظام",
     nav_mentor: "المرشد",
     nav_proof: "الإثبات",
-    nav_status: "التقديم مفتوح",
     hero_kicker: "سبع شهادات تمويل. منهج واحد.",
     hero_h1_a: "تعلّم التداول وكأنه شغلتك،",
     hero_h1_em: "مش حظك.",
@@ -1261,7 +1262,6 @@ const t = {
     nav_system: "System",
     nav_mentor: "Mentor",
     nav_proof: "Proof",
-    nav_status: "Applications open",
     hero_kicker: "Seven funded certificates. One method.",
     hero_h1_a: "Trade like it's your job,",
     hero_h1_em: "not your luck.",
@@ -1448,17 +1448,18 @@ function render() {
   <div class="bl-mark">
     <img src="/logo.png" alt="3AMAK Trades" class="nav-logo-img" width="56" height="56" onerror="this.outerHTML='<span class=\'fallback\'>3AMAK TRADES</span>'" />
   </div>
-  <div class="bl-nav">
-    <a href="#propfirm" data-key="nav_system"></a>
-    <a href="#mentor" data-key="nav_mentor"></a>
-    <a href="#proof" data-key="nav_proof"></a>
+  <div class="bl-nav-right">
+    <div class="bl-nav">
+      <a href="#propfirm" data-key="nav_system"></a>
+      <a href="#mentor" data-key="nav_mentor"></a>
+      <a href="#proof" data-key="nav_proof"></a>
+    </div>
+    <div class="lang-toggle bl-lang">
+      <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')">عربي</button>
+      <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+    </div>
+    <a href="#apply" class="nav-cta bl-btn-nav" data-key="nav_apply"></a>
   </div>
-  <p class="bl-status"><i></i> <span data-key="nav_status"></span></p>
-  <div class="lang-toggle bl-lang">
-    <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')">عربي</button>
-    <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
-  </div>
-  <a href="#apply" class="nav-cta bl-btn-nav" data-key="nav_apply"></a>
 </nav>
 
 <!-- HERO -->
