@@ -2485,6 +2485,8 @@ function render() {
         iframe.title = 'VSL';
         iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
         iframe.allowFullscreen = true;
+        iframe.className = blBar.className;
+        iframe.style.cssText = 'border:0;cursor:auto;';
         blBar.replaceWith(iframe);
       };
       blBar.addEventListener('click', playVsl);
