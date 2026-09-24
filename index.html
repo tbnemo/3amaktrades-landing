@@ -816,6 +816,10 @@
     @media (max-width: 880px) { .bl-mentor { grid-template-columns: 1fr; } }
 
     .bl-mentor-photo { aspect-ratio: 4/5; width: 100%; overflow: hidden; }
+    /* full-width at 4:5 on a phone means a photo taller than the screen is
+       wide -- cap it to a normal portrait size instead of letting it fill
+       the stacked column's whole width. */
+    @media (max-width: 640px) { .bl-mentor-photo { width: min(220px,55vw); margin-inline: auto; } }
     .bl-mentor-photo picture, .bl-cert picture { display: block; width: 100%; height: 100%; }
     .bl-mentor-photo img, .bl-cert img {
       display: block; width: 100%; height: 100%; object-fit: cover;
