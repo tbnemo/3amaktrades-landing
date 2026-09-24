@@ -265,6 +265,99 @@
       padding-inline-start: 14px; border-inline-start: 2px solid var(--gold-lo);
     }
 
+    /* ══ SHARED LANGUAGE FOR THE BANDS BELOW THE HERO (Bullion) ══ */
+    .bl-sec { position: relative; }
+    .bl-wrap { max-width: 1180px; margin-inline: auto; }
+
+    h2.bl-h2 {
+      font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 800;
+      text-transform: uppercase; margin: 0 0 clamp(18px,2.4vw,28px);
+      line-height: .88; letter-spacing: -.012em;
+      font-size: clamp(32px,4.6vw,66px);
+      max-width: 26ch; color: var(--bone);
+    }
+    [dir="rtl"] h2.bl-h2 {
+      font-family: 'Changa', sans-serif; line-height: 1.24; letter-spacing: 0;
+      text-transform: none;
+    }
+    h2.bl-h2 .sm {
+      display: block; font-family: 'Inter','Noto Sans Arabic',sans-serif;
+      font-size: clamp(11.5px,.8vw,13px); font-weight: 600; letter-spacing: .2em;
+      color: var(--dim); margin-block-end: 1.1em; text-transform: uppercase;
+    }
+    h2.bl-h2 .lg { display: block; }
+    h2.bl-h2 .lg em { font-style: normal; color: var(--gold); }
+
+    /* mono-ish micro label used for field labels and captions */
+    .bl-mono {
+      font-size: 11.5px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    /* the flat image stand-in — the same convention as the hero's logo
+       fallback: a struck slab with the intended file path named on it  */
+    .bl-slab {
+      background: var(--slab); border-block-start: 2px solid var(--gold-lo);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 8px; text-align: center; padding: 16px; color: var(--dim); overflow: hidden;
+    }
+    .bl-slab code {
+      font-family: ui-monospace,SFMono-Regular,Menlo,monospace;
+      font-size: 11.5px; letter-spacing: .06em; color: #C0A034; direction: ltr;
+    }
+    .bl-slab .bl-slab-t { font-size: 12px; line-height: 1.5; max-width: 22ch; }
+
+    /* ══ BAND 3 — THE RECORD (Bullion) ══ */
+    #the-record { background: var(--band); padding-block: clamp(44px,6vw,86px); }
+
+    .bl-body {
+      font-size: clamp(14.5px,1.05vw,16.5px); line-height: 1.68; color: var(--dim);
+      max-width: 56ch; margin: 0 0 clamp(20px,2.6vw,28px);
+    }
+
+    .bl-ledger {
+      display: grid; grid-template-columns: minmax(0,.85fr) minmax(0,1.5fr);
+      gap: clamp(28px,5vw,72px); align-items: start;
+    }
+    @media (max-width: 860px) { .bl-ledger { grid-template-columns: 1fr; } }
+
+    .bl-certs { margin-block-start: clamp(30px,4vw,46px); }
+    .bl-certs-h { margin-block-end: 14px; }
+    .bl-certs-row {
+      /* fixed column counts, not auto-fit — auto-fit sizes tracks to
+         whatever fits the container width regardless of item count, which
+         leaves phantom empty cells on wide screens since there are exactly
+         7 certs. Locking the count to the real number of items means the
+         full row is always exactly full, no gaps.                        */
+      display: grid; grid-template-columns: repeat(2,1fr);
+      gap: 1px; background: #241D08; /* the 1px gaps read as hairlines */
+    }
+    @media (min-width: 480px) { .bl-certs-row { grid-template-columns: repeat(4,1fr); } }
+    @media (min-width: 720px) { .bl-certs-row { grid-template-columns: repeat(7,1fr); } }
+    .bl-cert {
+      aspect-ratio: 4/3;
+      /* SIGNATURE: staggered reveal, not a scroller ticker — each slab
+         stamps into place in sequence, like entries being logged. Triggers
+         once via IntersectionObserver when .bl-certs-row gets .is-in.   */
+      opacity: 0; transform: translateY(16px) scaleY(.9); transform-origin: bottom;
+      transition: opacity .5s cubic-bezier(.65,0,.25,1), transform .5s cubic-bezier(.65,0,.25,1);
+    }
+    .bl-certs-row.is-in .bl-cert { opacity: 1; transform: translateY(0) scaleY(1); }
+    .bl-certs-row.is-in .bl-cert:nth-child(1) { transition-delay: .03s }
+    .bl-certs-row.is-in .bl-cert:nth-child(2) { transition-delay: .11s }
+    .bl-certs-row.is-in .bl-cert:nth-child(3) { transition-delay: .19s }
+    .bl-certs-row.is-in .bl-cert:nth-child(4) { transition-delay: .27s }
+    .bl-certs-row.is-in .bl-cert:nth-child(5) { transition-delay: .35s }
+    .bl-certs-row.is-in .bl-cert:nth-child(6) { transition-delay: .43s }
+    .bl-certs-row.is-in .bl-cert:nth-child(7) { transition-delay: .51s }
+    @media (prefers-reduced-motion: reduce) {
+      .bl-cert { opacity: 1; transform: none; transition: none; }
+    }
+    .bl-cert .bl-slab-t {
+      font-family: 'Big Shoulders Display',sans-serif;
+      font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 14px; color: var(--bone);
+    }
+
     /* ══ CTA BTN ══ */
     .cta-btn {
       display: inline-flex; flex-direction: column; align-items: center;
@@ -939,9 +1032,11 @@ const t = {
     vsl_sub: "شاهد الفيديو كاملاً قبل التقديم.",
     cta2: "أنا مستعد — تقدم الآن",
     cta2_sub: "مجاني · بدون أي التزام",
-    stat1_n: "2+",   stat1_l: "سنوات خبرة",
-    stat2_n: "20+",  stat2_l: "طالب تم تدريبه",
-    stat3_n: "$100K+", stat3_l: "أرباح الطلاب",
+    record_kicker: "٠٧ في السجل",
+    record_h: "سبع شهادات. منهج واحد.",
+    record_intro_label: "أكثر من سنتين تداول · عقود آجلة وفوركس",
+    record_intro: "كل شهادة تحت هي اجتياز حقيقي لحساب مموَّل من شركة معروفة باسمها — مش سكرين شوت لصفقة، سكرين شوت لالتزام بقواعد كاملة.",
+    record_certs_h: "شهادات موثّقة",
     proof_label: "نتائج حقيقية",
     proof_h: "ماذا يقول", proof_h_g: "المجتمع",
     proof1_tag: "نجاح طالب", proof1_title: "ربح $2,000 في شهره الأول",
@@ -1081,9 +1176,11 @@ const t = {
     vsl_sub: "Watch the full video before applying — it covers everything.",
     cta2: "I'm Ready — Apply Now",
     cta2_sub: "Free application · No commitment",
-    stat1_n: "2+",   stat1_l: "Years Experience",
-    stat2_n: "20+",  stat2_l: "Students Trained",
-    stat3_n: "$100K+", stat3_l: "In Student Payouts",
+    record_kicker: "07 On the record",
+    record_h: "Seven certificates. One method.",
+    record_intro_label: "2+ years trading · futures & forex",
+    record_intro: "Every certificate below is a real funded-account pass from a named prop firm — not a screenshot of a trade, a screenshot of a rulebook being followed.",
+    record_certs_h: "Verified Certifications",
     proof_label: "Real Results",
     proof_h: "What The Community", proof_h_g: "Has To Say",
     proof1_tag: "Student Win", proof1_title: "Made $2K His First Month Trading",
@@ -1341,12 +1438,45 @@ function render() {
 
 <div class="section-divider"></div>
 
-<!-- STATS -->
-<section id="stats">
-  <div class="stats-grid">
-    <div class="stat-item fade-up"><div class="stat-number" dir="ltr"></div><div class="stat-label"></div></div>
-    <div class="stat-item fade-up"><div class="stat-number" dir="ltr"></div><div class="stat-label"></div></div>
-    <div class="stat-item fade-up"><div class="stat-number" dir="ltr"></div><div class="stat-label"></div></div>
+<!-- THE RECORD -->
+<section id="the-record" class="bl-sec bl-pad">
+  <div class="bl-wrap">
+    <h2 class="bl-h2">
+      <span class="sm" data-key="record_kicker"></span>
+      <span class="lg" data-key="record_h"></span>
+    </h2>
+    <div class="bl-ledger">
+      <div>
+        <p class="bl-mono" data-key="record_intro_label"></p>
+        <p class="bl-body" data-key="record_intro"></p>
+      </div>
+      <div class="bl-certs">
+        <p class="bl-mono bl-certs-h" data-key="record_certs_h"></p>
+        <div class="bl-certs-row">
+          <div class="bl-slab bl-cert" role="img" aria-label="TopStep — Certified Funded Trader">
+            <span class="bl-slab-t">TopStep</span><code>/certs/topstep.jpg</code>
+          </div>
+          <div class="bl-slab bl-cert" role="img" aria-label="AquaFutures — Certificate of Funded Trader">
+            <span class="bl-slab-t">AquaFutures</span><code>/certs/aquafutures-1.jpg</code>
+          </div>
+          <div class="bl-slab bl-cert" role="img" aria-label="FundedNext Futures — Rising Trader">
+            <span class="bl-slab-t">FundedNext</span><code>/certs/fundednext.jpg</code>
+          </div>
+          <div class="bl-slab bl-cert" role="img" aria-label="AquaFutures — Certificate of Funded Trader">
+            <span class="bl-slab-t">AquaFutures</span><code>/certs/aquafutures-2.jpg</code>
+          </div>
+          <div class="bl-slab bl-cert" role="img" aria-label="The Trading Pit — Challenge Passed">
+            <span class="bl-slab-t">Trading Pit</span><code>/certs/tradingpit.jpg</code>
+          </div>
+          <div class="bl-slab bl-cert" role="img" aria-label="Funded Futures Family — Certificate of Funding">
+            <span class="bl-slab-t">Funded Futures</span><code>/certs/fundedfutures.jpg</code>
+          </div>
+          <div class="bl-slab bl-cert" role="img" aria-label="My Funded Futures — Builder 50K Passing Certificate">
+            <span class="bl-slab-t">My Funded Futures</span><code>/certs/myfundedfutures.jpg</code>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -2396,6 +2526,22 @@ function render() {
     if (!hasContactInfo) return;
     navigator.sendBeacon('/api/submit', new Blob([JSON.stringify(partialLeadPayload())], { type: 'application/json' }));
   });
+
+  /* Certs: staggered reveal on scroll-into-view, once. */
+  var certsRow = document.querySelector('.bl-certs-row');
+  if (certsRow && 'IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          certsRow.classList.add('is-in');
+          io.disconnect();
+        }
+      });
+    }, {threshold: .2});
+    io.observe(certsRow);
+  } else if (certsRow) {
+    certsRow.classList.add('is-in');
+  }
 </script>
 </body>
 </html>
