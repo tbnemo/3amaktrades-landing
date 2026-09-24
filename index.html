@@ -197,16 +197,24 @@
     }
 
     /* ambient animated candlestick backdrop -- hero only, muted gold tones,
-       respects reduced-motion, ends on one candle with a slow live pulse. */
+       respects reduced-motion, ends on one candle with a slow live pulse.
+       The candle and wave rows are each drawn twice back-to-back (a 2400-wide
+       pair of 1200-wide loops) and drift left by exactly one loop-width on an
+       infinite timer, so the tape reads as an endless flowing chart with no
+       seam -- the outer viewBox stays 1200x400, so nothing else's size moves. */
     .bl-candles { position: absolute; inset: 0; z-index: 0; opacity: .4; pointer-events: none; }
-    .bl-candle { transform-origin: center bottom; animation: bl-grow .7s cubic-bezier(.65,0,.25,1) both; }
+    .bl-candle { transform-origin: center bottom; animation: bl-grow .7s cubic-bezier(.65,0,.25,1) both; filter: url(#bl-glow); }
     @keyframes bl-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
     .bl-candle-live {
       animation: bl-grow .7s cubic-bezier(.65,0,.25,1) both, bl-pulse 3.6s ease-in-out 2s infinite;
     }
     @keyframes bl-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+    .bl-candle-track { animation: bl-drift 46s linear infinite; }
+    .bl-wave-track { animation: bl-drift 70s linear infinite; }
+    @keyframes bl-drift { to { transform: translateX(-1200px); } }
     @media (prefers-reduced-motion: reduce) {
       .bl-candle, .bl-candle-live { animation: none; transform: none; opacity: 1; }
+      .bl-candle-track, .bl-wave-track { animation: none; }
     }
     @media (max-width: 700px) { .bl-candles { opacity: .28; } }
 
@@ -404,6 +412,13 @@
     }
     @media (min-width: 480px) { .bl-certs-row { grid-template-columns: repeat(4,1fr); } }
     @media (min-width: 720px) { .bl-certs-row { grid-template-columns: repeat(7,1fr); } }
+    /* 7 certs is prime -- it never divides evenly into 2 or 4 columns, so
+       below the exact 7-column breakpoint the last cert is always a widow
+       leaving one empty grid cell (the dark row background shows through as
+       a blank box). Span the widow across the row instead of leaving the gap. */
+    @media (max-width: 719.98px) {
+      .bl-certs-row .bl-cert:last-child { grid-column: 1 / -1; aspect-ratio: 21/9; }
+    }
     .bl-cert {
       aspect-ratio: 4/3; overflow: hidden;
       /* SIGNATURE: staggered reveal, not a scroller ticker — each slab
@@ -1458,58 +1473,126 @@ function render() {
 <!-- HERO -->
 <section id="hero" class="bl-pad">
   <svg class="bl-candles" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <filter id="bl-glow" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+      <path id="bl-wave-seg" d="M0,380 C50,365 150,395 200,380 C250,365 350,395 400,380 C450,365 550,395 600,380 C650,365 750,395 800,380 C850,365 950,395 1000,380 C1050,365 1150,395 1200,380" fill="none" stroke="#D4AF37" stroke-width="1"/>
+    </defs>
     <line x1="0" y1="330" x2="1200" y2="330" stroke="#241D08" stroke-width="1"/>
-    <g class="bl-candle" style="transform-origin:46px 330px;animation-delay:.02s">
-      <line x1="46" y1="248" x2="46" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="34" y="268" width="24" height="42" fill="#7A6218"/>
+    <g class="bl-wave-track" opacity=".3">
+      <use href="#bl-wave-seg" x="0"/>
+      <use href="#bl-wave-seg" x="1200"/>
     </g>
-    <g class="bl-candle" style="transform-origin:138px 330px;animation-delay:.08s">
-      <line x1="138" y1="216" x2="138" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="126" y="252" width="24" height="58" fill="#141210"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:230px 330px;animation-delay:.14s">
-      <line x1="230" y1="260" x2="230" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="218" y="278" width="24" height="34" fill="#7A6218"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:322px 330px;animation-delay:.2s">
-      <line x1="322" y1="192" x2="322" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="310" y="236" width="24" height="66" fill="#141210"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:414px 330px;animation-delay:.26s">
-      <line x1="414" y1="238" x2="414" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="402" y="262" width="24" height="46" fill="#7A6218"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:506px 330px;animation-delay:.32s">
-      <line x1="506" y1="176" x2="506" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="494" y="224" width="24" height="72" fill="#141210"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:598px 330px;animation-delay:.38s">
-      <line x1="598" y1="222" x2="598" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="586" y="250" width="24" height="52" fill="#7A6218"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:690px 330px;animation-delay:.44s">
-      <line x1="690" y1="150" x2="690" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="678" y="204" width="24" height="82" fill="#141210"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:782px 330px;animation-delay:.5s">
-      <line x1="782" y1="204" x2="782" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="770" y="234" width="24" height="60" fill="#7A6218"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:874px 330px;animation-delay:.56s">
-      <line x1="874" y1="164" x2="874" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="862" y="212" width="24" height="76" fill="#141210"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:966px 330px;animation-delay:.62s">
-      <line x1="966" y1="228" x2="966" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="954" y="254" width="24" height="50" fill="#7A6218"/>
-    </g>
-    <g class="bl-candle" style="transform-origin:1058px 330px;animation-delay:.68s">
-      <line x1="1058" y1="140" x2="1058" y2="330" stroke="#7A6218" stroke-width="1.4"/>
-      <rect x="1046" y="196" width="24" height="88" fill="#141210"/>
-    </g>
-    <g class="bl-candle bl-candle-live" style="transform-origin:1150px 330px;animation-delay:.74s">
-      <line x1="1150" y1="108" x2="1150" y2="330" stroke="#D4AF37" stroke-width="1.6"/>
-      <rect x="1136" y="160" width="28" height="100" fill="#D4AF37"/>
+    <g class="bl-candle-track">
+      <g class="bl-candle" style="transform-origin:46px 330px;animation-delay:.02s">
+        <line x1="46" y1="248" x2="46" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="34" y="268" width="24" height="42" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:138px 330px;animation-delay:.08s">
+        <line x1="138" y1="216" x2="138" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="126" y="252" width="24" height="58" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:230px 330px;animation-delay:.14s">
+        <line x1="230" y1="260" x2="230" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="218" y="278" width="24" height="34" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:322px 330px;animation-delay:.2s">
+        <line x1="322" y1="192" x2="322" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="310" y="236" width="24" height="66" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:414px 330px;animation-delay:.26s">
+        <line x1="414" y1="238" x2="414" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="402" y="262" width="24" height="46" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:506px 330px;animation-delay:.32s">
+        <line x1="506" y1="176" x2="506" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="494" y="224" width="24" height="72" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:598px 330px;animation-delay:.38s">
+        <line x1="598" y1="222" x2="598" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="586" y="250" width="24" height="52" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:690px 330px;animation-delay:.44s">
+        <line x1="690" y1="150" x2="690" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="678" y="204" width="24" height="82" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:782px 330px;animation-delay:.5s">
+        <line x1="782" y1="204" x2="782" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="770" y="234" width="24" height="60" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:874px 330px;animation-delay:.56s">
+        <line x1="874" y1="164" x2="874" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="862" y="212" width="24" height="76" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:966px 330px;animation-delay:.62s">
+        <line x1="966" y1="228" x2="966" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="954" y="254" width="24" height="50" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1058px 330px;animation-delay:.68s">
+        <line x1="1058" y1="140" x2="1058" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1046" y="196" width="24" height="88" fill="#141210"/>
+      </g>
+      <g class="bl-candle bl-candle-live" style="transform-origin:1150px 330px;animation-delay:.74s">
+        <line x1="1150" y1="108" x2="1150" y2="330" stroke="#D4AF37" stroke-width="1.6"/>
+        <rect x="1136" y="160" width="28" height="100" fill="#D4AF37"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1246px 330px;animation-delay:.02s">
+        <line x1="1246" y1="248" x2="1246" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1234" y="268" width="24" height="42" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1338px 330px;animation-delay:.08s">
+        <line x1="1338" y1="216" x2="1338" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1326" y="252" width="24" height="58" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1430px 330px;animation-delay:.14s">
+        <line x1="1430" y1="260" x2="1430" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1418" y="278" width="24" height="34" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1522px 330px;animation-delay:.2s">
+        <line x1="1522" y1="192" x2="1522" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1510" y="236" width="24" height="66" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1614px 330px;animation-delay:.26s">
+        <line x1="1614" y1="238" x2="1614" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1602" y="262" width="24" height="46" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1706px 330px;animation-delay:.32s">
+        <line x1="1706" y1="176" x2="1706" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1694" y="224" width="24" height="72" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1798px 330px;animation-delay:.38s">
+        <line x1="1798" y1="222" x2="1798" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1786" y="250" width="24" height="52" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1890px 330px;animation-delay:.44s">
+        <line x1="1890" y1="150" x2="1890" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1878" y="204" width="24" height="82" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:1982px 330px;animation-delay:.5s">
+        <line x1="1982" y1="204" x2="1982" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="1970" y="234" width="24" height="60" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:2074px 330px;animation-delay:.56s">
+        <line x1="2074" y1="164" x2="2074" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="2062" y="212" width="24" height="76" fill="#141210"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:2166px 330px;animation-delay:.62s">
+        <line x1="2166" y1="228" x2="2166" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="2154" y="254" width="24" height="50" fill="#7A6218"/>
+      </g>
+      <g class="bl-candle" style="transform-origin:2258px 330px;animation-delay:.68s">
+        <line x1="2258" y1="140" x2="2258" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+        <rect x="2246" y="196" width="24" height="88" fill="#141210"/>
+      </g>
+      <g class="bl-candle bl-candle-live" style="transform-origin:2350px 330px;animation-delay:.74s">
+        <line x1="2350" y1="108" x2="2350" y2="330" stroke="#D4AF37" stroke-width="1.6"/>
+        <rect x="2336" y="160" width="28" height="100" fill="#D4AF37"/>
+      </g>
     </g>
   </svg>
 
