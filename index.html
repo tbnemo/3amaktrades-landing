@@ -2633,7 +2633,13 @@ function render() {
         const pxPerSecond = typeof speed === 'function' ? speed() : speed;
         const width = getWidth();
         offset -= pxPerSecond * dt;
-        if (Math.abs(offset) >= width) offset += width;
+        // Modulo instead of "subtract width once past the threshold": that
+        // approach falls permanently behind (drifting into blank track past
+        // the last duplicate card) if a single frame's advance ever exceeds
+        // width for any reason (a bad width reading, a resize mid-frame).
+        // Modulo re-derives the wrapped position from scratch every frame,
+        // so it can't accumulate that kind of drift.
+        if (width > 0) offset %= width;
         track.style.transform = `translateX(${offset}px)`;
       }
       requestAnimationFrame(tick);
@@ -2717,7 +2723,7 @@ function render() {
           img.addEventListener('load', res, { once: true });
           img.addEventListener('error', res, { once: true });
         }))),
-        new Promise(res => setTimeout(res, 3000)),
+        new Promise(res => setTimeout(res, 1200)), // cap the worst-case startup delay
       ]);
       // Mobile's approved pace is a flat rate (a viewport-proportional
       // speed reads as too slow on a narrow screen); desktop's is
