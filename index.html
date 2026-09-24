@@ -421,11 +421,13 @@
     /* A self-moving marquee, not a grid -- 7 certs is prime so it never
        divides evenly into a fixed column count, and a fixed grid always
        leaves a widow. The track holds the 7 certs twice back-to-back and
-       drifts left by exactly one set-width (-50%, so it's responsive to
-       whatever the cards actually render at) on an infinite loop -- no
-       buttons, no manual scrolling. Pauses on hover/focus so it can still
-       be read and zoomed (WCAG 2.2.2: a way to stop >5s auto-motion). Edge
-       mask fades the row in/out at its sides instead of a hard crop. */
+       drifts continuously on an infinite loop (see driftLoop in the JS) --
+       no buttons, no manual scrolling. Deliberately ignores
+       prefers-reduced-motion (the static/scrollable fallback that respected
+       it looked broken at several widths); pausing on hover/focus is the
+       actual WCAG 2.2.2 control (a way to stop >5s auto-motion), and that
+       applies regardless of the reduced-motion setting. Edge mask fades the
+       row in/out at its sides instead of a hard crop. */
     .bl-certs-row {
       position: relative; overflow: hidden;
       -webkit-mask-image: linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
@@ -445,15 +447,6 @@
       aspect-ratio: 4/3; overflow: hidden;
     }
     @media (min-width: 720px) { .bl-cert { flex-basis: clamp(150px,13.5vw,190px); } }
-    @media (prefers-reduced-motion: reduce) {
-      /* no scrollbar -- wrap the real 7 into a static grid-like row instead
-         of a horizontally-scrollable strip. flex-wrap naturally avoids the
-         "widow" phantom-cell problem CSS grid had (an under-full wrapped
-         row just ends, it doesn't reserve empty tracks). */
-      .bl-certs-row { overflow: visible; -webkit-mask-image: none; mask-image: none; }
-      .bl-certs-track { flex-wrap: wrap; width: auto; }
-      .bl-certs-track .bl-cert:nth-child(n+8) { display: none; } /* drop the duplicate set */
-    }
     .bl-cert .bl-slab-t {
       font-family: 'Big Shoulders Display',sans-serif;
       font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 14px; color: var(--bone);
@@ -2608,24 +2601,21 @@ function render() {
 
   // Continuous drift for the hero candles/wave and the certs marquee --
   // driven by requestAnimationFrame + direct style.transform writes rather
-  // than a CSS @keyframes animation. CSS animations were confirmed (in the
-  // field, not just theory) to silently stall on at least one real desktop
-  // browser with prefers-reduced-motion definitely off, which no amount of
-  // CSS-side fixing could work around from here. rAF isn't gated by
-  // whatever that was. Still honors prefers-reduced-motion itself, checked
-  // once at call time, same as the CSS media query did.
-  function driftLoop(track, durationMs, getWidth, pauseEl) {
-    if (!track || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let start = null, pausedAt = null, pauseOffsetMs = 0, pauseCount = 0;
+  // than a CSS @keyframes animation (CSS animations were confirmed, in the
+  // field, to silently stall on at least one real desktop browser). A
+  // fixed px-per-frame step ties speed to the display's refresh rate (a
+  // 144Hz screen would scroll 2.4x faster than 60Hz) -- advancing by
+  // elapsed time × px/sec instead keeps the pace identical everywhere.
+  // `speed` is either a constant px/sec number or a function returning one
+  // (so it can differ by breakpoint, or depend on a live-measured width).
+  function driftLoop(track, speed, getWidth, pauseEl, ignoreReducedMotion) {
+    if (!track) return;
+    if (!ignoreReducedMotion && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let offset = 0, lastTs = null, pauseCount = 0;
     // Ref-counted: hover/focus and off-screen visibility are independent
     // pause reasons that can overlap, so a plain boolean would resume the
     // loop the moment either one cleared even while the other still held.
-    const setPaused = (p) => {
-      pauseCount += p ? 1 : -1;
-      const now = performance.now();
-      if (pauseCount > 0 && pausedAt === null) pausedAt = now;
-      else if (pauseCount <= 0 && pausedAt !== null) { pauseOffsetMs += now - pausedAt; pausedAt = null; }
-    };
+    const setPaused = (p) => { pauseCount += p ? 1 : -1; };
     if (pauseEl) {
       pauseEl.addEventListener('mouseenter', () => setPaused(true));
       pauseEl.addEventListener('mouseleave', () => setPaused(false));
@@ -2636,11 +2626,15 @@ function render() {
     // getWidth() layout read 60x/sec for a section nobody's looking at.
     new IntersectionObserver(entries => setPaused(!entries[0].isIntersecting), { threshold: 0 }).observe(track);
     function tick(ts) {
-      if (start === null) start = ts;
-      if (pausedAt === null) {
-        const elapsed = (ts - start - pauseOffsetMs) % durationMs;
+      if (lastTs === null) lastTs = ts;
+      const dt = Math.min((ts - lastTs) / 1000, 0.1); // cap avoids a jump after the tab was backgrounded
+      lastTs = ts;
+      if (pauseCount <= 0) {
+        const pxPerSecond = typeof speed === 'function' ? speed() : speed;
         const width = getWidth();
-        track.style.transform = `translateX(${-(elapsed / durationMs) * width}px)`;
+        offset -= pxPerSecond * dt;
+        if (Math.abs(offset) >= width) offset += width;
+        track.style.transform = `translateX(${offset}px)`;
       }
       requestAnimationFrame(tick);
     }
@@ -2695,8 +2689,8 @@ function render() {
       certLightbox.addEventListener('click', () => certLightbox.classList.remove('open'));
     }
 
-    driftLoop(document.querySelector('.bl-candle-track'), 46000, () => 1200);
-    driftLoop(document.querySelector('.bl-wave-track'), 70000, () => 1200);
+    driftLoop(document.querySelector('.bl-candle-track'), 1200 / 46, () => 1200);
+    driftLoop(document.querySelector('.bl-wave-track'), 1200 / 70, () => 1200);
     const certsTrack = document.querySelector('.bl-certs-track');
     if (certsTrack) {
       const CERTS_SET_LEN = 7;
@@ -2718,9 +2712,21 @@ function render() {
         }))),
         new Promise(res => setTimeout(res, 3000)),
       ]);
+      // Mobile's approved pace is a flat rate (a viewport-proportional
+      // speed reads as too slow on a narrow screen); desktop's is
+      // content-based, one full set-width loop every 28s.
+      const CERTS_IS_MOBILE = window.matchMedia('(max-width: 640px)').matches;
+      const CERTS_MOBILE_PX_PER_SECOND = 38;
+      const CERTS_DESKTOP_LOOP_SECONDS = 28;
       certsImagesReady.then(() => {
         certsSetWidth = measureSetWidth();
-        driftLoop(certsTrack, 32000, () => certsSetWidth, certsRow);
+        driftLoop(
+          certsTrack,
+          () => CERTS_IS_MOBILE ? CERTS_MOBILE_PX_PER_SECOND : certsSetWidth / CERTS_DESKTOP_LOOP_SECONDS,
+          () => certsSetWidth,
+          certsRow,
+          true, // ignore prefers-reduced-motion -- see the note on .bl-certs-row
+        );
       });
     }
   }
