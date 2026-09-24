@@ -26,7 +26,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Inter:wght@400;600;700;800;900&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Changa:wght@600;800&family=Inter:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
 
   <!-- ══ AD PIXELS — placeholder IDs, replace before running paid traffic ══ -->
   <!--
@@ -50,28 +50,21 @@
   <!-- To enable: uncomment above, drop in your real Pixel IDs from Meta Events Manager / TikTok Ads Manager,
        then call fbq('track','Lead') and ttq.track('SubmitForm') inside submitForm() in the script below. -->
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *{box-sizing:border-box;}
 
-    :root {
-      --green: #D4AF37;
-      --green-dim: #B8960C;
-      --green-glow: rgba(212,175,55,0.4);
-      --dark: #050505;
-      --dark-2: linear-gradient(180deg, #0c0c0c 0%, #060606 100%);
-      --dark-3: linear-gradient(155deg, #171717 0%, #0d0d0d 55%, #0a0a0a 100%);
-      --dark-4: linear-gradient(155deg, #212121 0%, #161616 55%, #131313 100%);
-      --white: #ffffff;
-      --gray: #8f8f8f;
-      --red: #ef4444;
+    :root{
+      --void:#050505;       /* the client's near-void, kept      */
+      --band:#101010;       /* charcoal band                     */
+      --band-2:#181817;     /* second step                       */
+      --gold:#D4AF37;       /* the original gold, used as a FILL */
+      --gold-lo:#7A6218;    /* the shadowed second layer         */
+      --bone:#F2EEE4;
+      --dim:#8B887F;
+      --ink:#0A0802;        /* the type colour used ON gold      */
+      --slab:#1C1C1A;       /* image placeholder fill            */
     }
 
-    html { scroll-behavior: smooth; }
-
-    body {
-      background: radial-gradient(ellipse 1400px 900px at 50% -10%, #0f0f0f 0%, var(--dark) 55%) var(--dark);
-      color: var(--white);
-      overflow-x: hidden;
-    }
+    html,body{margin:0;padding:0;background:var(--void);}
 
     /* Font switching based on lang */
     html[lang="ar"] body { font-family: 'Cairo', sans-serif; }
