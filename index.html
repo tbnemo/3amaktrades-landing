@@ -2455,6 +2455,7 @@ function render() {
   ];
 
   let selectedCode = '+966';
+  let ccManuallySet = false;
 
   function flagImg(iso, size=20) {
     return `<img src="https://flagcdn.com/w${size}/${iso}.png" width="${size}" height="${Math.round(size*0.7)}" style="border-radius:2px;object-fit:cover;flex-shrink:0;" />`;
@@ -2471,6 +2472,7 @@ function render() {
     ).join('');
     list.querySelectorAll('.cc-option').forEach(el => {
       el.addEventListener('click', () => {
+        ccManuallySet = true;
         selectedCode = el.dataset.code;
         document.getElementById('ccFlag').src = `https://flagcdn.com/w20/${el.dataset.iso}.png`;
         document.getElementById('ccCode').textContent = el.dataset.code;
@@ -2498,6 +2500,27 @@ function render() {
   });
 
   buildCCList();
+
+  // Guess the phone country from the visitor's IP so the picker starts on
+  // their own country instead of the Saudi Arabia default -- silent best
+  // effort, never overrides a country the person already picked themselves,
+  // and leaves the default in place on any failure (no key, no CORS proxy,
+  // just a plain lookup -- the same request any page-load already exposes
+  // the visitor's IP to).
+  (async function detectCountryFromIP() {
+    try {
+      const res = await fetch('https://get.geojs.io/v1/ip/country.json');
+      if (!res.ok) return;
+      const data = await res.json();
+      const iso = (data.country || '').toLowerCase(); // GeoJS returns the 2-letter code as "country"
+      if (ccManuallySet || !iso) return;
+      const match = COUNTRIES.find(c => c.iso === iso);
+      if (!match) return;
+      selectedCode = match.code;
+      document.getElementById('ccFlag').src = `https://flagcdn.com/w20/${match.iso}.png`;
+      document.getElementById('ccCode').textContent = match.code;
+    } catch (e) { /* silent -- keep the default */ }
+  })();
 
   async function submitForm() {
     // map answer values to readable labels for Slack
