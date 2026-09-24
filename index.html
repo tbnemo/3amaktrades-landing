@@ -757,41 +757,42 @@
     .confirm-wa-label { margin-top: 28px; margin-bottom: 14px; font-size: 13px; color: #888; }
     .form-confirm .cta-btn-wa { border-color: rgba(37,211,102,0.35); }
 
-    /* ══ MENTOR ══ */
-    #mentor { padding: 100px 20px; background: var(--dark); position: relative; overflow: hidden; }
-    #mentor::before {
-      content: ''; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); width: 700px; height: 450px;
-      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
-      pointer-events: none;
+    /* ══ BAND 6 — MENTOR (Bullion) ══ */
+    #mentor { background: var(--void); padding-block: clamp(44px,6vw,86px); }
+
+    .bl-mentor {
+      display: grid; grid-template-columns: minmax(0,.7fr) minmax(0,1.3fr);
+      gap: clamp(28px,5vw,72px); align-items: start;
     }
-    .mentor-grid {
-      max-width: 640px; margin: 52px auto 0;
-      display: grid; grid-template-columns: 1fr;
-      gap: 28px; align-items: start; justify-items: center;
+    @media (max-width: 880px) { .bl-mentor { grid-template-columns: 1fr; } }
+
+    .bl-mentor-photo { aspect-ratio: 4/5; width: 100%; }
+
+    .bl-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 18px; margin-block-end: 6px; }
+    .bl-who .n {
+      font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 800;
+      font-size: clamp(34px,4.4vw,58px); text-transform: uppercase; line-height: .86;
+      letter-spacing: -.015em; color: var(--bone);
     }
-    .mentor-grid > div { min-width: 0; width: 100%; }
+    [dir="rtl"] .bl-who .n { font-family: 'Changa', sans-serif; text-transform: none; }
+    .bl-who .r { font-size: 12.5px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+    .bl-who-sub { margin: 0 0 clamp(22px,3vw,30px); font-size: 15px; color: var(--dim); line-height: 1.6; }
+
+    .bl-mentor-figs { display: flex; flex-wrap: wrap; border-block: 1px solid #241D08; margin-block-end: clamp(22px,3vw,32px); }
+    .bl-mentor-figs div { padding: 16px clamp(16px,2.2vw,30px); border-inline-end: 1px solid #241D08; flex: 1 1 130px; }
+    .bl-mentor-figs div:last-child { border-inline-end: none; }
+    .bl-mentor-figs b { display: block; font-size: clamp(26px,2.8vw,38px); color: var(--bone); }
+    .bl-mentor-figs span { display: block; margin-block-start: 6px; }
+
+    .bl-bio p { font-size: 15.5px; line-height: 1.72; color: var(--dim); margin: 0 0 1.05em; max-width: 62ch; }
+    .bl-bio p:first-child { color: var(--bone); font-size: 17px; }
+    .bl-bio p:last-child { margin-block-end: 0; }
+    html[lang="ar"] .bl-bio p:first-child { font-size: 16px; }
+
+    /* shared with #propfirm's stats row until Task 6 re-skins it — do not remove */
     @media (min-width: 1024px) {
-      .mentor-grid {
-        max-width: 900px; display: flex; flex-direction: row-reverse;
-        gap: 56px; align-items: flex-start;
-      }
-      .mentor-grid > div { width: auto; flex: 1 1 auto; }
-      .mentor-photo { flex: 0 0 240px; max-width: 240px; margin: 0; }
-      .mentor-tag, .mentor-name, .mentor-title { text-align: start; }
       .mentor-stats { justify-content: flex-start; }
     }
-    .mentor-photo {
-      width: 100%; max-width: 260px; margin: 0 auto;
-      aspect-ratio: 3/4; background: var(--dark-3);
-      border-radius: 4px; border: 1px solid #1e1e1e; overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--gray); font-size: 13px; text-align: center; position: relative;
-    }
-    .mentor-tag { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--green); font-weight: 700; margin-bottom: 10px; text-align: center; }
-    html[lang="ar"] .mentor-tag { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .mentor-name { font-size: 32px; font-weight: 900; letter-spacing: -1px; margin-bottom: 4px; text-align: center; }
-    .mentor-title { font-size: 13px; color: var(--gray); margin-bottom: 24px; text-align: center; }
     .mentor-stats { display: flex; gap: 0; margin-bottom: 28px; justify-content: center; }
     .mstat {
       text-align: center; padding: 0 24px;
@@ -801,31 +802,7 @@
     .mstat-num { font-size: 30px; font-weight: 900; color: var(--green); font-family: 'Inter', sans-serif; letter-spacing: -1px; }
     .mstat-lbl { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
     html[lang="ar"] .mstat-lbl { text-transform: none; letter-spacing: 0; font-size: 12px; }
-    .mentor-bio p { color: #aaa; font-size: 14px; line-height: 1.85; margin-bottom: 12px; }
-    html[lang="ar"] .mentor-bio p { line-height: 2; font-size: 15px; }
 
-    .mentor-certs { margin-top: 24px; }
-    .mentor-certs-label {
-      font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
-      color: var(--green); font-weight: 700; margin-bottom: 10px;
-    }
-    html[lang="ar"] .mentor-certs-label { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    .mentor-certs-row {
-      display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: thin; scrollbar-color: rgba(212,175,55,0.3) transparent;
-    }
-    .mentor-certs-row::-webkit-scrollbar { height: 4px; }
-    .mentor-certs-row::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-    .mentor-certs-row::-webkit-scrollbar-track { background: transparent; }
-    .mentor-certs-row::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.3); border-radius: 2px; }
-    .mentor-certs-row::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.5); }
-    .mentor-certs-row img {
-      height: 92px; width: auto; flex-shrink: 0;
-      border-radius: 4px; border: 1px solid #1e1e1e;
-      cursor: pointer; transition: transform 0.2s, border-color 0.2s;
-    }
-    .mentor-certs-row img:hover { transform: translateY(-3px); border-color: rgba(212,175,55,0.4); }
     #certLightbox {
       position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 2000;
       display: none; align-items: center; justify-content: center; padding: 32px;
@@ -999,7 +976,6 @@
       .proof-grid, .stats-grid { grid-template-columns: 1fr; }
       .stat-item + .stat-item::before { display: none; }
       .mentor-stats { flex-wrap: wrap; }
-      .mentor-certs-row img { height: 108px; }
     }
   </style>
 </head>
@@ -1483,41 +1459,38 @@ function render() {
 <div class="section-divider"></div>
 
 <!-- MENTOR -->
-<section id="mentor">
-  <div class="container">
-    <div class="section-header fade-up">
-      <span class="section-label"></span>
-      <h2><span class="mentor-h"></span><span class="mentor-h-g g"></span></h2>
-    </div>
-    <div class="mentor-grid">
-      <div class="mentor-photo fade-up"><img src="/mentor.jpg" alt="3AMAK" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;" /></div>
+<section id="mentor" class="bl-sec bl-pad">
+  <div class="bl-wrap">
+    <h2 class="bl-h2">
+      <span class="sm" data-key="mentor_label"></span>
+      <span class="lg"><span data-key="mentor_h"></span> <em data-key="mentor_h_g"></em></span>
+    </h2>
+    <div class="bl-mentor">
+      <div class="bl-slab bl-mentor-photo fade-up" role="img" aria-label="Omar Alhalabi">
+        <span class="bl-slab-t">Omar Alhalabi</span><code>/mentor.jpg</code>
+      </div>
       <div class="fade-up">
-        <div class="mentor-tag"></div>
-        <div class="mentor-name"></div>
-        <div class="mentor-title"></div>
-        <div class="mentor-stats">
-          <div class="mstat"><div class="mstat-num" dir="ltr"></div><div class="mstat-lbl"></div></div>
-          <div class="mstat"><div class="mstat-num" dir="ltr"></div><div class="mstat-lbl"></div></div>
-          <div class="mstat"><div class="mstat-num" dir="ltr"></div><div class="mstat-lbl"></div></div>
+        <div class="bl-who">
+          <span class="n" data-key="mentor_name"></span>
+          <span class="r" data-key="mentor_tag"></span>
         </div>
-        <div class="mentor-bio"><p></p><p></p><p></p></div>
-        <div class="mentor-certs">
-          <div class="mentor-certs-label"></div>
-          <div class="mentor-certs-row">
-            <img src="/certs/topstep.jpg" alt="TopStep — Certified Funded Trader" loading="lazy">
-            <img src="/certs/aquafutures-1.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy">
-            <img src="/certs/fundednext.jpg" alt="FundedNext Futures — Rising Trader" loading="lazy">
-            <img src="/certs/aquafutures-2.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy">
-            <img src="/certs/tradingpit.jpg" alt="The Trading Pit — Challenge Passed" loading="lazy">
-            <img src="/certs/fundedfutures.jpg" alt="Funded Futures Family — Certificate of Funding" loading="lazy">
-            <img src="/certs/myfundedfutures.jpg" alt="My Funded Futures — Builder 50K Passing Certificate" loading="lazy">
-          </div>
+        <p class="bl-who-sub" data-key="mentor_title"></p>
+        <div class="bl-mentor-figs">
+          <div><b class="bl-num" dir="ltr" data-key="mstat1_n"></b><span class="bl-mono" data-key="mstat1_l"></span></div>
+          <div><b class="bl-num" dir="ltr" data-key="mstat2_n"></b><span class="bl-mono" data-key="mstat2_l"></span></div>
+          <div><b class="bl-num" dir="ltr" data-key="mstat3_n"></b><span class="bl-mono" data-key="mstat3_l"></span></div>
+        </div>
+        <div class="bl-bio">
+          <p data-key="mentor_bio1"></p>
+          <p data-key="mentor_bio2"></p>
+          <p data-key="mentor_bio3"></p>
         </div>
       </div>
     </div>
   </div>
-  <div id="certLightbox"><img src="" alt=""></div>
 </section>
+
+<div id="certLightbox"><img src="" alt=""></div>
 
 <div class="section-divider"></div>
 
