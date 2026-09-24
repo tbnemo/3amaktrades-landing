@@ -894,6 +894,35 @@
       padding-block-start: 18px; margin-block-start: 4px; border-block-start: 1px solid #241D08; max-width: 60ch;
     }
 
+    /* ---------- PROOF (re-skin only; copy untouched — see proof1-3
+       tag/title in t.ar/t.en). Cards/shadows/radius removed for the
+       hairline-grid slab pattern; the thumbnail reuses the hero's
+       struck-slab + gold top-rule + bl-bar-play triangle language. ---------- */
+    .bl-proof {
+      display: grid; grid-template-columns: repeat(3,minmax(0,1fr));
+      gap: 1px; background: #241D08; border-block: 1px solid #241D08;
+    }
+    @media (max-width: 860px) { .bl-proof { grid-template-columns: 1fr; } }
+    .bl-proof-item { background: var(--void); padding: 0; }
+    .bl-proof-thumb {
+      position: relative; aspect-ratio: 16/10; background: var(--band-2);
+      border-block-start: 2px solid var(--gold);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .bl-proof-thumb .bl-bar-play { border-block-width: 14px; border-inline-start-width: 24px; }
+    .bl-proof-meta { padding: 18px clamp(16px,2vw,24px) clamp(22px,3vw,30px); }
+    .bl-proof-tag {
+      font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--gold); display: block; margin-block-end: 10px;
+    }
+    .bl-proof-title {
+      display: block; font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 700;
+      font-size: clamp(19px,1.9vw,25px); line-height: 1.02; text-transform: uppercase;
+      color: var(--bone);
+    }
+    [dir="rtl"] .bl-proof-title { font-family: 'Changa', sans-serif; text-transform: none; line-height: 1.3; }
+    .bl-proof-note { margin: clamp(20px,2.6vw,28px) 0 0; font-size: 13px; color: var(--dim); }
+
     /* ══ DECIDE ══ */
     #decide { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
     #decide::before {
@@ -1064,6 +1093,7 @@ const t = {
     proof1_tag: "نجاح طالب", proof1_title: "ربح $2,000 في شهره الأول",
     proof2_tag: "نجاح طالب", proof2_title: "ترك وظيفته في 60 يوماً",
     proof3_tag: "نجاح طالب", proof3_title: "من $0 إلى $5,000 شهرياً",
+    proof_note: "نتائج فردية. مش نموذجية، مش موعودة، ومش مؤشر لشو رح يحققه أي متداول ثاني.",
     apply_label: "تقدم الآن",
     apply_h: "أنت خطوة واحدة بعيد عن",
     apply_h_g: "تغيير طريقة كسبك للمال",
@@ -1218,6 +1248,7 @@ const t = {
     proof1_tag: "Student Win", proof1_title: "Made $2K His First Month Trading",
     proof2_tag: "Student Win", proof2_title: "Quit His 9-5 In 60 Days",
     proof3_tag: "Student Win", proof3_title: "$0 to $5K/Month Consistently",
+    proof_note: "Individual outcomes. They are not typical, not promised, and not an indication of what any other trader will do.",
     apply_label: "Apply Now",
     apply_h: "You're One Step Away From",
     apply_h_g: "Changing How You Make Money",
@@ -1652,17 +1683,37 @@ function render() {
 <div class="section-divider"></div>
 
 <!-- PROOF -->
-<section id="proof">
-  <div class="container">
-    <div class="section-header fade-up">
-      <span class="section-label"></span>
-      <h2><span class="proof-h"></span><span class="proof-h-g g"></span></h2>
+<section id="proof" class="bl-sec bl-pad">
+  <div class="bl-wrap">
+    <h2 class="bl-h2">
+      <span class="sm" data-key="proof_label"></span>
+      <span class="lg"><span data-key="proof_h"></span> <em data-key="proof_h_g"></em></span>
+    </h2>
+    <div class="bl-proof">
+      <div class="bl-proof-item fade-up">
+        <div class="bl-proof-thumb"><span class="bl-bar-play"></span></div>
+        <div class="bl-proof-meta">
+          <span class="bl-proof-tag" data-key="proof1_tag"></span>
+          <span class="bl-proof-title" data-key="proof1_title"></span>
+        </div>
+      </div>
+      <div class="bl-proof-item fade-up">
+        <div class="bl-proof-thumb"><span class="bl-bar-play"></span></div>
+        <div class="bl-proof-meta">
+          <span class="bl-proof-tag" data-key="proof2_tag"></span>
+          <span class="bl-proof-title" data-key="proof2_title"></span>
+        </div>
+      </div>
+      <div class="bl-proof-item fade-up">
+        <div class="bl-proof-thumb"><span class="bl-bar-play"></span></div>
+        <div class="bl-proof-meta">
+          <span class="bl-proof-tag" data-key="proof3_tag"></span>
+          <span class="bl-proof-title" data-key="proof3_title"></span>
+        </div>
+      </div>
     </div>
-    <div class="proof-grid">
-      <div class="proof-card fade-up"><div class="proof-thumb"><div class="proof-thumb-inner"><div class="small-play"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#D4AF37"/></svg></div></div><div class="proof-overlay"><div class="proof-tag"></div><div class="proof-title"></div></div></div></div>
-      <div class="proof-card fade-up"><div class="proof-thumb"><div class="proof-thumb-inner"><div class="small-play"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#D4AF37"/></svg></div></div><div class="proof-overlay"><div class="proof-tag"></div><div class="proof-title"></div></div></div></div>
-      <div class="proof-card fade-up"><div class="proof-thumb"><div class="proof-thumb-inner"><div class="small-play"><svg width="14" height="14" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#D4AF37"/></svg></div></div><div class="proof-overlay"><div class="proof-tag"></div><div class="proof-title"></div></div></div></div>
-    </div>
+
+    <p class="bl-proof-note" data-key="proof_note"></p>
   </div>
 </section>
 
