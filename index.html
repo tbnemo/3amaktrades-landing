@@ -938,6 +938,16 @@
     }
 
     .decide-cta { text-align: center; margin-block-start: clamp(28px,3.6vw,44px); }
+    /* Solid-gold/black-text CTA, matching the established Bullion primary-action
+       look (.form-btn-next in the Apply form) — scoped to .decide-cta so the
+       still-unconverted #final-cta .cta-btn below keeps its old green style. */
+    .decide-cta .cta-btn {
+      background: var(--gold); color: var(--ink); border-radius: 0;
+      font-family: 'Big Shoulders Display','Changa',sans-serif;
+    }
+    [dir="rtl"] .decide-cta .cta-btn { font-family: 'Changa', sans-serif; }
+    .decide-cta .cta-btn::before, .decide-cta .cta-btn::after { content: none; }
+    .decide-cta .cta-btn:hover { background: var(--bone); transform: none; box-shadow: none; }
 
     /* ══ FAQ ══ */
     #faq { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
