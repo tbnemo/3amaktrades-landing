@@ -1157,103 +1157,14 @@ function setLang(l) {
 function txt(key) { return t[lang][key] || ''; }
 
 function render() {
-  // Nav
-  document.querySelector('.nav-cta').textContent = txt('nav_apply');
-
-  // Hero
-  document.querySelector('.hero-badge-text').textContent = txt('hero_badge');
-  document.querySelector('.hero-h1').textContent = txt('hero_h1');
-  document.querySelector('.hero-h1-g').textContent = txt('hero_h1_g');
-  document.querySelector('.hero-sub').textContent = txt('hero_sub');
-  document.querySelectorAll('.pill')[0].textContent = txt('pill1');
-  document.querySelectorAll('.pill')[1].textContent = txt('pill2');
-  document.querySelectorAll('.pill')[2].textContent = txt('pill3');
-  document.querySelector('#hero .cta-btn .main').textContent = txt('cta1');
-  document.querySelector('#hero .cta-btn .sub').textContent = txt('cta1_sub');
-
-  // Stats
-  document.querySelectorAll('.stat-number')[0].textContent = txt('stat1_n');
-  document.querySelectorAll('.stat-label')[0].textContent = txt('stat1_l');
-  document.querySelectorAll('.stat-number')[1].textContent = txt('stat2_n');
-  document.querySelectorAll('.stat-label')[1].textContent = txt('stat2_l');
-  document.querySelectorAll('.stat-number')[2].textContent = txt('stat3_n');
-  document.querySelectorAll('.stat-label')[2].textContent = txt('stat3_l');
-
-  // Proof
-  document.querySelector('#proof .section-label').textContent = txt('proof_label');
-  document.querySelector('#proof .proof-h').textContent = txt('proof_h') + ' ';
-  document.querySelector('#proof .proof-h-g').textContent = txt('proof_h_g');
-  document.querySelectorAll('.proof-tag')[0].textContent = txt('proof1_tag');
-  document.querySelectorAll('.proof-title')[0].textContent = txt('proof1_title');
-  document.querySelectorAll('.proof-tag')[1].textContent = txt('proof2_tag');
-  document.querySelectorAll('.proof-title')[1].textContent = txt('proof2_title');
-  document.querySelectorAll('.proof-tag')[2].textContent = txt('proof3_tag');
-  document.querySelectorAll('.proof-title')[2].textContent = txt('proof3_title');
-
-  // Apply
-  document.querySelector('#apply .section-label').textContent = txt('apply_label');
-  document.querySelector('.apply-h').textContent = txt('apply_h') + ' ';
-  document.querySelector('.apply-h-g').textContent = txt('apply_h_g');
-  document.querySelector('.apply-header p').textContent = txt('apply_sub');
-
-  // Mentor
-  document.querySelector('#mentor .section-label').textContent = txt('mentor_label');
-  document.querySelector('.mentor-h').textContent = txt('mentor_h') + ' ';
-  document.querySelector('.mentor-h-g').textContent = txt('mentor_h_g');
-  document.querySelector('.mentor-tag').textContent = txt('mentor_tag');
-  document.querySelector('.mentor-certs-label').textContent = txt('mentor_certs_label');
-  document.querySelector('.mentor-name').textContent = txt('mentor_name');
-  document.querySelector('.mentor-title').textContent = txt('mentor_title');
-  document.querySelectorAll('.mstat-num')[0].textContent = txt('mstat1_n');
-  document.querySelectorAll('.mstat-lbl')[0].textContent = txt('mstat1_l');
-  document.querySelectorAll('.mstat-num')[1].textContent = txt('mstat2_n');
-  document.querySelectorAll('.mstat-lbl')[1].textContent = txt('mstat2_l');
-  document.querySelectorAll('.mstat-num')[2].textContent = txt('mstat3_n');
-  document.querySelectorAll('.mstat-lbl')[2].textContent = txt('mstat3_l');
-  document.querySelectorAll('.mentor-bio p')[0].textContent = txt('mentor_bio1');
-  document.querySelectorAll('.mentor-bio p')[1].textContent = txt('mentor_bio2');
-  document.querySelectorAll('.mentor-bio p')[2].textContent = txt('mentor_bio3');
-
-  // Prop Firm Explained
-  document.querySelector('#propfirm .section-label').textContent = txt('propfirm_label');
-  document.querySelector('.propfirm-h').textContent = txt('propfirm_h') + ' ';
-  document.querySelector('.propfirm-h-g').textContent = txt('propfirm_h_g');
-  document.querySelectorAll('#propfirm [data-key]').forEach(el => {
+  document.querySelectorAll('[data-key]').forEach(el => {
     const k = el.dataset.key;
     if (t[lang][k] !== undefined) el.textContent = t[lang][k];
   });
-
-  // Decide
-  document.querySelector('#decide .section-label').textContent = txt('decide_label');
-  document.querySelector('.decide-h').textContent = txt('decide_h') + ' ';
-  document.querySelector('.decide-h-g').textContent = txt('decide_h_g');
-  document.querySelector('.decide-cta .cta-btn .main').textContent = txt('cta3');
-  document.querySelector('.decide-cta .cta-btn .sub').textContent = txt('cta3_sub');
-
-  // FAQ
-  document.querySelector('#faq .section-label').textContent = txt('faq_label');
-  document.querySelector('.faq-h').textContent = txt('faq_h') + ' ';
-  document.querySelector('.faq-h-g').textContent = txt('faq_h_g');
-  document.querySelectorAll('summary')[0].childNodes[0].textContent = txt('faq1_q');
-  document.querySelectorAll('.faq-body')[0].textContent = txt('faq1_a');
-  document.querySelectorAll('summary')[1].childNodes[0].textContent = txt('faq2_q');
-  document.querySelectorAll('.faq-body')[1].textContent = txt('faq2_a');
-  document.querySelectorAll('summary')[2].childNodes[0].textContent = txt('faq3_q');
-  document.querySelectorAll('.faq-body')[2].textContent = txt('faq3_a');
-  document.querySelectorAll('summary')[3].childNodes[0].textContent = txt('faq4_q');
-  document.querySelectorAll('.faq-body')[3].textContent = txt('faq4_a');
-  document.querySelectorAll('summary')[4].childNodes[0].textContent = txt('faq5_q');
-  document.querySelectorAll('.faq-body')[4].textContent = txt('faq5_a');
-
-  // Final CTA
-  document.querySelector('.final-h').textContent = txt('final_h') + ' ';
-  document.querySelector('.final-h-g').textContent = txt('final_h_g');
-  document.querySelector('#final-cta p').textContent = txt('final_p');
-  document.querySelector('#final-cta .cta-btn .main').textContent = txt('cta4');
-  document.querySelector('#final-cta .cta-btn .sub').textContent = txt('cta4_sub');
-
-  // Footer
-  document.querySelector('footer p').innerHTML = txt('footer_copy');
+  document.querySelectorAll('[data-key-html]').forEach(el => {
+    const k = el.dataset.keyHtml;
+    if (t[lang][k] !== undefined) el.innerHTML = t[lang][k];
+  });
 }
 </script>
 
