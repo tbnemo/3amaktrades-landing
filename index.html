@@ -210,6 +210,13 @@
     [dir="rtl"] h1.bl-h1 {
       font-family: 'Changa', sans-serif; line-height: 1.2; letter-spacing: 0;
       text-transform: none;
+      /* Changa is wider per character than the condensed Big Shoulders Display,
+         and Arabic is this site's default language -- at the shared clamp's
+         112px max the Arabic headline wrapped to ~5 lines / ~780px tall in the
+         572px copy column (vs. ~3 lines / ~365px for English), pushing the VSL
+         and CTA off the fold for most visitors. Capped lower so it also lands
+         on 3 lines / a comparable height at wide viewports. */
+      font-size: clamp(40px,7.4vw,84px);
     }
     h1.bl-h1 .sm {
       display: block; font-size: .36em; letter-spacing: .08em; font-weight: 500;
@@ -242,17 +249,15 @@
       .bl-bar, [dir="rtl"] .bl-bar { transform: none; }
     }
     .bl-bar svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-    /* Play glyph always points right, like the site's other play buttons --
-       a media "play" affordance, not reading-direction text. Physical
-       left/right borders (not border-inline-*) so RTL's automatic logical-
-       property mirroring can't flip it backwards. */
     .bl-bar-play {
       position: relative; z-index: 2; width: 0; height: 0;
-      border-top: 34px solid transparent; border-bottom: 34px solid transparent;
-      border-left: 56px solid var(--gold); border-right: 0;
+      border-block: 34px solid transparent;
+      border-inline-start: 56px solid var(--gold); border-inline-end: 0;
       transition: transform .2s ease;
     }
+    [dir="rtl"] .bl-bar-play { transform: scaleX(-1); }
     .bl-bar:hover .bl-bar-play { transform: scale(1.1); }
+    [dir="rtl"] .bl-bar:hover .bl-bar-play { transform: scaleX(-1) scale(1.1); }
 
     .bl-fine {
       margin: clamp(22px,3vw,30px) 0 0; font-size: 13px; line-height: 1.66;
