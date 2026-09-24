@@ -294,6 +294,13 @@
       font-size: 11.5px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
       color: var(--dim);
     }
+    .bl-mono--gold { color: var(--gold); }
+
+    /* the lede paragraph under a band heading */
+    .bl-lede {
+      font-size: clamp(14.5px,1.05vw,16.5px); line-height: 1.68; color: var(--dim);
+      max-width: 56ch; margin: 0 0 clamp(26px,3.4vw,40px);
+    }
 
     /* the flat image stand-in — the same convention as the hero's logo
        fallback: a struck slab with the intended file path named on it  */
@@ -458,7 +465,7 @@
       font-family: 'Montserrat', sans-serif; text-transform: uppercase;
       letter-spacing: 1px; line-height: 1.25;
     }
-    .section-header h2 .g, .apply-header h2 .g { color: var(--green); }
+    .section-header h2 .g { color: var(--green); }
 
     /* ══ VSL ══ */
     #vsl {
@@ -541,67 +548,38 @@
     /* ══ PROOF (Bullion) ══ */
     #proof { background: var(--void); padding-block: clamp(44px,6vw,86px); }
 
-    /* ══ APPLY ══ */
-    #apply {
-      padding: 100px 20px; background: var(--dark-2);
-      position: relative; overflow: hidden;
-    }
-    #apply::before {
-      content: ''; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); width: 600px; height: 400px;
-      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .apply-wrapper { max-width: 640px; margin: 0 auto; position: relative; z-index: 1; }
-    .apply-header { text-align: center; margin-bottom: 44px; }
-    .apply-header h2 {
-      font-size: clamp(28px, 4vw, 44px); font-weight: 900;
-      line-height: 1.15; letter-spacing: -1px; margin-bottom: 14px;
-    }
-    html[lang="ar"] .apply-header h2 { letter-spacing: 0; line-height: 1.3; }
-    html[lang="en"] .apply-header h2 {
-      font-family: 'Montserrat', sans-serif; text-transform: uppercase;
-      letter-spacing: 1px; line-height: 1.25;
-    }
-    .apply-header p { color: var(--gray); font-size: 15px; line-height: 1.7; }
+    /* ══ APPLY (Bullion) — the 8-step form, in the band's chrome ══ */
+    #apply { background: var(--band-2); padding-block: clamp(56px,8vw,118px); position: relative; }
+    .bl-apply-wrap { max-width: 680px; }
 
-    /* ══ FORM ══ */
-    .form-box {
-      background: var(--dark-3); border: 1px solid #1e1e1e;
-      border-radius: 4px;
-      position: relative;
-    }
-    .form-box::before {
-      content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--green), transparent);
-      z-index: 1;
-    }
+    /* no box: the form is a run of hairline-separated rows on the band */
+    .form-box { border-block-start: 1px solid var(--gold-lo); }
 
     /* progress bar */
-    .form-progress {
-      height: 3px; background: #1a1a1a; position: relative;
-    }
-    .form-progress-fill {
-      height: 100%; width: 100%; background: var(--green);
+    .form-progress { height: 2px; background: #2A2A26; position: relative; }
+    #formProgress {
+      display: block; height: 100%; width: 100%; background: var(--gold);
       transform: scaleX(0.125); transform-origin: 0 0;
-      transition: transform 0.4s ease;
+      transition: transform 0.3s cubic-bezier(.7,0,.2,1);
     }
+    [dir="rtl"] #formProgress { transform-origin: 100% 0; }
 
     /* step counter */
     .form-step-counter {
-      padding: 18px 28px 0;
-      font-size: 11px; color: var(--gray); letter-spacing: 1px;
-      text-transform: uppercase; font-weight: 600;
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+      padding-block: 16px; border-block-end: 1px solid #241D08;
     }
-    html[lang="ar"] .form-step-counter { text-transform: none; letter-spacing: 0; }
+    .form-step-counter .c {
+      font-family: 'Big Shoulders Display',sans-serif; font-weight: 800;
+      font-size: 15px; letter-spacing: .06em; color: var(--gold); direction: ltr;
+    }
 
     /* steps wrapper */
-    .form-steps { position: relative; min-height: 320px; }
+    .form-steps { position: relative; min-height: 260px; }
 
     /* individual step */
     .form-step {
-      padding: 32px 28px 28px;
+      padding-block: clamp(24px,3.4vw,38px);
       display: none;
       animation: stepIn 0.3s ease;
     }
@@ -609,134 +587,156 @@
     @keyframes stepIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
     .form-step h3 {
-      font-size: clamp(18px, 3vw, 22px); font-weight: 800;
-      margin-bottom: 24px; line-height: 1.3;
+      font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 800;
+      text-transform: uppercase; font-size: clamp(22px,2.9vw,32px); line-height: .98;
+      margin: 0 0 clamp(20px,2.6vw,30px); color: var(--bone);
     }
-    html[lang="ar"] .form-step h3 { font-size: clamp(18px, 3vw, 22px); }
+    [dir="rtl"] .form-step h3 { font-family: 'Changa', sans-serif; text-transform: none; line-height: 1.3; font-size: clamp(19px,3vw,24px); }
     .form-step h3 .step-num {
-      color: var(--green); font-size: 13px; font-weight: 700;
-      display: block; margin-bottom: 6px; letter-spacing: 1px;
+      display: block; font-family: 'Inter','Noto Sans Arabic',sans-serif;
+      font-size: clamp(11.5px,.8vw,13px); font-weight: 600; letter-spacing: .2em;
+      color: var(--dim); margin-block-end: 1.1em; text-transform: uppercase;
     }
-    html[lang="ar"] .form-step h3 .step-num { letter-spacing: 0; }
+    [dir="rtl"] .form-step h3 .step-num { letter-spacing: 0; text-transform: none; }
+
+    .bl-field { display: block; }
 
     /* text input */
     .form-input {
-      width: 100%; background: transparent;
-      border: none; border-bottom: 2px solid #2a2a2a;
-      color: var(--white); font-size: 20px; font-weight: 600;
-      padding: 10px 0; outline: none;
-      font-family: inherit;
-      transition: border-color 0.2s;
+      width: 100%; background: transparent; color: var(--bone);
+      font-family: inherit; font-size: clamp(17px,1.6vw,22px); font-weight: 600;
+      border: 0; border-block-end: 1px solid var(--gold-lo); border-radius: 0;
+      padding: 10px 2px 12px; outline: none;
+      transition: border-color 0.16s ease;
     }
-    .form-input:focus { border-color: var(--green); }
-    .form-input::placeholder { color: #5a5a5a; }
+    .form-input:focus { border-block-end-color: var(--gold); }
+    .form-input::placeholder { color: var(--dim); }
+    .form-input:focus::placeholder { color: #A19E94; }
 
     /* Phone with country code — always LTR regardless of page direction */
-    .phone-wrap { display: flex; gap: 8px; align-items: stretch; direction: ltr; }
-    .phone-wrap .phone-num { flex: 1; text-align: left; }
+    .phone-wrap { display: flex; align-items: stretch; gap: 0; direction: ltr; }
+    .phone-wrap .phone-num { flex: 1; text-align: left; padding-inline-start: 14px; }
     .cc-selector { position: relative; flex-shrink: 0; }
     .cc-selected {
-      display: flex; align-items: center; gap: 6px; cursor: pointer;
-      background: #111; border: 1px solid #2a2a2a; border-radius: 4px;
-      padding: 0 14px; height: 56px; font-size: 15px; white-space: nowrap;
-      transition: border-color 0.2s; direction: ltr;
+      display: flex; align-items: center; gap: 9px; cursor: pointer;
+      padding: 10px 14px 12px 2px; color: var(--bone); font-size: clamp(16px,1.4vw,19px);
+      border-block-end: 1px solid var(--gold-lo); border-inline-end: 1px solid var(--gold-lo);
+      transition: border-color 0.16s ease; direction: ltr;
     }
-    .cc-selected:hover { border-color: var(--green); }
-    .cc-arrow { color: #555; font-size: 11px; }
+    .cc-selected:hover { border-block-end-color: var(--gold); border-inline-end-color: var(--gold); }
+    .cc-selected .flag { width: 22px; height: 15px; background: var(--gold-lo); flex-shrink: 0; }
+    .cc-selected .code { direction: ltr; }
+    .cc-arrow { color: var(--dim); font-size: 11px; }
     .cc-dropdown {
       display: none; position: absolute; top: calc(100% + 6px);
-      left: 0; width: 260px; background: var(--dark-4); border: 1px solid #2a2a2a;
-      border-radius: 4px; overflow: hidden; z-index: 100;
+      left: 0; width: 260px; background: var(--band); border: 1px solid var(--gold-lo);
+      overflow: hidden; z-index: 100;
       box-shadow: 0 8px 16px rgba(0,0,0,0.5); direction: ltr;
     }
     .cc-dropdown.open { display: block; }
     .cc-search {
-      width: 100%; background: #0a0a0a; border: none; border-bottom: 1px solid #2a2a2a;
-      color: #fff; padding: 10px 14px; font-size: 14px; outline: none;
+      width: 100%; background: var(--void); border: none; border-bottom: 1px solid var(--gold-lo);
+      color: var(--bone); padding: 10px 14px; font-size: 14px; outline: none;
       font-family: 'Inter', sans-serif; direction: ltr; text-align: left;
     }
     .cc-list { max-height: 220px; overflow-y: auto; }
     .cc-option {
       display: flex; align-items: center; gap: 10px; padding: 10px 14px;
-      cursor: pointer; font-size: 14px; transition: background 0.15s;
+      cursor: pointer; font-size: 14px; color: var(--bone); transition: background 0.15s;
       font-family: 'Inter', sans-serif;
     }
-    .cc-option:hover { background: #1a1a1a; }
-    .cc-option.top { border-bottom: 1px solid #2a2a2a; }
-    .cc-option span:last-child { color: #888; margin-left: auto; font-size: 13px; }
+    .cc-option:hover { background: rgba(212,175,55,0.08); }
+    .cc-option.top { border-bottom: 1px solid var(--gold-lo); }
+    .cc-option span:last-child { color: var(--dim); margin-left: auto; font-size: 13px; }
 
     /* choices */
-    .form-choices { display: flex; flex-direction: column; gap: 10px; }
+    .form-choices { display: grid; gap: 1px; background: #241D08; border-block: 1px solid #241D08; }
     .form-choice {
-      display: flex; align-items: center; gap: 14px;
-      background: var(--dark-4); border: 1px solid #222;
-      border-radius: 4px; padding: 14px 18px;
-      cursor: pointer; transition: all 0.15s;
-      font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; gap: 16px;
+      background: var(--band-2); border: 0; border-radius: 0;
+      padding: 15px clamp(14px,1.8vw,20px);
+      cursor: pointer; transition: background 0.14s ease, color 0.14s ease;
+      font-size: 15.5px; font-weight: 600; color: var(--bone);
       user-select: none;
     }
-    html[lang="ar"] .form-choice { font-size: 15px; }
-    .form-choice:hover { border-color: rgba(212,175,55,0.3); background: rgba(212,175,55,0.04); }
-    .form-choice.selected { border-color: var(--green); background: rgba(212,175,55,0.08); color: var(--green); }
-    .form-choice:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+    [dir="rtl"] .form-choice { font-size: 15px; }
+    .form-choice:hover { background: #221F14; }
+    .form-choice[aria-checked="true"] { background: var(--gold); color: var(--ink); }
+    .form-choice:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
     .choice-key {
-      width: 28px; height: 28px; border-radius: 4px;
-      background: #1a1a1a; border: 1px solid #333;
+      width: 28px; height: 28px; border-radius: 0; flex-shrink: 0;
+      background: transparent; border: 1px solid var(--gold-lo);
       display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; color: var(--gray);
-      flex-shrink: 0; font-family: 'Inter', sans-serif;
-      transition: all 0.15s;
+      font-family: 'Big Shoulders Display',sans-serif;
+      font-size: 15px; font-weight: 800; color: var(--gold);
+      direction: ltr; transition: border-color 0.14s ease, color 0.14s ease;
     }
-    .form-choice.selected .choice-key { background: var(--green); border-color: var(--green); color: #000; }
+    .form-choice:hover .choice-key { border-color: var(--gold); }
+    .form-choice[aria-checked="true"] .choice-key { border-color: rgba(10,8,2,.4); color: var(--ink); }
 
     /* nav buttons */
     .form-error {
-      margin: 0 28px 16px; padding: 10px 14px; font-size: 13px; line-height: 1.6;
-      color: var(--red); background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
-      border-radius: 4px;
+      margin: 14px 0 0; padding: 0; font-size: 13px; line-height: 1.6;
+      color: var(--gold); background: transparent;
+      border: 0; border-inline-start: 2px solid var(--gold); padding-inline-start: 12px;
+      border-radius: 0;
     }
     .form-nav {
-      padding: 0 28px 28px;
+      padding-block-start: 20px; border-block-start: 1px solid #241D08;
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
     }
     .form-btn-next:disabled { opacity: 0.6; cursor: not-allowed; }
     .form-btn-next {
-      background: var(--green); color: #000;
-      border: none; border-radius: 4px;
-      padding: 13px 32px; font-size: 14px; font-weight: 800;
-      cursor: pointer; font-family: inherit;
-      transition: opacity 0.15s, transform 0.15s;
-      display: flex; align-items: center; gap: 8px;
+      background: var(--gold); color: var(--ink);
+      border: none; border-radius: 0;
+      font-family: 'Big Shoulders Display',sans-serif;
+      padding: 14px clamp(22px,2.6vw,36px); font-size: clamp(16px,1.6vw,21px); font-weight: 800;
+      letter-spacing: .06em; text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.16s ease;
+      display: inline-flex; align-items: center; gap: 14px;
       margin-inline-start: auto;
     }
-    .form-btn-next:hover { opacity: 0.88; transform: translateY(-1px); }
-    .form-btn-next:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .form-btn-next span { font-family: 'Inter', sans-serif; font-size: .68em; }
+    [dir="rtl"] .form-btn-next span { transform: scaleX(-1); }
+    .form-btn-next:hover { background: var(--bone); }
+    .form-btn-next:disabled { opacity: 0.3; cursor: not-allowed; }
     .form-btn-back {
-      background: transparent; color: var(--gray);
-      border: 1px solid #222; border-radius: 4px;
-      padding: 13px 20px; font-size: 13px; font-weight: 600;
-      cursor: pointer; font-family: inherit;
-      transition: color 0.15s, border-color 0.15s;
+      background: transparent; color: var(--dim);
+      border: 0; border-radius: 0;
+      font-family: 'Inter', sans-serif;
+      padding: 12px 0; font-size: 12px; font-weight: 600;
+      letter-spacing: .18em; text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.15s;
     }
-    .form-btn-back:hover { color: var(--white); border-color: #444; }
+    [dir="rtl"] .form-btn-back { letter-spacing: 0; text-transform: none; }
+    .form-btn-back:hover { color: var(--gold); }
 
-    /* confirmation screen */
+    /* confirmation screen — a gold slab, not a modal card */
     .form-confirm {
-      padding: 52px 28px;
-      text-align: center; display: none;
+      padding-block: clamp(34px,5vw,56px);
+      text-align: start; display: none;
     }
     .form-confirm.active { display: block; animation: stepIn 0.4s ease; }
     .confirm-icon {
-      width: 72px; height: 72px; border-radius: 50%;
-      background: rgba(212,175,55,0.1); border: 2px solid var(--green);
+      width: 46px; height: 46px; border-radius: 0;
+      background: var(--gold); border: 0; color: var(--ink);
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 24px; font-size: 30px;
-      box-shadow: 0 0 14px var(--green-glow);
+      margin: 0 0 22px; font-size: 24px; line-height: 1;
+      box-shadow: none;
     }
-    .form-confirm h3 { font-size: 24px; font-weight: 900; margin-bottom: 12px; }
-    .form-confirm p { color: var(--gray); font-size: 15px; line-height: 1.7; }
-    .confirm-wa-label { margin-top: 28px; margin-bottom: 14px; font-size: 13px; color: #888; }
-    .form-confirm .cta-btn-wa { border-color: rgba(37,211,102,0.35); }
+    .form-confirm h3 {
+      font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 800;
+      text-transform: uppercase; font-size: clamp(26px,3vw,38px); line-height: .96;
+      margin: 0 0 14px; color: var(--bone);
+    }
+    [dir="rtl"] .form-confirm h3 { font-family: 'Changa', sans-serif; text-transform: none; line-height: 1.3; }
+    .form-confirm p { color: var(--dim); font-size: 15.5px; line-height: 1.66; max-width: 46ch; }
+    .confirm-wa-label { margin-top: 28px; margin-bottom: 14px; }
+    .form-confirm .cta-btn-wa { border-color: var(--gold-lo); color: var(--gold); border-radius: 0; }
+    .form-confirm .cta-btn-wa:hover { border-color: var(--gold); background: var(--gold); color: var(--ink); }
+    .form-confirm .cta-btn-wa svg { fill: currentColor; }
 
     /* ══ BAND 6 — MENTOR (Bullion) ══ */
     #mentor { background: var(--void); padding-block: clamp(44px,6vw,86px); }
@@ -1052,7 +1052,7 @@ const t = {
     proof_note: "نتائج فردية. مش نموذجية، مش موعودة، ومش مؤشر لشو رح يحققه أي متداول ثاني.",
     apply_label: "تقدم الآن",
     apply_h: "أنت خطوة واحدة بعيد عن",
-    apply_h_g: "تغيير طريقة كسبك للمال",
+    apply_h_g: "تغيير طريقة تداولك",
     apply_sub: "أكمل الاستمارة أدناه. مجاني ولا يأخذ سوى دقيقتين.",
     mentor_label: "مرشدك",
     mentor_h: "تعرف على",
@@ -1207,7 +1207,7 @@ const t = {
     proof_note: "Individual outcomes. They are not typical, not promised, and not an indication of what any other trader will do.",
     apply_label: "Apply Now",
     apply_h: "You're One Step Away From",
-    apply_h_g: "Changing How You Make Money",
+    apply_h_g: "Changing How You Trade",
     apply_sub: "Fill out the short form below. It's free and takes under 2 minutes.",
     mentor_label: "Your Mentor",
     mentor_h: "Meet",
@@ -1676,24 +1676,24 @@ function render() {
 <div class="section-divider"></div>
 
 <!-- APPLY -->
-<section id="apply">
-  <div class="apply-wrapper">
-    <div class="apply-header fade-up">
-      <span class="section-label"></span>
-      <h2><span class="apply-h"></span><span class="apply-h-g g"></span></h2>
-      <p></p>
-    </div>
+<section id="apply" class="bl-sec bl-pad">
+  <div class="bl-wrap bl-apply-wrap">
+    <h2 class="bl-h2">
+      <span class="sm" data-key="apply_label"></span>
+      <span class="lg"><span data-key="apply_h"></span> <em data-key="apply_h_g"></em></span>
+    </h2>
+    <p class="bl-lede" data-key="apply_sub"></p>
 
     <div class="form-box fade-up">
       <!-- Honeypot: hidden from real users, bots that auto-fill every field will trip it -->
       <input type="text" id="f_website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
         style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;" />
 
-      <div class="form-progress"><div class="form-progress-fill" id="formProgress"></div></div>
+      <div class="form-progress"><div id="formProgress"></div></div>
 
       <div class="form-step-counter">
-        <span id="stepCounterText"></span>
-        <span id="stepCounterFrac" dir="ltr" style="font-family:'Inter',sans-serif;"></span>
+        <span class="bl-mono" id="stepCounterText"></span>
+        <span class="c" id="stepCounterFrac" dir="ltr" style="font-family:'Inter',sans-serif;"></span>
       </div>
 
       <div class="form-steps">
@@ -1701,79 +1701,87 @@ function render() {
         <!-- Step 1: Name -->
         <div class="form-step active" data-step="1">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q1"></span></h3>
-          <input class="form-input" id="f_name" type="text" data-placeholder-key="q1_ph" autocomplete="off" />
+          <div class="bl-field">
+            <input class="form-input bl-input" id="f_name" type="text" data-placeholder-key="q1_ph" autocomplete="off" />
+          </div>
         </div>
 
         <!-- Step 2: Phone -->
         <div class="form-step" data-step="2">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q10"></span></h3>
-          <div class="phone-wrap">
-            <div class="cc-selector" id="ccSelector">
-              <div class="cc-selected" id="ccSelected">
-                <img id="ccFlag" src="https://flagcdn.com/w20/sa.png" width="20" height="14" style="border-radius:2px;object-fit:cover;" />
-                <span id="ccCode">+966</span>
-                <span class="cc-arrow">▾</span>
+          <div class="bl-field">
+            <div class="phone-wrap bl-phone">
+              <div class="cc-selector" id="ccSelector">
+                <div class="cc-selected bl-cc" id="ccSelected">
+                  <img id="ccFlag" class="flag" src="https://flagcdn.com/w20/sa.png" width="20" height="14" style="border-radius:2px;object-fit:cover;" />
+                  <span class="code" id="ccCode">+966</span>
+                  <span class="cc-arrow">▾</span>
+                </div>
+                <div class="cc-dropdown" id="ccDropdown">
+                  <input class="cc-search" id="ccSearch" type="text" placeholder="Search..." autocomplete="off" />
+                  <div class="cc-list" id="ccList"></div>
+                </div>
               </div>
-              <div class="cc-dropdown" id="ccDropdown">
-                <input class="cc-search" id="ccSearch" type="text" placeholder="Search..." autocomplete="off" />
-                <div class="cc-list" id="ccList"></div>
-              </div>
+              <input class="form-input phone-num bl-input" id="f_phone" type="tel" placeholder="5xx xxx xxxx" autocomplete="off" />
             </div>
-            <input class="form-input phone-num" id="f_phone" type="tel" placeholder="5xx xxx xxxx" autocomplete="off" />
           </div>
         </div>
 
         <!-- Step 3: Email -->
         <div class="form-step" data-step="3">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q11"></span></h3>
-          <input class="form-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
+          <div class="bl-field">
+            <input class="form-input bl-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
+          </div>
         </div>
 
         <!-- Step 4: Country -->
         <div class="form-step" data-step="4">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q3"></span></h3>
-          <input class="form-input" id="f_country" type="text" data-placeholder-key="q3_ph" autocomplete="off" />
+          <div class="bl-field">
+            <input class="form-input bl-input" id="f_country" type="text" data-placeholder-key="q3_ph" autocomplete="off" />
+          </div>
         </div>
 
         <!-- Step 5: Experience -->
         <div class="form-step" data-step="5">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q5"></span></h3>
-          <div class="form-choices" id="choices_5" role="radiogroup">
-            <div class="form-choice" data-value="beginner" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
-            <div class="form-choice" data-value="tried-lost" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
-            <div class="form-choice" data-value="some-exp" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
+          <div class="form-choices bl-choices" id="choices_5" role="radiogroup">
+            <div class="form-choice bl-choice" data-value="beginner" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
+            <div class="form-choice bl-choice" data-value="tried-lost" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
+            <div class="form-choice bl-choice" data-value="some-exp" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
           </div>
         </div>
 
         <!-- Step 6: Budget -->
         <div class="form-step" data-step="6">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q7"></span></h3>
-          <div class="form-choices" id="choices_6" role="radiogroup">
-            <div class="form-choice" data-value="<500" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
-            <div class="form-choice" data-value="500-1k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
-            <div class="form-choice" data-value="1k-3k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
-            <div class="form-choice" data-value="3k+" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
+          <div class="form-choices bl-choices" id="choices_6" role="radiogroup">
+            <div class="form-choice bl-choice" data-value="<500" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
+            <div class="form-choice bl-choice" data-value="500-1k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
+            <div class="form-choice bl-choice" data-value="1k-3k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
+            <div class="form-choice bl-choice" data-value="3k+" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
           </div>
         </div>
 
         <!-- Step 7: Looking for -->
         <div class="form-step" data-step="7">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q8"></span></h3>
-          <div class="form-choices" id="choices_7" role="radiogroup">
-            <div class="form-choice" data-value="videos" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
-            <div class="form-choice" data-value="community" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
-            <div class="form-choice" data-value="1on1" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
-            <div class="form-choice" data-value="all" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
+          <div class="form-choices bl-choices" id="choices_7" role="radiogroup">
+            <div class="form-choice bl-choice" data-value="videos" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
+            <div class="form-choice bl-choice" data-value="community" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
+            <div class="form-choice bl-choice" data-value="1on1" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
+            <div class="form-choice bl-choice" data-value="all" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
           </div>
         </div>
 
         <!-- Step 8: Goal -->
         <div class="form-step" data-step="8">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q9"></span></h3>
-          <div class="form-choices" id="choices_8" role="radiogroup">
-            <div class="form-choice" data-value="side-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
-            <div class="form-choice" data-value="replace-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
-            <div class="form-choice" data-value="full-time" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
+          <div class="form-choices bl-choices" id="choices_8" role="radiogroup">
+            <div class="form-choice bl-choice" data-value="side-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
+            <div class="form-choice bl-choice" data-value="replace-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
+            <div class="form-choice bl-choice" data-value="full-time" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
           </div>
         </div>
 
@@ -1782,7 +1790,7 @@ function render() {
       <p class="form-error" id="formError" role="alert" aria-live="assertive" style="display:none"></p>
 
       <!-- Nav -->
-      <div class="form-nav" id="formNav">
+      <div class="form-nav bl-form-nav" id="formNav">
         <button class="form-btn-back" id="formBack" onclick="formPrev()" style="visibility:hidden" data-key="btn_back"></button>
         <button class="form-btn-next" id="formNext" onclick="formNext()">
           <span id="formNextLabel" data-key="btn_next"></span> <span id="formNextArrow" style="font-size:16px">→</span>
@@ -1794,7 +1802,7 @@ function render() {
         <div class="confirm-icon">✓</div>
         <h3 data-key="confirm_h"></h3>
         <p data-key="confirm_p"></p>
-        <p class="confirm-wa-label" data-key="confirm_wa_label"></p>
+        <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_wa_label"></p>
         <a href="#" id="waConfirmBtn" class="cta-btn-wa" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Zm0 2a7 7 0 0 1 6 10.6l-.2.3.3 2-2-.5-.3.2A7 7 0 1 1 12 5Zm-2.5 3.4c-.2 0-.5 0-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1.1 2.6c.1.2 1.8 2.9 4.5 3.9 2.2.9 2.7.7 3.1.7.5 0 1.6-.6 1.8-1.2.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.5-.3l-2-1c-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6l.4-.5.3-.4c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.5-.4-.4-.6-.4h-.5Z"/></svg>
           <span data-key="confirm_wa_btn"></span>
