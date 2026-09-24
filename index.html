@@ -83,7 +83,7 @@
       --red: #ef4444;
     }
 
-    html,body{margin:0;padding:0;background:var(--void);}
+    html,body{margin:0;padding:0;background:var(--void);overflow-x:hidden;}
 
     /* Font switching based on lang */
     html[lang="ar"] body { font-family: 'Cairo', sans-serif; }
@@ -107,7 +107,6 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .nav-logo-img { height: 56px; width: auto; object-fit: contain; }
-    .foot-logo-img { height: 48px; width: auto; object-fit: contain; opacity: 0.85; }
 
     .nav-right { display: flex; align-items: center; gap: 12px; }
 
@@ -1407,7 +1406,7 @@ function render() {
 <!-- NAV -->
 <nav class="bl-b1 bl-pad">
   <div class="bl-mark">
-    <img src="/logo.png" alt="3AMAK Trades" class="nav-logo-img" onerror="this.outerHTML='<span class=\'fallback\'>3AMAK TRADES</span>'" />
+    <img src="/logo.png" alt="3AMAK Trades" class="nav-logo-img" width="56" height="56" onerror="this.outerHTML='<span class=\'fallback\'>3AMAK TRADES</span>'" />
   </div>
   <div class="bl-nav">
     <a href="#propfirm" data-key="nav_system"></a>
@@ -1980,7 +1979,7 @@ function render() {
 <footer class="bl-foot bl-pad">
   <div class="bl-wrap">
     <div class="bl-foot-top">
-      <img src="/logo.png" alt="3AMAK Trades" class="foot-logo-img" />
+      <img src="/logo.png" alt="3AMAK Trades" class="foot-logo-img" width="28" height="28" />
       <div class="bl-social">
         <a href="https://www.instagram.com/3amaktrades/" target="_blank" rel="noopener" aria-label="Instagram">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
