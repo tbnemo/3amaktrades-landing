@@ -446,8 +446,13 @@
     }
     @media (min-width: 720px) { .bl-cert { flex-basis: clamp(150px,13.5vw,190px); } }
     @media (prefers-reduced-motion: reduce) {
-      .bl-certs-row { overflow-x: auto; }
-      .bl-certs-track .bl-cert:nth-child(n+8) { display: none; } /* drop the duplicate set, fall back to one static swipeable row */
+      /* no scrollbar -- wrap the real 7 into a static grid-like row instead
+         of a horizontally-scrollable strip. flex-wrap naturally avoids the
+         "widow" phantom-cell problem CSS grid had (an under-full wrapped
+         row just ends, it doesn't reserve empty tracks). */
+      .bl-certs-row { overflow: visible; -webkit-mask-image: none; mask-image: none; }
+      .bl-certs-track { flex-wrap: wrap; width: auto; }
+      .bl-certs-track .bl-cert:nth-child(n+8) { display: none; } /* drop the duplicate set */
     }
     .bl-cert .bl-slab-t {
       font-family: 'Big Shoulders Display',sans-serif;
