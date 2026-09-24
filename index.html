@@ -309,12 +309,6 @@
     [dir="rtl"] .bl-bar:hover .bl-bar-play { transform: scaleX(-1) scale(1.1); }
     .bl-bar:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
-    .bl-fine {
-      margin: clamp(22px,3vw,30px) 0 0; font-size: 13px; line-height: 1.66;
-      color: var(--dim); max-width: 56ch;
-      padding-inline-start: 14px; border-inline-start: 2px solid var(--gold-lo);
-    }
-
     /* ══ SHARED LANGUAGE FOR THE BANDS BELOW THE HERO (Bullion) ══ */
     .bl-sec { position: relative; }
     .bl-wrap { max-width: 1180px; margin-inline: auto; }
@@ -1121,7 +1115,6 @@ const t = {
     hero_h1: "السوق يكافئ",
     hero_h1_g: "من يدرسه.",
     hero_sub: "عمر الحلبي متداول مموَّل فعلياً. بيعلّم نفس المنهج يلي بيشتغل فيه كل جلسة — تحديد الريسك قبل الدخول، خطة مكتوبة قبل الضغطة، وكل نتيجة مسجّلة بنفس الطريقة. للمبتدئين، وللي جرّب التحديات لحاله قبل هيك.",
-    hero_fine: "ثمانية أسئلة، حوالي أربع دقايق، وبيقرأها شخص حقيقي قبل ما يتعرض أي مكان. ولا شي هون بيوعد بربح أو عائد أو دخل — هاد منهج ومجموعة قواعد، وممكن كمان تخسر فيه.",
     pill1: "لا تحتاج خبرة سابقة",
     pill2: "لا تحتاج رأس مال كبير",
     pill3: "تعلم بالسرعة التي تناسبك",
@@ -1276,7 +1269,6 @@ const t = {
     hero_h1: "The Market Rewards",
     hero_h1_g: "Those Who Study It.",
     hero_sub: "Omar Alhalabi is an active funded trader. He teaches the process he runs every session — risk defined before the entry, the plan written before the click, every outcome logged the same way. For beginners, and for anyone who already tried the challenges alone.",
-    hero_fine: "Eight questions, about four minutes, read by a person before any place is offered. Nothing on this page promises a profit, a return or an income. It is a process and a set of rules, and it can still lose.",
     pill1: "No experience needed",
     pill2: "No big starting capital",
     pill3: "Learn at your own pace",
@@ -1596,7 +1588,6 @@ function render() {
           <span class="lg"><span data-key="hero_h1_a"></span> <em data-key="hero_h1_em"></em></span>
         </h1>
         <p class="bl-sub" data-key="hero_sub"></p>
-        <p class="bl-fine" data-key="hero_fine"></p>
       </div>
 
       <div class="bl-hero-media">
