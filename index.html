@@ -1948,14 +1948,16 @@ function render() {
     document.getElementById('stepCounterFrac').textContent = `${currentStep} / ${TOTAL_STEPS}`;
     // progress
     document.getElementById('formProgress').style.transform = `scaleX(${currentStep / TOTAL_STEPS})`;
-    // all step-num labels
-    document.querySelectorAll('.form-step .step-num').forEach(el => {
-      el.textContent = `${txt('step_label')} ${el.closest('.form-step').dataset.step} —`;
-    });
-    // all question text
+    // all question text -- must run BEFORE the step-num pass below: .step-num carries
+    // data-key="step_label" too, so if this generic sweep ran second it would clobber
+    // the step-num's "Question N —" text back down to the bare "Question" label.
     document.querySelectorAll('[data-key]').forEach(el => {
       const k = el.dataset.key;
       if (t[lang][k] !== undefined) el.textContent = t[lang][k];
+    });
+    // all step-num labels
+    document.querySelectorAll('.form-step .step-num').forEach(el => {
+      el.textContent = `${txt('step_label')} ${el.closest('.form-step').dataset.step} —`;
     });
     // placeholders
     document.querySelectorAll('[data-placeholder-key]').forEach(el => {
