@@ -866,7 +866,6 @@
       padding-block-start: 18px; border-block-start: 1px solid #241D08;
     }
     [dir="rtl"] .bl-prose h3 { font-family: 'Changa', sans-serif; text-transform: none; line-height: 1.3; }
-    .bl-prose .bl-kicker-line { color: var(--gold); font-size: 17px; font-weight: 600; }
 
     /* the disclaimer sentence, promoted to bold without touching the
        translated string itself — see pf_closing in the t.ar/t.en tables */
@@ -1170,13 +1169,8 @@ const t = {
     propfirm_label: "الأساسيات",
     propfirm_h: "شركات التمويل",
     propfirm_h_g: "بالتفصيل",
-    pf_p1: "فكرة شركات التمويل بسيطة: مش لازم يكون عندك رأس مال كبير من جيبتك عشان تبلش بالتداول.",
-    pf_p2: "بتدفع عادةً بين 50 و200 دولار، حسب الشركة وحجم الحساب، عشان تدخل مرحلة التقييم وتثبت إنك قادر تحقق هدف ربح معيّن من دون ما تتجاوز حدود المخاطرة المسموح فيها.",
-    pf_p3: "مثلاً، ممكن تدفع حوالي 100 دولار لاختبار تقييم على حساب بقيمة 50 ألف دولار. إذا نجحت بالاختبار والتزمت بكل الشروط، بتنتقل لحساب مموّل وتصير مؤهل تحقق أرباح وتسحبها.",
+    pf_p1: "شركات التمويل بتخليك تتداول برأس مالها هي، مش تخاطر برأس مالك الشخصي. بتدفع رسوم — عادةً بين 50 و200 دولار — عشان تجتاز مرحلة تقييم، وبعدها بتتداول على حساب مموّل وتاخد نسبة من أرباحه.",
     pf_subhead: "طيب كيف بتشتغل المدفوعات؟",
-    pf_p4: "هون بتصير الفكرة أكثر إثارة.",
-    pf_p5: "خلّينا نفترض إنك عندك حساب مموّل وحققت 3,000 دولار أرباح. حسب قوانين الشركة ونسبة تقاسم الأرباح، ممكن تكون مؤهل تسحب جزء كبير من هالربح كدفعة.",
-    pf_p6: "يعني ممكن شخص يبلش بحوالي 100 دولار كرسوم تقييم، وإذا نجح بالاختبار وحافظ على حسابه وحقق أرباح، يصير قادر يسحب مئات أو حتى آلاف الدولارات كمدفوعات.",
     pf_fact1_n: "80–90%",
     pf_fact1_l: "نسبة تقاسم الأرباح",
     pf_fact2_n: "14",
@@ -1195,11 +1189,8 @@ const t = {
     calc_d_q: "بعد نسبة تقاسم الأرباح من الشركة (85% إلك، وهي نقطة وسط تقريبية من مدى 80-90% فوق).",
     calc_payout_label: "السحب يلي بيوصلك:",
     calc_fine: "الأرقام هون للتوضيح بس. الرسوم الحقيقية وأهداف الربح ونسب التقاسم بتختلف من شركة لشركة ومن حساب لحساب، وبتعتمد على الالتزام الكامل بالقواعد. ولا شي هون توقّع أو وعد أو ضمان لشو رح تربح فعلياً — هاد حساب رياضي، مش نتيجة مضمونة.",
-    pf_p6b: "بس في شرط مهم: أغلب الشركات بتطلب منك تتداول لعدد معيّن من الأيام (عادةً بين 5 و10 أيام تداول) قبل ما تصير مؤهل لأول سحب، وهيك بيتأكدوا إن نتيجتك مش مجرد صفقة حظ وحدة.",
-    pf_p7: "والموضوع مش محصور بدفعة وحدة. إذا ضليت مربح والتزمت بالقواعد، فيك تعمل أكتر من دفعة من نفس الحساب. وهون الهدف الحقيقي: مش بس إنك تعدّي الاختبار، الهدف إنك تحافظ على الحساب المموّل وتقدر تسحب منه بشكل مستمر.",
-    pf_scaling: "وكمان أغلب الشركات عندها خطة تكبير للحساب: كل ما ضليت مربح والتزمت بالقواعد لفترة، بيزيدوا حجم حسابك — من 50 ألف لـ100 ألف، ولـ200 ألف دولار مثلاً — وهيك بيكبر سقف الأرباح والمدفوعات اللي فيك تحققها من نفس مستوى أدائك.",
-    pf_p8: "وهاد الشي ممكن فعلاً يصير، وشركات التمويل بتدفع للمتداولين المؤهلين بشكل مستمر، بس أكيد مش مضمون. لازم تكون مربح، تلتزم بقواعد المخاطرة والحد الأقصى للخسارة، وتحقق كل شروط السحب الخاصة بالشركة.",
-    pf_p9: "يعني بدل ما تحتاج 50 ألف دولار من رأس مالك الشخصي، شركات التمويل بتعطيك فرصة تبلش بمبلغ صغير نسبياً وتستخدم مهارتك بالتداول عشان توصل لحساب أكبر وإمكانية تحقيق مدفوعات حقيقية.",
+    pf_p6b: "في شرط واحد: أغلب الشركات بتطلب 5 لـ10 أيام تداول قبل أول سحب، عشان تتأكد إن النتيجة مش مجرد صفقة حظ.",
+    pf_p7: "إذا ضليت مربح والتزمت بالقواعد، فيك تسحب أكتر من مرة من نفس الحساب — وهاد الهدف الحقيقي، مش بس اجتياز التقييم. بس ولا شي من هيك مضمون: كله بيعتمد إنك تضل مربح وتلتزم بكل قاعدة حطتها الشركة.",
     pf_closing: "بس بالنهاية، السر مش إنك تعدّي الحساب بسرعة… السر إنك تعرف كيف تحافظ عليه، تدير المخاطر، وتحقق مدفوعات بشكل مستدام.",
     mentor_name: "عمر",
     mentor_title: "يحول المبتدئين إلى متداولين ثابتين",
@@ -1323,13 +1314,8 @@ const t = {
     propfirm_label: "The Basics",
     propfirm_h: "Prop Firms",
     propfirm_h_g: "Explained",
-    pf_p1: "The idea behind prop firms is simple: you don't need a big personal capital to start trading.",
-    pf_p2: "You typically pay around $50–$200, depending on the firm and account size, to enter an evaluation and prove you can hit a specific profit target without breaking the risk and drawdown limits.",
-    pf_p3: "For example, you might pay about $100 for a challenge on a $50,000 account. If you pass the evaluation and follow every rule, you move to a funded account and become eligible to generate profits and withdraw them.",
+    pf_p1: "Prop firms let you trade their capital instead of risking your own. You pay a fee — usually $50–$200 — to pass an evaluation, then trade a funded account and keep a share of what it earns.",
     pf_subhead: "So how do payouts actually work?",
-    pf_p4: "This is where it gets interesting.",
-    pf_p5: "Say you're on a funded account and you make $3,000 in profit. Depending on the firm's rules and profit split, you could be eligible to withdraw a big chunk of that as a payout.",
-    pf_p6: "So someone can start with roughly $100 in evaluation fees, and if they pass the challenge, keep the account, and stay profitable, they can end up withdrawing hundreds — or even thousands — of dollars in payouts.",
     pf_fact1_n: "80–90%",
     pf_fact1_l: "Profit Split",
     pf_fact2_n: "14",
@@ -1348,11 +1334,8 @@ const t = {
     calc_d_q: "After the firm's profit split (85% to you, illustrative mid-point of the 80–90% range above).",
     calc_payout_label: "Your payout:",
     calc_fine: "Illustrative numbers only. Real fees, profit targets and splits vary by firm and account, and depend on rules being followed exactly. Nothing here is a projection, promise or guarantee of what you'd actually make — it's the arithmetic, not the outcome.",
-    pf_p6b: "There's one important condition though: most firms require a minimum number of trading days (usually 5–10) before you're eligible for your first payout — it's how they confirm your result wasn't just one lucky trade.",
-    pf_p7: "And it's not limited to one payout. If you stay profitable and follow the rules, you can take multiple payouts from the same account. That's the real goal — not just passing the challenge, but keeping the funded account alive and withdrawing from it consistently.",
-    pf_scaling: "Most firms also run a scaling plan: stay profitable and follow the rules for a set stretch, and they'll grow your account size — say from $50K to $100K to $200K — which raises how much you can actually earn and withdraw at the same skill level.",
-    pf_p8: "This genuinely happens — prop firms pay qualified traders on an ongoing basis — but it's never guaranteed. You have to stay profitable, respect the risk and drawdown rules, and meet every payout requirement the firm sets.",
-    pf_p9: "So instead of needing $50,000 of your own money, prop firms give you a shot at starting with a relatively small amount and using your trading skill to access a much bigger account — and real payouts.",
+    pf_p6b: "One condition: most firms require 5–10 trading days before your first payout, to confirm the result wasn't a single lucky trade.",
+    pf_p7: "Stay profitable and follow the rules, and you can take payouts repeatedly from the same account — that's the real goal, not just passing the evaluation. None of it is guaranteed: it depends entirely on staying profitable and meeting every rule the firm sets.",
     pf_closing: "But at the end of the day, the secret isn't passing the account fast… it's knowing how to keep it, manage risk, and generate payouts sustainably.",
     mentor_name: "Omar",
     mentor_title: "Turning beginners into consistent traders",
@@ -1787,12 +1770,7 @@ function render() {
     </h2>
     <div class="bl-prose bl-measure fade-up">
       <p data-key="pf_p1"></p>
-      <p data-key="pf_p2"></p>
-      <p data-key="pf_p3"></p>
       <h3 data-key="pf_subhead"></h3>
-      <p class="bl-kicker-line" data-key="pf_p4"></p>
-      <p data-key="pf_p5"></p>
-      <p data-key="pf_p6"></p>
     </div>
   </div>
 
@@ -1859,9 +1837,6 @@ function render() {
     <div class="bl-prose bl-measure fade-up">
       <p data-key="pf_p6b"></p>
       <p data-key="pf_p7"></p>
-      <p data-key="pf_scaling"></p>
-      <p data-key="pf_p8"></p>
-      <p data-key="pf_p9"></p>
       <p class="pf-closing" data-key="pf_closing"></p>
     </div>
   </div>
