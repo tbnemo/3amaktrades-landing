@@ -2700,7 +2700,14 @@ function render() {
       // px short of where the duplicate set actually lines up, and that
       // drift compounds every cycle into a visible jump. Measuring straight
       // to the first card of the duplicate set gives the exact period.
-      const measureSetWidth = () => certsTrack.children[CERTS_SET_LEN].offsetLeft - certsTrack.children[0].offsetLeft;
+      // Math.abs() because this site defaults to dir="rtl": a flex row's
+      // visual order flips under RTL, so the duplicate set's first card can
+      // sit to the *left* of the real set's (a smaller/negative offsetLeft)
+      // -- an unguarded negative "width" made the frame's wrap check
+      // (Math.abs(offset) >= width) true on literally every frame, adding
+      // the whole (negative) width to offset each tick and sending the
+      // track flying off-screen within about a second.
+      const measureSetWidth = () => Math.abs(certsTrack.children[CERTS_SET_LEN].offsetLeft - certsTrack.children[0].offsetLeft);
       let certsSetWidth = measureSetWidth();
       window.addEventListener('resize', () => { certsSetWidth = measureSetWidth(); });
       const certsRow = certsTrack.closest('.bl-certs-row');
