@@ -538,52 +538,8 @@
     .stat-label { font-size: 12px; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; }
     html[lang="ar"] .stat-label { text-transform: none; letter-spacing: 0; font-size: 13px; }
 
-    /* ══ PROOF ══ */
-    #proof { padding: 100px 20px; background: var(--dark); position: relative; overflow: hidden; }
-    #proof::before {
-      content: ''; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); width: 700px; height: 450px;
-      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .proof-grid {
-      max-width: 880px; margin: 0 auto;
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-    }
-    .proof-card {
-      background: var(--dark-3); border: 1px solid #1e1e1e;
-      border-radius: 4px; overflow: hidden; cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-    }
-    .proof-card:hover {
-      transform: translateY(-4px); border-color: rgba(212,175,55,0.3);
-      box-shadow: 0 16px 40px rgba(0,0,0,0.4);
-    }
-    .proof-thumb { position: relative; width: 100%; padding-bottom: 56.25%; background: #0a0a0a; }
-    .proof-thumb-inner {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #080808, #141414);
-    }
-    .small-play {
-      width: 48px; height: 48px; border-radius: 50%;
-      background: rgba(212,175,55,0.1); border: 2px solid var(--green);
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.2s;
-    }
-    .proof-card:hover .small-play { background: var(--green); }
-    .proof-overlay {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.95), transparent);
-      padding: 12px 12px 10px;
-    }
-    .proof-tag {
-      display: inline-block; background: var(--green); color: #000;
-      font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 3px;
-      letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px;
-    }
-    html[lang="ar"] .proof-tag { text-transform: none; letter-spacing: 0; font-size: 10px; }
-    .proof-title { font-size: 13px; font-weight: 700; line-height: 1.35; }
+    /* ══ PROOF (Bullion) ══ */
+    #proof { background: var(--void); padding-block: clamp(44px,6vw,86px); }
 
     /* ══ APPLY ══ */
     #apply {
@@ -910,7 +866,7 @@
       display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
     .bl-proof-thumb .bl-bar-play { border-block-width: 14px; border-inline-start-width: 24px; }
-    .bl-proof-meta { padding: 18px clamp(16px,2vw,24px) clamp(22px,3vw,30px); }
+    .bl-proof-meta { padding-block-start: 18px; padding-inline: clamp(16px,2vw,24px); padding-block-end: clamp(22px,3vw,30px); }
     .bl-proof-tag {
       font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
       color: var(--gold); display: block; margin-block-end: 10px;
@@ -921,7 +877,7 @@
       color: var(--bone);
     }
     [dir="rtl"] .bl-proof-title { font-family: 'Changa', sans-serif; text-transform: none; line-height: 1.3; }
-    .bl-proof-note { margin: clamp(20px,2.6vw,28px) 0 0; font-size: 13px; color: var(--dim); }
+    .bl-proof-note { margin-block-start: clamp(20px,2.6vw,28px); margin-inline: 0; margin-block-end: 0; font-size: 13px; color: var(--dim); }
 
     /* ══ DECIDE ══ */
     #decide { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
@@ -1049,7 +1005,7 @@
 
     /* ══ RESPONSIVE ══ */
     @media (max-width: 700px) {
-      .proof-grid, .stats-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr; }
       .stat-item + .stat-item::before { display: none; }
     }
   </style>
