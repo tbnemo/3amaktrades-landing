@@ -2608,6 +2608,11 @@ function render() {
   // elapsed time × px/sec instead keeps the pace identical everywhere.
   // `speed` is either a constant px/sec number or a function returning one
   // (so it can differ by breakpoint, or depend on a live-measured width).
+  // Sign matters and is the caller's job, not this function's: it's not
+  // just "left" -- under dir="rtl" a flex row's visual order flips, so the
+  // duplicate content that needs to scroll into view sits on the opposite
+  // physical side, and a hardcoded direction here left half of every cycle
+  // scrolling into empty track space (blank/black) instead of content.
   function driftLoop(track, speed, getWidth, pauseEl, ignoreReducedMotion) {
     if (!track) return;
     if (!ignoreReducedMotion && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -2630,9 +2635,9 @@ function render() {
       const dt = Math.min((ts - lastTs) / 1000, 0.1); // cap avoids a jump after the tab was backgrounded
       lastTs = ts;
       if (pauseCount <= 0) {
-        const pxPerSecond = typeof speed === 'function' ? speed() : speed;
+        const signedPxPerSecond = typeof speed === 'function' ? speed() : speed;
         const width = getWidth();
-        offset -= pxPerSecond * dt;
+        offset += signedPxPerSecond * dt;
         // Modulo instead of "subtract width once past the threshold": that
         // approach falls permanently behind (drifting into blank track past
         // the last duplicate card) if a single frame's advance ever exceeds
@@ -2695,8 +2700,8 @@ function render() {
       certLightbox.addEventListener('click', () => certLightbox.classList.remove('open'));
     }
 
-    driftLoop(document.querySelector('.bl-candle-track'), 1200 / 46, () => 1200);
-    driftLoop(document.querySelector('.bl-wave-track'), 1200 / 70, () => 1200);
+    driftLoop(document.querySelector('.bl-candle-track'), -1200 / 46, () => 1200);
+    driftLoop(document.querySelector('.bl-wave-track'), -1200 / 70, () => 1200);
     const certsTrack = document.querySelector('.bl-certs-track');
     if (certsTrack) {
       const CERTS_SET_LEN = 7;
@@ -2735,7 +2740,16 @@ function render() {
         certsSetWidth = measureSetWidth();
         driftLoop(
           certsTrack,
-          () => CERTS_IS_MOBILE ? CERTS_MOBILE_PX_PER_SECOND : certsSetWidth / CERTS_DESKTOP_LOOP_SECONDS,
+          () => {
+            const magnitude = CERTS_IS_MOBILE ? CERTS_MOBILE_PX_PER_SECOND : certsSetWidth / CERTS_DESKTOP_LOOP_SECONDS;
+            // Checked live, not baked in at setup: setLang() flips
+            // document.dir without re-running this wiring, and verified
+            // directly in devtools that the two directions need opposite
+            // signs here -- under RTL the duplicate set's cards sit to the
+            // *left*, so revealing them needs a positive offset, not the
+            // negative one that's correct in LTR.
+            return document.documentElement.dir === 'rtl' ? magnitude : -magnitude;
+          },
           () => certsSetWidth,
           certsRow,
           true, // ignore prefers-reduced-motion -- see the note on .bl-certs-row
