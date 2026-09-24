@@ -843,6 +843,57 @@
 
     .propfirm-facts { margin-block: clamp(30px,4vw,48px); margin-inline: calc(-1 * clamp(18px,3vw,52px)); }
 
+    /* ---------- the calculator: walk the math yourself, A to Z ----------
+       Replaces the static 2.5% worked example with an interactive one —
+       same no-card/no-shadow/hairline-rule language as the ledger and the
+       form's choice chips, reused rather than inventing new components.  */
+    .bl-calc { border-block-start: 1px solid #241D08; margin-block: clamp(34px,4.4vw,54px); }
+    .bl-calc-h { margin-block-end: 6px; padding-block-start: 22px; color: var(--gold); }
+    .bl-calc-sub { font-size: 14px; color: var(--dim); margin: 0 0 4px; max-width: 58ch; line-height: 1.6; }
+    .bl-calc-step {
+      display: grid; grid-template-columns: auto minmax(0,1fr);
+      gap: clamp(16px,2.4vw,26px); padding-block: clamp(20px,2.6vw,28px);
+      border-block-end: 1px solid #241D08;
+    }
+    .bl-calc-step:last-of-type { border-block-end: none; }
+    .bl-calc-letter {
+      width: 34px; height: 34px; flex: none; border: 1px solid var(--gold-lo); color: var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Big Shoulders Display',sans-serif; font-weight: 800; font-size: 16px;
+      direction: ltr;
+    }
+    .bl-calc-q { font-size: 15.5px; color: var(--bone); margin: 0 0 14px; line-height: 1.5; max-width: 56ch; }
+    .bl-calc-opts { display: flex; flex-wrap: wrap; gap: 1px; background: #241D08; margin-block-end: 16px; max-width: 420px; }
+    .bl-calc-opt {
+      flex: 1; min-width: 78px; background: var(--void); color: var(--bone);
+      border: 0; padding: 13px 10px; cursor: pointer;
+      font-family: 'Big Shoulders Display',sans-serif; font-weight: 700; font-size: 15px;
+      direction: ltr; transition: background .14s ease, color .14s ease;
+    }
+    .bl-calc-opt:hover { background: #221F14; }
+    .bl-calc-opt[aria-checked="true"] { background: var(--gold); color: var(--ink); }
+    .bl-calc-slider-label { display: block; font-size: 13px; color: var(--dim); margin-block-end: 14px; max-width: 360px; }
+    .bl-calc-slider-label b { color: var(--gold); font-weight: 700; margin-inline-start: 6px; direction: ltr; }
+    .bl-calc-slider {
+      display: block; width: 100%; max-width: 360px; margin-block-start: 10px;
+      -webkit-appearance: none; appearance: none; height: 1px; background: var(--gold-lo); outline: none;
+    }
+    .bl-calc-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+      background: var(--gold); cursor: pointer; border: 0;
+    }
+    .bl-calc-slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--gold); cursor: pointer; border: 0; }
+    .bl-calc-out { font-size: 15px; color: var(--dim); margin: 0; }
+    .bl-calc-out b {
+      font-family: 'Big Shoulders Display',sans-serif; font-weight: 800; color: var(--gold);
+      font-size: clamp(20px,2.2vw,26px); direction: ltr; letter-spacing: -.01em;
+    }
+    .bl-calc-final b { font-size: clamp(26px,3vw,36px); }
+    .bl-calc-fine {
+      font-size: 12.5px; color: var(--dim); line-height: 1.6;
+      padding-block-start: 18px; margin-block-start: 4px; border-block-start: 1px solid #241D08; max-width: 60ch;
+    }
+
     /* ══ DECIDE ══ */
     #decide { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
     #decide::before {
@@ -1038,6 +1089,18 @@ const t = {
     pf_fact2_l: "يوم بين كل سحب",
     pf_fact3_n: "بنكي / رقمي",
     pf_fact3_l: "طريقة الدفع",
+    calc_h: "جرّب الحساب بنفسك",
+    calc_sub: "اختار حجم الحساب ونتيجة شهرية افتراضية — الأرقام تحت بتتحدّث معك أول بأول. الأرقام للتوضيح بس، مش توقّع لشو رح تربح.",
+    calc_a_q: "اختار حجم الحساب يلي بدك تقيّم عليه.",
+    calc_fee_label: "رسوم التقييم المعتادة:",
+    calc_b_q: "اجتياز التقييم — تحقيق هدف ربح 8% من دون ما تكسر قواعد الريسك أو الدروداون.",
+    calc_target_label: "الربح المطلوب لتجتاز:",
+    calc_c_q: "صرت مموَّل. جرّب شهر افتراضي واحد:",
+    calc_slider_label: "الربح الشهري للحساب",
+    calc_profit_label: "ربح الحساب هالشهر:",
+    calc_d_q: "بعد نسبة تقاسم الأرباح من الشركة (85% إلك، وهي نقطة وسط تقريبية من مدى 80-90% فوق).",
+    calc_payout_label: "السحب يلي بيوصلك:",
+    calc_fine: "الأرقام هون للتوضيح بس. الرسوم الحقيقية وأهداف الربح ونسب التقاسم بتختلف من شركة لشركة ومن حساب لحساب، وبتعتمد على الالتزام الكامل بالقواعد. ولا شي هون توقّع أو وعد أو ضمان لشو رح تربح فعلياً — هاد حساب رياضي، مش نتيجة مضمونة.",
     pf_p6b: "بس في شرط مهم: أغلب الشركات بتطلب منك تتداول لعدد معيّن من الأيام (عادةً بين 5 و10 أيام تداول) قبل ما تصير مؤهل لأول سحب، وهيك بيتأكدوا إن نتيجتك مش مجرد صفقة حظ وحدة.",
     pf_p7: "والموضوع مش محصور بدفعة وحدة. إذا ضليت مربح والتزمت بالقواعد، فيك تعمل أكتر من دفعة من نفس الحساب. وهون الهدف الحقيقي: مش بس إنك تعدّي الاختبار، الهدف إنك تحافظ على الحساب المموّل وتقدر تسحب منه بشكل مستمر.",
     pf_scaling: "وكمان أغلب الشركات عندها خطة تكبير للحساب: كل ما ضليت مربح والتزمت بالقواعد لفترة، بيزيدوا حجم حسابك — من 50 ألف لـ100 ألف، ولـ200 ألف دولار مثلاً — وهيك بيكبر سقف الأرباح والمدفوعات اللي فيك تحققها من نفس مستوى أدائك.",
@@ -1180,6 +1243,18 @@ const t = {
     pf_fact2_l: "Days Between Payouts",
     pf_fact3_n: "Bank / Crypto",
     pf_fact3_l: "Payout Method",
+    calc_h: "Walk the math yourself",
+    calc_sub: "Pick an account size and a hypothetical monthly result — the numbers below update as you go. Illustrative only, not a projection of what you'll earn.",
+    calc_a_q: "Pick an account size to evaluate on.",
+    calc_fee_label: "Typical evaluation fee:",
+    calc_b_q: "Pass the evaluation — hit an 8% profit target without breaking the risk or drawdown rules.",
+    calc_target_label: "Profit needed to pass:",
+    calc_c_q: "You're funded. Simulate one hypothetical month:",
+    calc_slider_label: "Monthly account profit",
+    calc_profit_label: "Account profit that month:",
+    calc_d_q: "After the firm's profit split (85% to you, illustrative mid-point of the 80–90% range above).",
+    calc_payout_label: "Your payout:",
+    calc_fine: "Illustrative numbers only. Real fees, profit targets and splits vary by firm and account, and depend on rules being followed exactly. Nothing here is a projection, promise or guarantee of what you'd actually make — it's the arithmetic, not the outcome.",
     pf_p6b: "There's one important condition though: most firms require a minimum number of trading days (usually 5–10) before you're eligible for your first payout — it's how they confirm your result wasn't just one lucky trade.",
     pf_p7: "And it's not limited to one payout. If you stay profitable and follow the rules, you can take multiple payouts from the same account. That's the real goal — not just passing the challenge, but keeping the funded account alive and withdrawing from it consistently.",
     pf_scaling: "Most firms also run a scaling plan: stay profitable and follow the rules for a set stretch, and they'll grow your account size — say from $50K to $100K to $200K — which raises how much you can actually earn and withdraw at the same skill level.",
@@ -1515,9 +1590,53 @@ function render() {
   </div>
 
   <div class="bl-wrap">
-    <!-- TASK 7 INSERTION POINT: the interactive payout calculator goes
-         here, replacing the deleted static "2.5% worked example"
-         (pf_example_sub / pf_example_pitch, removed in Task 6). -->
+    <div class="bl-calc" id="bl-calc">
+      <p class="bl-mono bl-calc-h" data-key="calc_h"></p>
+      <p class="bl-calc-sub" data-key="calc_sub"></p>
+
+      <div class="bl-calc-step">
+        <span class="bl-calc-letter" aria-hidden="true">A</span>
+        <div>
+          <p class="bl-calc-q" data-key="calc_a_q"></p>
+          <div class="bl-calc-opts" role="radiogroup" aria-label="Account size">
+            <button type="button" class="bl-calc-opt" data-size="25000" aria-checked="false" onclick="blCalcSize(this)">$25K</button>
+            <button type="button" class="bl-calc-opt" data-size="50000" aria-checked="true" onclick="blCalcSize(this)">$50K</button>
+            <button type="button" class="bl-calc-opt" data-size="100000" aria-checked="false" onclick="blCalcSize(this)">$100K</button>
+            <button type="button" class="bl-calc-opt" data-size="200000" aria-checked="false" onclick="blCalcSize(this)">$200K</button>
+          </div>
+          <p class="bl-calc-out"><span data-key="calc_fee_label"></span> <b id="bl-calc-fee">$100</b></p>
+        </div>
+      </div>
+
+      <div class="bl-calc-step">
+        <span class="bl-calc-letter" aria-hidden="true">B</span>
+        <div>
+          <p class="bl-calc-q" data-key="calc_b_q"></p>
+          <p class="bl-calc-out"><span data-key="calc_target_label"></span> <b id="bl-calc-target">$4,000</b></p>
+        </div>
+      </div>
+
+      <div class="bl-calc-step">
+        <span class="bl-calc-letter" aria-hidden="true">C</span>
+        <div>
+          <p class="bl-calc-q" data-key="calc_c_q"></p>
+          <label class="bl-calc-slider-label" for="bl-calc-slider"><span data-key="calc_slider_label"></span> <b id="bl-calc-pct">5%</b>
+            <input type="range" min="1" max="15" value="5" step="1" id="bl-calc-slider" class="bl-calc-slider" oninput="blCalcSlide(this)">
+          </label>
+          <p class="bl-calc-out"><span data-key="calc_profit_label"></span> <b id="bl-calc-profit">$2,500</b></p>
+        </div>
+      </div>
+
+      <div class="bl-calc-step">
+        <span class="bl-calc-letter" aria-hidden="true">D</span>
+        <div>
+          <p class="bl-calc-q" data-key="calc_d_q"></p>
+          <p class="bl-calc-out bl-calc-final"><span data-key="calc_payout_label"></span> <b id="bl-calc-payout">$2,125</b></p>
+        </div>
+      </div>
+
+      <p class="bl-calc-fine" data-key="calc_fine"></p>
+    </div>
 
     <div class="bl-prose bl-measure fade-up">
       <p data-key="pf_p6b"></p>
@@ -2516,6 +2635,40 @@ function render() {
   } else if (certsRow) {
     certsRow.classList.add('is-in');
   }
+
+  /* Calculator: walk the math, A to Z. Illustrative fee table — not
+     real pricing, just enough to make the mechanics tangible. */
+  var blCalcFees = {25000:80, 50000:100, 100000:170, 200000:300};
+  var blCalcTargetPct = 0.08;
+  var blCalcSplit = 0.85;
+  var blCalcState = {size:50000, pct:5};
+  function blCalcMoney(n){
+    return '$' + Math.round(n).toLocaleString('en-US');
+  }
+  function blCalcRender(){
+    var size = blCalcState.size, pct = blCalcState.pct;
+    var fee = blCalcFees[size];
+    var target = size * blCalcTargetPct;
+    var profit = size * (pct / 100);
+    var payout = profit * blCalcSplit;
+    document.getElementById('bl-calc-fee').textContent = blCalcMoney(fee);
+    document.getElementById('bl-calc-target').textContent = blCalcMoney(target);
+    document.getElementById('bl-calc-pct').textContent = pct + '%';
+    document.getElementById('bl-calc-profit').textContent = blCalcMoney(profit);
+    document.getElementById('bl-calc-payout').textContent = blCalcMoney(payout);
+  }
+  window.blCalcSize = function(btn){
+    blCalcState.size = parseInt(btn.dataset.size, 10);
+    btn.parentNode.querySelectorAll('.bl-calc-opt').forEach(function(o){
+      o.setAttribute('aria-checked', o === btn ? 'true' : 'false');
+    });
+    blCalcRender();
+  };
+  window.blCalcSlide = function(input){
+    blCalcState.pct = parseInt(input.value, 10);
+    blCalcRender();
+  };
+  if(document.getElementById('bl-calc')) blCalcRender();
 </script>
 </body>
 </html>
