@@ -414,7 +414,13 @@
       display: grid; grid-template-columns: minmax(0,.85fr) minmax(0,1.5fr);
       gap: clamp(28px,5vw,72px); align-items: start;
     }
-    @media (max-width: 860px) { .bl-ledger { grid-template-columns: 1fr; } }
+    /* minmax(0,1fr), not a bare 1fr -- a bare fr track's implicit minimum
+       is its content's min-content size, and the certs marquee's track has
+       width:max-content (deliberately wide, ~2.6k px). Without the 0 floor,
+       that forces this single column -- and the whole section -- to grow
+       to fit it instead of the marquee's own overflow:hidden ever getting
+       a chance to constrain it. */
+    @media (max-width: 860px) { .bl-ledger { grid-template-columns: minmax(0,1fr); } }
 
     .bl-certs { margin-block-start: clamp(30px,4vw,46px); }
     .bl-certs-h { margin-block-end: 14px; }
