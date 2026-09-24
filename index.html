@@ -161,10 +161,31 @@
       color: var(--dim); text-decoration: none;
     }
     .bl-nav a:hover { color: var(--gold); }
+    html[lang="ar"] .bl-nav a { letter-spacing: 0; text-transform: none; }
     .bl-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); }
     .bl-status i { display: block; width: 6px; height: 6px; border-radius: 50%; background: #2F5D3A; flex: none; }
     @media (max-width: 620px) { .bl-status span { display: none; } }
     @media (max-width: 880px) { .bl-nav { display: none; } }
+
+    /* language toggle and nav CTA -- migrated onto the Bullion token system.
+       Square corners throughout; the toggle uses the same tonal step
+       (--band-2 fill, --gold-lo hairline) as the rest of the nav chrome,
+       the CTA reuses the solid-gold-button convention (.form-btn-next,
+       .decide-cta .cta-btn, .bl-final .cta-btn). */
+    .bl-lang {
+      background: var(--band-2);
+      border: 1px solid var(--gold-lo);
+      border-radius: 0;
+    }
+    .bl-lang .lang-btn { color: var(--dim); }
+    .bl-lang .lang-btn.active { background: transparent; color: var(--bone); }
+    .bl-lang .lang-btn:hover:not(.active) { color: var(--bone); }
+
+    .bl-btn-nav {
+      background: var(--gold); color: var(--ink);
+      border-radius: 0;
+    }
+    .bl-btn-nav:hover { background: var(--bone); opacity: 1; }
 
     /* ══ HERO — BAND 2 (Bullion) ══ */
     #hero {
@@ -265,6 +286,7 @@
     [dir="rtl"] .bl-bar-play { transform: scaleX(-1); }
     .bl-bar:hover .bl-bar-play { transform: scale(1.1); }
     [dir="rtl"] .bl-bar:hover .bl-bar-play { transform: scaleX(-1) scale(1.1); }
+    .bl-bar:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
     .bl-fine {
       margin: clamp(22px,3vw,30px) 0 0; font-size: 13px; line-height: 1.66;
@@ -302,6 +324,7 @@
       color: var(--dim);
     }
     .bl-mono--gold { color: var(--gold); }
+    html[lang="ar"] .bl-mono { letter-spacing: 0; text-transform: none; }
 
     /* the lede paragraph under a band heading */
     .bl-lede {
@@ -769,6 +792,7 @@
     }
     [dir="rtl"] .bl-who .n { font-family: 'Changa', sans-serif; text-transform: none; }
     .bl-who .r { font-size: 12.5px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--gold); }
+    html[lang="ar"] .bl-who .r { letter-spacing: 0; text-transform: none; }
     .bl-who-sub { margin: 0 0 clamp(22px,3vw,30px); font-size: 15px; color: var(--dim); line-height: 1.6; }
 
     .bl-mentor-figs { display: flex; flex-wrap: wrap; border-block: 1px solid #241D08; margin-block-end: clamp(22px,3vw,32px); }
@@ -788,7 +812,7 @@
       cursor: zoom-out;
     }
     #certLightbox.open { display: flex; }
-    #certLightbox img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+    #certLightbox img { max-width: 100%; max-height: 100%; }
 
     /* ══ PROP FIRM EXPLAINED (Bullion) ══ */
     #propfirm { background: var(--band); padding-block: clamp(56px,8vw,118px); position: relative; overflow: hidden; }
@@ -883,6 +907,7 @@
       font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase;
       color: var(--gold); display: block; margin-block-end: 10px;
     }
+    html[lang="ar"] .bl-proof-tag { letter-spacing: 0; text-transform: none; }
     .bl-proof-title {
       display: block; font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 700;
       font-size: clamp(19px,1.9vw,25px); line-height: 1.02; text-transform: uppercase;
@@ -1040,6 +1065,7 @@
       color: var(--dim); text-decoration: none;
     }
     .foot-legal a:hover { color: var(--gold); }
+    html[lang="ar"] .foot-legal a { letter-spacing: 0; text-transform: none; }
 
     /* ══ FADE UP ══ */
     .fade-up { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
@@ -1491,7 +1517,7 @@ function render() {
       </div>
 
       <div class="bl-hero-media">
-        <div class="bl-bar">
+        <div class="bl-bar" role="button" tabindex="0" aria-label="Play video" data-yt-id="_BGpKOyCGIY">
           <svg viewBox="0 0 900 500" preserveAspectRatio="none" aria-hidden="true">
             <polygon points="0,56 900,56 828,0 72,0" fill="#7A6218"/>
             <rect x="0" y="56" width="900" height="444" fill="#141412"/>
@@ -1771,7 +1797,7 @@ function render() {
         <div class="form-step active" data-step="1">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q1"></span></h3>
           <div class="bl-field">
-            <input class="form-input bl-input" id="f_name" type="text" data-placeholder-key="q1_ph" autocomplete="off" />
+            <input class="form-input" id="f_name" type="text" data-placeholder-key="q1_ph" autocomplete="off" />
           </div>
         </div>
 
@@ -1779,9 +1805,9 @@ function render() {
         <div class="form-step" data-step="2">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q10"></span></h3>
           <div class="bl-field">
-            <div class="phone-wrap bl-phone">
+            <div class="phone-wrap">
               <div class="cc-selector" id="ccSelector">
-                <div class="cc-selected bl-cc" id="ccSelected">
+                <div class="cc-selected" id="ccSelected">
                   <img id="ccFlag" class="flag" src="https://flagcdn.com/w20/sa.png" width="20" height="14" alt="" style="border-radius:2px;object-fit:cover;" />
                   <span class="code" id="ccCode">+966</span>
                   <span class="cc-arrow">▾</span>
@@ -1791,7 +1817,7 @@ function render() {
                   <div class="cc-list" id="ccList"></div>
                 </div>
               </div>
-              <input class="form-input phone-num bl-input" id="f_phone" type="tel" placeholder="5xx xxx xxxx" autocomplete="off" />
+              <input class="form-input phone-num" id="f_phone" type="tel" placeholder="5xx xxx xxxx" autocomplete="off" />
             </div>
           </div>
         </div>
@@ -1800,7 +1826,7 @@ function render() {
         <div class="form-step" data-step="3">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q11"></span></h3>
           <div class="bl-field">
-            <input class="form-input bl-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
+            <input class="form-input" id="f_email" type="email" data-placeholder-key="q11_ph" autocomplete="off" />
           </div>
         </div>
 
@@ -1808,49 +1834,49 @@ function render() {
         <div class="form-step" data-step="4">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q3"></span></h3>
           <div class="bl-field">
-            <input class="form-input bl-input" id="f_country" type="text" data-placeholder-key="q3_ph" autocomplete="off" />
+            <input class="form-input" id="f_country" type="text" data-placeholder-key="q3_ph" autocomplete="off" />
           </div>
         </div>
 
         <!-- Step 5: Experience -->
         <div class="form-step" data-step="5">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q5"></span></h3>
-          <div class="form-choices bl-choices" id="choices_5" role="radiogroup">
-            <div class="form-choice bl-choice" data-value="beginner" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
-            <div class="form-choice bl-choice" data-value="tried-lost" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
-            <div class="form-choice bl-choice" data-value="some-exp" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
+          <div class="form-choices" id="choices_5" role="radiogroup">
+            <div class="form-choice" data-value="beginner" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q5_a"></span></div>
+            <div class="form-choice" data-value="tried-lost" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q5_b"></span></div>
+            <div class="form-choice" data-value="some-exp" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q5_c"></span></div>
           </div>
         </div>
 
         <!-- Step 6: Budget -->
         <div class="form-step" data-step="6">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q7"></span></h3>
-          <div class="form-choices bl-choices" id="choices_6" role="radiogroup">
-            <div class="form-choice bl-choice" data-value="<500" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
-            <div class="form-choice bl-choice" data-value="500-1k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
-            <div class="form-choice bl-choice" data-value="1k-3k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
-            <div class="form-choice bl-choice" data-value="3k+" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
+          <div class="form-choices" id="choices_6" role="radiogroup">
+            <div class="form-choice" data-value="<500" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q7_a"></span></div>
+            <div class="form-choice" data-value="500-1k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q7_b"></span></div>
+            <div class="form-choice" data-value="1k-3k" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q7_c"></span></div>
+            <div class="form-choice" data-value="3k+" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q7_d"></span></div>
           </div>
         </div>
 
         <!-- Step 7: Looking for -->
         <div class="form-step" data-step="7">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q8"></span></h3>
-          <div class="form-choices bl-choices" id="choices_7" role="radiogroup">
-            <div class="form-choice bl-choice" data-value="videos" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
-            <div class="form-choice bl-choice" data-value="community" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
-            <div class="form-choice bl-choice" data-value="1on1" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
-            <div class="form-choice bl-choice" data-value="all" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
+          <div class="form-choices" id="choices_7" role="radiogroup">
+            <div class="form-choice" data-value="videos" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q8_a"></span></div>
+            <div class="form-choice" data-value="community" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
+            <div class="form-choice" data-value="1on1" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
+            <div class="form-choice" data-value="all" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
           </div>
         </div>
 
         <!-- Step 8: Goal -->
         <div class="form-step" data-step="8">
           <h3><span class="step-num" data-key="step_label"></span><span data-key="q9"></span></h3>
-          <div class="form-choices bl-choices" id="choices_8" role="radiogroup">
-            <div class="form-choice bl-choice" data-value="side-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
-            <div class="form-choice bl-choice" data-value="replace-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
-            <div class="form-choice bl-choice" data-value="full-time" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
+          <div class="form-choices" id="choices_8" role="radiogroup">
+            <div class="form-choice" data-value="side-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">A</span><span data-key="q9_a"></span></div>
+            <div class="form-choice" data-value="replace-income" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q9_b"></span></div>
+            <div class="form-choice" data-value="full-time" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q9_c"></span></div>
           </div>
         </div>
 
@@ -1859,7 +1885,7 @@ function render() {
       <p class="form-error" id="formError" role="alert" aria-live="assertive" style="display:none"></p>
 
       <!-- Nav -->
-      <div class="form-nav bl-form-nav" id="formNav">
+      <div class="form-nav" id="formNav">
         <button class="form-btn-back" id="formBack" onclick="formPrev()" style="visibility:hidden" data-key="btn_back"></button>
         <button class="form-btn-next" id="formNext" onclick="formNext()">
           <span id="formNextLabel" data-key="btn_next"></span> <span id="formNextArrow" style="font-size:16px">→</span>
@@ -2450,16 +2476,23 @@ function render() {
   // language toggle (render() re-runs on setLang() but these elements persist,
   // so re-binding here would stack duplicate listeners each time you switch language).
   function wireOneTimeInteractions() {
-    const vslThumb = document.getElementById('vslThumb');
-    if (vslThumb) {
-      vslThumb.addEventListener('click', () => {
-        const id = vslThumb.dataset.ytId;
+    const blBar = document.querySelector('.bl-bar');
+    if (blBar) {
+      const playVsl = () => {
+        const id = blBar.dataset.ytId;
         const iframe = document.createElement('iframe');
         iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
         iframe.title = 'VSL';
         iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
         iframe.allowFullscreen = true;
-        vslThumb.replaceWith(iframe);
+        blBar.replaceWith(iframe);
+      };
+      blBar.addEventListener('click', playVsl);
+      blBar.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+          e.preventDefault();
+          playVsl();
+        }
       });
     }
 
