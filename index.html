@@ -268,6 +268,7 @@
     /* ══ SHARED LANGUAGE FOR THE BANDS BELOW THE HERO (Bullion) ══ */
     .bl-sec { position: relative; }
     .bl-wrap { max-width: 1180px; margin-inline: auto; }
+    .bl-measure { max-width: 64ch; }
 
     h2.bl-h2 {
       font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 800;
@@ -306,6 +307,26 @@
       font-size: 11.5px; letter-spacing: .06em; color: #C0A034; direction: ltr;
     }
     .bl-slab .bl-slab-t { font-size: 12px; line-height: 1.5; max-width: 22ch; }
+
+    /* a generic gold fill for reuse of the hero's gold-bar motif further
+       down the page — no wipe animation, that's a hero-load signature. */
+    .bl-gold { background: var(--gold); color: var(--ink); }
+
+    /* the record, stamped into a gold fill: black type, hairline dividers
+       of the same gold darkened — never boxes */
+    .bl-stamp { display: flex; flex-wrap: wrap; align-items: center; }
+    .bl-stamp span {
+      padding: 14px clamp(14px,1.8vw,26px);
+      border-inline-end: 1px solid rgba(10,8,2,.28);
+      font-size: 12.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+      display: flex; align-items: baseline; gap: 9px; color: var(--ink);
+    }
+    html[lang="ar"] .bl-stamp span { letter-spacing: 0; text-transform: none; font-size: 13.5px; }
+    .bl-stamp span:last-child { border-inline-end: none; }
+    .bl-stamp span b {
+      font-family: 'Big Shoulders Display', sans-serif; font-weight: 800;
+      font-size: 22px; letter-spacing: -.01em; direction: ltr; color: var(--ink);
+    }
 
     /* ══ BAND 3 — THE RECORD (Bullion) ══ */
     #the-record { background: var(--band); padding-block: clamp(44px,6vw,86px); }
@@ -789,20 +810,6 @@
     .bl-bio p:last-child { margin-block-end: 0; }
     html[lang="ar"] .bl-bio p:first-child { font-size: 16px; }
 
-    /* shared with #propfirm's stats row until Task 6 re-skins it — do not remove */
-    @media (min-width: 1024px) {
-      .mentor-stats { justify-content: flex-start; }
-    }
-    .mentor-stats { display: flex; gap: 0; margin-bottom: 28px; justify-content: center; }
-    .mstat {
-      text-align: center; padding: 0 24px;
-      border-inline-end: 1px solid #262626;
-    }
-    .mstat:last-child { border-inline-end: none; }
-    .mstat-num { font-size: 30px; font-weight: 900; color: var(--green); font-family: 'Inter', sans-serif; letter-spacing: -1px; }
-    .mstat-lbl { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
-    html[lang="ar"] .mstat-lbl { text-transform: none; letter-spacing: 0; font-size: 12px; }
-
     #certLightbox {
       position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 2000;
       display: none; align-items: center; justify-content: center; padding: 32px;
@@ -811,41 +818,26 @@
     #certLightbox.open { display: flex; }
     #certLightbox img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
 
-    /* ══ PROP FIRM EXPLAINED ══ */
-    #propfirm { padding: 100px 20px; background: var(--dark); position: relative; overflow: hidden; }
-    #propfirm::before {
-      content: ''; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); width: 700px; height: 450px;
-      background: radial-gradient(ellipse, rgba(212,175,55,0.05) 0%, transparent 70%);
-      pointer-events: none;
+    /* ══ PROP FIRM EXPLAINED (Bullion) ══ */
+    #propfirm { background: var(--band); padding-block: clamp(56px,8vw,118px); position: relative; overflow: hidden; }
+
+    .bl-prose p { font-size: 16px; line-height: 1.74; color: var(--dim); margin: 0 0 1.1em; }
+    html[lang="ar"] .bl-prose p { line-height: 1.95; font-size: 16.5px; }
+    .bl-prose p strong { color: var(--bone); font-weight: 600; }
+    .bl-prose h3 {
+      font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 800;
+      text-transform: uppercase; font-size: clamp(22px,2.4vw,32px); line-height: 1;
+      color: var(--bone); margin: clamp(30px,4vw,46px) 0 1em;
+      padding-block-start: 18px; border-block-start: 1px solid #241D08;
     }
-    .propfirm-body { max-width: 720px; margin: 0 auto; }
-    .propfirm-body .pf-facts { margin: 28px 0; }
-    .pf-example {
-      text-align: center; margin: 40px 0;
-    }
-    .pf-example-num {
-      font-size: clamp(40px, 7vw, 56px); font-weight: 900; color: var(--green);
-      font-family: 'Inter', sans-serif; line-height: 1;
-    }
-    .pf-example-sub {
-      font-size: 13px; color: #ccc; font-weight: 700; letter-spacing: 0.5px;
-      margin-top: 8px; text-transform: uppercase;
-    }
-    html[lang="ar"] .pf-example-sub { text-transform: none; font-size: 14px; }
-    .pf-example-pitch { color: #aaa !important; font-size: 14px !important; margin: 14px 0 0 !important; }
-    .propfirm-body p { color: #aaa; font-size: 15px; line-height: 1.9; margin-bottom: 16px; }
-    html[lang="ar"] .propfirm-body p { line-height: 2.1; font-size: 16px; }
-    .pf-subhead {
-      color: #fff; font-size: clamp(19px, 3vw, 24px); font-weight: 900;
-      margin: 40px 0 18px;
-    }
-    .pf-closing {
-      color: var(--green) !important; font-size: 16px !important; font-weight: 700;
-      font-style: italic; margin-top: 28px !important; padding-top: 24px;
-      border-top: 1px solid #1e1e1e; text-align: center;
-    }
-    html[lang="ar"] .pf-closing { font-size: 17px !important; }
+    [dir="rtl"] .bl-prose h3 { font-family: 'Changa', sans-serif; text-transform: none; line-height: 1.3; }
+    .bl-prose .bl-kicker-line { color: var(--gold); font-size: 17px; font-weight: 600; }
+
+    /* the disclaimer sentence, promoted to bold without touching the
+       translated string itself — see pf_closing in the t.ar/t.en tables */
+    .bl-prose .pf-closing { font-weight: 600; color: var(--bone); }
+
+    .propfirm-facts { margin-block: clamp(30px,4vw,48px); margin-inline: calc(-1 * clamp(18px,3vw,52px)); }
 
     /* ══ DECIDE ══ */
     #decide { padding: 100px 20px; background: var(--dark-2); position: relative; overflow: hidden; }
@@ -975,7 +967,6 @@
     @media (max-width: 700px) {
       .proof-grid, .stats-grid { grid-template-columns: 1fr; }
       .stat-item + .stat-item::before { display: none; }
-      .mentor-stats { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -1043,8 +1034,6 @@ const t = {
     pf_fact2_l: "يوم بين كل سحب",
     pf_fact3_n: "بنكي / رقمي",
     pf_fact3_l: "طريقة الدفع",
-    pf_example_sub: "على حساب مموّل بقيمة 50 ألف دولار",
-    pf_example_pitch: "يعني حوالي 1,250 دولار ربح على الحساب، وبعد نسبة تقاسم الأرباح (80-90%)، حوالي 1,000 دولار منها بتدخل جيبتك مباشرة. يعني مش لازم تضاعف حسابك أو تلاحق أرقام خيالية — حركة صغيرة ومحسوبة كفيلة توصلك لأول سحب حقيقي.",
     pf_p6b: "بس في شرط مهم: أغلب الشركات بتطلب منك تتداول لعدد معيّن من الأيام (عادةً بين 5 و10 أيام تداول) قبل ما تصير مؤهل لأول سحب، وهيك بيتأكدوا إن نتيجتك مش مجرد صفقة حظ وحدة.",
     pf_p7: "والموضوع مش محصور بدفعة وحدة. إذا ضليت مربح والتزمت بالقواعد، فيك تعمل أكتر من دفعة من نفس الحساب. وهون الهدف الحقيقي: مش بس إنك تعدّي الاختبار، الهدف إنك تحافظ على الحساب المموّل وتقدر تسحب منه بشكل مستمر.",
     pf_scaling: "وكمان أغلب الشركات عندها خطة تكبير للحساب: كل ما ضليت مربح والتزمت بالقواعد لفترة، بيزيدوا حجم حسابك — من 50 ألف لـ100 ألف، ولـ200 ألف دولار مثلاً — وهيك بيكبر سقف الأرباح والمدفوعات اللي فيك تحققها من نفس مستوى أدائك.",
@@ -1187,8 +1176,6 @@ const t = {
     pf_fact2_l: "Days Between Payouts",
     pf_fact3_n: "Bank / Crypto",
     pf_fact3_l: "Payout Method",
-    pf_example_sub: "on a $50,000 funded account",
-    pf_example_pitch: "That's about $1,250 in account profit, and after the firm's profit split (80–90%), roughly $1,000 of it lands directly in your pocket. You don't need to double your account or chase crazy numbers — one small, controlled move is enough to walk away with a real payout.",
     pf_p6b: "There's one important condition though: most firms require a minimum number of trading days (usually 5–10) before you're eligible for your first payout — it's how they confirm your result wasn't just one lucky trade.",
     pf_p7: "And it's not limited to one payout. If you stay profitable and follow the rules, you can take multiple payouts from the same account. That's the real goal — not just passing the challenge, but keeping the funded account alive and withdrawing from it consistently.",
     pf_scaling: "Most firms also run a scaling plan: stay profitable and follow the rules for a set stretch, and they'll grow your account size — say from $50K to $100K to $200K — which raises how much you can actually earn and withdraw at the same skill level.",
@@ -1495,30 +1482,40 @@ function render() {
 <div class="section-divider"></div>
 
 <!-- PROP FIRM EXPLAINED -->
-<section id="propfirm">
-  <div class="container">
-    <div class="section-header fade-up">
-      <span class="section-label"></span>
-      <h2><span class="propfirm-h"></span><span class="propfirm-h-g g"></span></h2>
-    </div>
-    <div class="propfirm-body fade-up">
+<section id="propfirm" class="bl-sec bl-pad">
+  <div class="bl-wrap">
+    <h2 class="bl-h2">
+      <span class="sm" data-key="propfirm_label"></span>
+      <span class="lg"><span data-key="propfirm_h"></span> <em data-key="propfirm_h_g"></em></span>
+    </h2>
+    <div class="bl-prose bl-measure fade-up">
       <p data-key="pf_p1"></p>
       <p data-key="pf_p2"></p>
       <p data-key="pf_p3"></p>
-      <h3 class="pf-subhead" data-key="pf_subhead"></h3>
-      <p data-key="pf_p4"></p>
+      <h3 data-key="pf_subhead"></h3>
+      <p class="bl-kicker-line" data-key="pf_p4"></p>
       <p data-key="pf_p5"></p>
       <p data-key="pf_p6"></p>
-      <div class="mentor-stats pf-facts">
-        <div class="mstat"><div class="mstat-num" dir="ltr" data-key="pf_fact1_n"></div><div class="mstat-lbl" data-key="pf_fact1_l"></div></div>
-        <div class="mstat"><div class="mstat-num" dir="ltr" data-key="pf_fact2_n"></div><div class="mstat-lbl" data-key="pf_fact2_l"></div></div>
-        <div class="mstat"><div class="mstat-num" data-key="pf_fact3_n"></div><div class="mstat-lbl" data-key="pf_fact3_l"></div></div>
-      </div>
-      <div class="pf-example">
-        <div class="pf-example-num" dir="ltr">2.5%</div>
-        <div class="pf-example-sub" data-key="pf_example_sub"></div>
-        <p class="pf-example-pitch" data-key="pf_example_pitch"></p>
-      </div>
+    </div>
+  </div>
+
+  <!-- the three payout facts, stamped into a gold band: the same
+       black-on-gold fill/hairline-divider motif used elsewhere on the
+       page, reused at section scale -->
+  <div class="bl-gold propfirm-facts">
+    <div class="bl-stamp bl-pad" style="max-width:1180px;margin-inline:auto;">
+      <span><b dir="ltr" data-key="pf_fact1_n"></b><span data-key="pf_fact1_l"></span></span>
+      <span><b dir="ltr" data-key="pf_fact2_n"></b><span data-key="pf_fact2_l"></span></span>
+      <span><b data-key="pf_fact3_n"></b><span data-key="pf_fact3_l"></span></span>
+    </div>
+  </div>
+
+  <div class="bl-wrap">
+    <!-- TASK 7 INSERTION POINT: the interactive payout calculator goes
+         here, replacing the deleted static "2.5% worked example"
+         (pf_example_sub / pf_example_pitch, removed in Task 6). -->
+
+    <div class="bl-prose bl-measure fade-up">
       <p data-key="pf_p6b"></p>
       <p data-key="pf_p7"></p>
       <p data-key="pf_scaling"></p>
