@@ -24,6 +24,14 @@
   <meta name="twitter:description" content="تعلم نظام تداول حقيقي مبني على ساعات أمام الشاشة — وليس محتوى يوتيوب المكرر." />
   <meta name="twitter:image" content="https://3amaktrades-landing.vercel.app/og-image.png" />
 
+  <!-- Canonical / hreflang — single-URL client-toggled site, both languages live here.
+       True per-language indexing would need separate /en and /ar routes — a bigger
+       architectural change than fits this refine; flagged as a follow-up. -->
+  <link rel="canonical" href="https://3amaktrades-landing.vercel.app/" />
+  <link rel="alternate" hreflang="ar" href="https://3amaktrades-landing.vercel.app/" />
+  <link rel="alternate" hreflang="en" href="https://3amaktrades-landing.vercel.app/" />
+  <link rel="alternate" hreflang="x-default" href="https://3amaktrades-landing.vercel.app/" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Changa:wght@600;800&family=Inter:wght@400;500;600&family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
@@ -367,7 +375,7 @@
     @media (min-width: 480px) { .bl-certs-row { grid-template-columns: repeat(4,1fr); } }
     @media (min-width: 720px) { .bl-certs-row { grid-template-columns: repeat(7,1fr); } }
     .bl-cert {
-      aspect-ratio: 4/3;
+      aspect-ratio: 4/3; overflow: hidden;
       /* SIGNATURE: staggered reveal, not a scroller ticker — each slab
          stamps into place in sequence, like entries being logged. Triggers
          once via IntersectionObserver when .bl-certs-row gets .is-in.   */
@@ -747,7 +755,12 @@
     }
     @media (max-width: 880px) { .bl-mentor { grid-template-columns: 1fr; } }
 
-    .bl-mentor-photo { aspect-ratio: 4/5; width: 100%; }
+    .bl-mentor-photo { aspect-ratio: 4/5; width: 100%; overflow: hidden; }
+    .bl-mentor-photo picture, .bl-cert picture { display: block; width: 100%; height: 100%; }
+    .bl-mentor-photo img, .bl-cert img {
+      display: block; width: 100%; height: 100%; object-fit: cover;
+    }
+    .bl-cert img { cursor: zoom-in; }
 
     .bl-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 18px; margin-block-end: 6px; }
     .bl-who .n {
@@ -1515,26 +1528,47 @@ function render() {
       <div class="bl-certs">
         <p class="bl-mono bl-certs-h" data-key="record_certs_h"></p>
         <div class="bl-certs-row">
-          <div class="bl-slab bl-cert" role="img" aria-label="TopStep — Certified Funded Trader">
-            <span class="bl-slab-t">TopStep</span><code>/certs/topstep.jpg</code>
+          <div class="bl-cert">
+            <picture>
+              <source srcset="/certs/topstep.webp" type="image/webp">
+              <img src="/certs/topstep.jpg" alt="TopStep — Certified Funded Trader" loading="lazy" />
+            </picture>
           </div>
-          <div class="bl-slab bl-cert" role="img" aria-label="AquaFutures — Certificate of Funded Trader">
-            <span class="bl-slab-t">AquaFutures</span><code>/certs/aquafutures-1.jpg</code>
+          <div class="bl-cert">
+            <picture>
+              <source srcset="/certs/aquafutures-1.webp" type="image/webp">
+              <img src="/certs/aquafutures-1.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy" />
+            </picture>
           </div>
-          <div class="bl-slab bl-cert" role="img" aria-label="FundedNext Futures — Rising Trader">
-            <span class="bl-slab-t">FundedNext</span><code>/certs/fundednext.jpg</code>
+          <div class="bl-cert">
+            <picture>
+              <source srcset="/certs/fundednext.webp" type="image/webp">
+              <img src="/certs/fundednext.jpg" alt="FundedNext Futures — Rising Trader" loading="lazy" />
+            </picture>
           </div>
-          <div class="bl-slab bl-cert" role="img" aria-label="AquaFutures — Certificate of Funded Trader">
-            <span class="bl-slab-t">AquaFutures</span><code>/certs/aquafutures-2.jpg</code>
+          <div class="bl-cert">
+            <picture>
+              <source srcset="/certs/aquafutures-2.webp" type="image/webp">
+              <img src="/certs/aquafutures-2.jpg" alt="AquaFutures — Certificate of Funded Trader" loading="lazy" />
+            </picture>
           </div>
-          <div class="bl-slab bl-cert" role="img" aria-label="The Trading Pit — Challenge Passed">
-            <span class="bl-slab-t">Trading Pit</span><code>/certs/tradingpit.jpg</code>
+          <div class="bl-cert">
+            <picture>
+              <source srcset="/certs/tradingpit.webp" type="image/webp">
+              <img src="/certs/tradingpit.jpg" alt="The Trading Pit — Challenge Passed" loading="lazy" />
+            </picture>
           </div>
-          <div class="bl-slab bl-cert" role="img" aria-label="Funded Futures Family — Certificate of Funding">
-            <span class="bl-slab-t">Funded Futures</span><code>/certs/fundedfutures.jpg</code>
+          <div class="bl-cert">
+            <picture>
+              <source srcset="/certs/fundedfutures.webp" type="image/webp">
+              <img src="/certs/fundedfutures.jpg" alt="Funded Futures Family — Certificate of Funding" loading="lazy" />
+            </picture>
           </div>
-          <div class="bl-slab bl-cert" role="img" aria-label="My Funded Futures — Builder 50K Passing Certificate">
-            <span class="bl-slab-t">My Funded Futures</span><code>/certs/myfundedfutures.jpg</code>
+          <div class="bl-cert">
+            <picture>
+              <source srcset="/certs/myfundedfutures.webp" type="image/webp">
+              <img src="/certs/myfundedfutures.jpg" alt="My Funded Futures — Builder 50K Passing Certificate" loading="lazy" />
+            </picture>
           </div>
         </div>
       </div>
@@ -1552,8 +1586,11 @@ function render() {
       <span class="lg"><span data-key="mentor_h"></span> <em data-key="mentor_h_g"></em></span>
     </h2>
     <div class="bl-mentor">
-      <div class="bl-slab bl-mentor-photo fade-up" role="img" aria-label="Omar Alhalabi">
-        <span class="bl-slab-t">Omar Alhalabi</span><code>/mentor.jpg</code>
+      <div class="bl-mentor-photo fade-up">
+        <picture>
+          <source srcset="/mentor.webp" type="image/webp">
+          <img src="/mentor.jpg" alt="Omar Alhalabi" loading="lazy" />
+        </picture>
       </div>
       <div class="fade-up">
         <div class="bl-who">
@@ -1746,7 +1783,7 @@ function render() {
             <div class="phone-wrap bl-phone">
               <div class="cc-selector" id="ccSelector">
                 <div class="cc-selected bl-cc" id="ccSelected">
-                  <img id="ccFlag" class="flag" src="https://flagcdn.com/w20/sa.png" width="20" height="14" style="border-radius:2px;object-fit:cover;" />
+                  <img id="ccFlag" class="flag" src="https://flagcdn.com/w20/sa.png" width="20" height="14" alt="" style="border-radius:2px;object-fit:cover;" />
                   <span class="code" id="ccCode">+966</span>
                   <span class="cc-arrow">▾</span>
                 </div>
@@ -2438,7 +2475,7 @@ function render() {
 
     const certLightbox = document.getElementById('certLightbox');
     if (certLightbox) {
-      document.querySelectorAll('.mentor-certs-row img').forEach(img => {
+      document.querySelectorAll('.bl-certs-row img').forEach(img => {
         img.addEventListener('click', () => {
           const full = certLightbox.querySelector('img');
           full.src = img.src;
