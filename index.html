@@ -315,15 +315,19 @@
     /* the record, stamped into a gold fill: black type, hairline dividers
        of the same gold darkened — never boxes */
     .bl-stamp { display: flex; flex-wrap: wrap; align-items: center; }
-    .bl-stamp span {
+    /* direct-child combinator: this markup wraps each fact's label in its
+       own <span data-key="..."> for the generic [data-key] sweep, so a
+       plain descendant selector here would double-match that inner span
+       too (extra padding/flex on top of the outer wrapper's own). */
+    .bl-stamp > span {
       padding: 14px clamp(14px,1.8vw,26px);
       border-inline-end: 1px solid rgba(10,8,2,.28);
       font-size: 12.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
       display: flex; align-items: baseline; gap: 9px; color: var(--ink);
     }
-    html[lang="ar"] .bl-stamp span { letter-spacing: 0; text-transform: none; font-size: 13.5px; }
-    .bl-stamp span:last-child { border-inline-end: none; }
-    .bl-stamp span b {
+    html[lang="ar"] .bl-stamp > span { letter-spacing: 0; text-transform: none; font-size: 13.5px; }
+    .bl-stamp > span:last-child { border-inline-end: none; }
+    .bl-stamp > span b {
       font-family: 'Big Shoulders Display', sans-serif; font-weight: 800;
       font-size: 22px; letter-spacing: -.01em; direction: ltr; color: var(--ink);
     }
