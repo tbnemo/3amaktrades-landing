@@ -137,93 +137,129 @@
     }
     .nav-cta:hover { opacity: 0.85; }
 
-    /* ══ HERO ══ */
+    /* ══ NAV — BAND 1 (Bullion) ══ */
+    .bl-pad { padding-inline: clamp(18px,3vw,52px); }
+    .bl-b1 {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      padding-block: 16px; background: var(--band); border-block-end: 1px solid var(--gold-lo);
+    }
+    .bl-mark { display: flex; align-items: center; gap: 14px; }
+    .bl-mark .fallback {
+      font-family: 'Big Shoulders Display', sans-serif; font-weight: 800; font-size: 19px;
+      letter-spacing: .1em; direction: ltr; color: var(--bone);
+    }
+    .bl-nav { display: flex; gap: clamp(14px,2vw,28px); }
+    .bl-nav a {
+      font-size: 12.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase;
+      color: var(--dim); text-decoration: none;
+    }
+    .bl-nav a:hover { color: var(--gold); }
+    .bl-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); }
+    .bl-status i { display: block; width: 6px; height: 6px; border-radius: 50%; background: #2F5D3A; flex: none; }
+    @media (max-width: 620px) { .bl-status span { display: none; } }
+    @media (max-width: 880px) { .bl-nav { display: none; } }
+
+    /* ══ HERO — BAND 2 (Bullion) ══ */
     #hero {
-      position: relative; min-height: 100vh;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      text-align: center; padding: 80px 20px 60px;
+      position: relative; background: var(--void);
+      min-height: min(62vh, 540px);
+      display: flex; flex-direction: column; justify-content: center;
+      padding-block: clamp(40px,6vw,86px);
       overflow: hidden;
     }
-    #hero::after {
-      content: ''; position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 70% 55% at 68% 48%, rgba(212,175,55,0.07), transparent 70%),
-        linear-gradient(180deg, rgba(5,5,5,0.05), rgba(5,5,5,0.42));
-      pointer-events: none;
-    }
-    .hero-content { position: relative; z-index: 2; max-width: 820px; }
 
-    .hero-badge {
-      font-size: 13px; font-weight: 700; color: var(--green); margin-bottom: 20px;
+    /* ambient animated candlestick backdrop -- hero only, muted gold tones,
+       respects reduced-motion, ends on one candle with a slow live pulse. */
+    .bl-candles { position: absolute; inset: 0; z-index: 0; opacity: .4; pointer-events: none; }
+    .bl-candle { transform-origin: center bottom; animation: bl-grow .7s cubic-bezier(.65,0,.25,1) both; }
+    @keyframes bl-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+    .bl-candle-live {
+      animation: bl-grow .7s cubic-bezier(.65,0,.25,1) both, bl-pulse 3.6s ease-in-out 2s infinite;
     }
-    html[lang="en"] .hero-badge-text { text-transform: uppercase; letter-spacing: 1.5px; }
+    @keyframes bl-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+    @media (prefers-reduced-motion: reduce) {
+      .bl-candle, .bl-candle-live { animation: none; transform: none; opacity: 1; }
+    }
+    @media (max-width: 700px) { .bl-candles { opacity: .28; } }
 
-    .hero-headline {
-      font-size: clamp(36px, 6vw, 68px); font-weight: 900;
-      line-height: 1.1; letter-spacing: -1px; margin-bottom: 24px;
-    }
-    html[lang="ar"] .hero-headline { letter-spacing: 0; line-height: 1.2; }
-    html[lang="en"] .hero-headline {
-      font-family: 'Montserrat', sans-serif; text-transform: uppercase;
-      letter-spacing: 1px; line-height: 1.25;
-    }
-    .hero-headline .g { color: var(--green); display: block; }
+    .bl-b2-inner { position: relative; z-index: 2; max-width: min(1536px,100%); }
 
-    .hero-sub {
-      font-size: clamp(15px, 2vw, 18px); color: var(--gray);
-      max-width: 560px; line-height: 1.7; margin: 0 auto 36px;
+    /* hero split: copy on one side, VSL on the other. Text is a hard-pinned
+       572px column; the video gets whatever's left, up to 900px, and shrinks
+       gracefully below that. Mobile stacks video first. */
+    .bl-hero-grid { display: grid; gap: clamp(32px,5vw,64px); align-items: center; }
+    @media (min-width: 960px) {
+      .bl-hero-grid { grid-template-columns: 572px minmax(260px,900px); }
     }
-    html[lang="ar"] .hero-sub { line-height: 1.9; }
-
-    .hero-pills {
-      display: flex; gap: 0; justify-content: center;
-      flex-wrap: wrap; margin-bottom: 44px;
-    }
-    .hero-pills span {
-      font-size: 13px; color: #999;
-      padding: 0 16px;
-      border-inline-end: 1px solid rgba(255,255,255,0.14);
-    }
-    .hero-pills span:last-child { border-inline-end: none; }
-    html[lang="en"] .hero-pills span { text-transform: uppercase; letter-spacing: 0.5px; }
-
-    .hero-video { width: 100%; max-width: 720px; margin: 0 auto 48px; }
-
-    /* Desktop: split layout -- copy on the reading-start side, video on the end side */
-    @media (min-width: 1024px) {
-      #hero { text-align: start; }
-      .hero-content {
-        display: flex; flex-direction: row-reverse; align-items: center;
-        gap: 64px; width: 100%; max-width: 1640px;
-      }
-      .hero-text { flex: 1 1 38%; min-width: 0; }
-      .hero-video { flex: 1 1 62%; max-width: none; margin: 0; }
-      .hero-video .video-container { padding-bottom: 56.25%; } /* standard 16:9 -- wide, not tall */
-      .hero-badge, .hero-headline, .hero-sub { text-align: start; }
-      .hero-sub { margin-inline: 0; }
-      .hero-pills { justify-content: flex-start; }
-      .cta-btn { align-items: flex-start; }
+    .bl-hero-copy { order: 2; }
+    .bl-hero-media { order: 1; }
+    @media (min-width: 960px) {
+      .bl-hero-copy { order: 1; }
+      .bl-hero-media { order: 2; }
     }
 
-    /* Full-bleed live market backdrop */
-    .hero-chart {
-      position: absolute; inset: 0;
-      z-index: 1; pointer-events: none; overflow: hidden;
-      opacity: 0.52;
-      -webkit-mask-image: linear-gradient(to bottom, transparent 3%, #000 24%, #000 78%, transparent 100%);
-      mask-image: linear-gradient(to bottom, transparent 3%, #000 24%, #000 78%, transparent 100%);
+    /* baseline-mixed setting: a small lead line sits on one baseline, the
+       big headline on the next -- the letterpress-poster look. */
+    h1.bl-h1 {
+      font-family: 'Big Shoulders Display','Changa',sans-serif; font-weight: 800;
+      text-transform: uppercase; margin: 0 0 clamp(20px,2.6vw,30px);
+      line-height: .86; letter-spacing: -.015em;
+      font-size: clamp(40px,7.4vw,112px);
+      max-width: 22ch; color: var(--bone);
     }
-    .hero-chart::after {
-      content: ''; position: absolute; inset: 0;
-      background:
-        radial-gradient(ellipse 60% 55% at 50% 48%, transparent 0%, rgba(5,5,5,0.18) 58%, rgba(5,5,5,0.82) 100%),
-        linear-gradient(90deg, rgba(5,5,5,0.68), transparent 26%, transparent 74%, rgba(5,5,5,0.68));
+    [dir="rtl"] h1.bl-h1 {
+      font-family: 'Changa', sans-serif; line-height: 1.2; letter-spacing: 0;
+      text-transform: none;
     }
-    .hero-chart canvas {
-      position: relative; display: block; width: 100%; height: 100%;
-      filter: drop-shadow(0 0 10px rgba(212,175,55,0.12));
+    h1.bl-h1 .sm {
+      display: block; font-size: .36em; letter-spacing: .08em; font-weight: 500;
+      color: var(--dim); margin-block-end: .18em;
     }
+    h1.bl-h1 .lg { display: block; }
+    h1.bl-h1 .lg em { font-style: normal; color: var(--gold); }
+
+    .bl-sub {
+      font-size: clamp(15px,1.15vw,17.5px); line-height: 1.62; color: var(--dim);
+      max-width: 50ch; margin: 0 0 clamp(24px,3vw,32px);
+    }
+    .bl-sub strong { color: var(--bone); font-weight: 600; }
+
+    /* the VSL: a bar of bullion seen end-on -- an object with real weight,
+       cropped, not a 16:9 media card. Sized to the client's own drag-to-fit
+       pass: 900x500 (9:5), nudged slightly off-center per that pass too. */
+    .bl-bar {
+      position: relative; width: 100%; max-width: 900px; aspect-ratio: 9/5;
+      transform: translate(76px,6px);
+      background: var(--band-2); border-block-start: 3px solid var(--gold);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      overflow: hidden;
+    }
+    /* the LTR nudge bleeds the bar rightward, away from the copy column (which
+       sits on the left in LTR). In RTL the copy column is on the right instead,
+       so the nudge must flip sign or it shoves the bar straight into the text. */
+    [dir="rtl"] .bl-bar { transform: translate(-76px,6px); }
+    @media (max-width: 1180px) {
+      .bl-bar, [dir="rtl"] .bl-bar { transform: none; }
+    }
+    .bl-bar svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    /* Play glyph always points right, like the site's other play buttons --
+       a media "play" affordance, not reading-direction text. Physical
+       left/right borders (not border-inline-*) so RTL's automatic logical-
+       property mirroring can't flip it backwards. */
+    .bl-bar-play {
+      position: relative; z-index: 2; width: 0; height: 0;
+      border-top: 34px solid transparent; border-bottom: 34px solid transparent;
+      border-left: 56px solid var(--gold); border-right: 0;
+      transition: transform .2s ease;
+    }
+    .bl-bar:hover .bl-bar-play { transform: scale(1.1); }
+
+    .bl-fine {
+      margin: clamp(22px,3vw,30px) 0 0; font-size: 13px; line-height: 1.66;
+      color: var(--dim); max-width: 56ch;
+      padding-inline-start: 14px; border-inline-start: 2px solid var(--gold-lo);
+    }
+
     /* ══ CTA BTN ══ */
     .cta-btn {
       display: inline-flex; flex-direction: column; align-items: center;
@@ -876,10 +912,18 @@
 const t = {
   ar: {
     nav_apply: "تقدم الآن",
+    nav_system: "النظام",
+    nav_mentor: "المرشد",
+    nav_proof: "الإثبات",
+    nav_status: "التقديم مفتوح",
+    hero_kicker: "سبع شهادات تمويل. منهج واحد.",
+    hero_h1_a: "تعلّم التداول وكأنه شغلتك،",
+    hero_h1_em: "مش حظك.",
     hero_badge: "نقبل الطلبات الآن",
     hero_h1: "السوق يكافئ",
     hero_h1_g: "من يدرسه.",
-    hero_sub: "تعلم نظام تداول حقيقي مبني على ساعات أمام الشاشة — وليس محتوى يوتيوب المكرر. من الصفر إلى أرباح ثابتة.",
+    hero_sub: "عمر الحلبي متداول مموَّل فعلياً. بيعلّم نفس المنهج يلي بيشتغل فيه كل جلسة — تحديد الريسك قبل الدخول، خطة مكتوبة قبل الضغطة، وكل نتيجة مسجّلة بنفس الطريقة. للمبتدئين، وللي جرّب التحديات لحاله قبل هيك.",
+    hero_fine: "ثمانية أسئلة، حوالي أربع دقايق، وبيقرأها شخص حقيقي قبل ما يتعرض أي مكان. ولا شي هون بيوعد بربح أو عائد أو دخل — هاد منهج ومجموعة قواعد، وممكن كمان تخسر فيه.",
     pill1: "لا تحتاج خبرة سابقة",
     pill2: "لا تحتاج رأس مال كبير",
     pill3: "تعلم بالسرعة التي تناسبك",
@@ -1010,10 +1054,18 @@ const t = {
   },
   en: {
     nav_apply: "Apply Now",
+    nav_system: "System",
+    nav_mentor: "Mentor",
+    nav_proof: "Proof",
+    nav_status: "Applications open",
+    hero_kicker: "Seven funded certificates. One method.",
+    hero_h1_a: "Trade like it's your job,",
+    hero_h1_em: "not your luck.",
     hero_badge: "Now accepting applications",
     hero_h1: "The Market Rewards",
     hero_h1_g: "Those Who Study It.",
-    hero_sub: "Learn a proven trading system built from real screen time — not recycled YouTube theory. From zero to consistent profits.",
+    hero_sub: "Omar Alhalabi is an active funded trader. He teaches the process he runs every session — risk defined before the entry, the plan written before the click, every outcome logged the same way. For beginners, and for anyone who already tried the challenges alone.",
+    hero_fine: "Eight questions, about four minutes, read by a person before any place is offered. Nothing on this page promises a profit, a return or an income. It is a process and a set of rules, and it can still lose.",
     pill1: "No experience needed",
     pill2: "No big starting capital",
     pill3: "Learn at your own pace",
@@ -1176,46 +1228,109 @@ function render() {
 <div id="scrollProgress"></div>
 
 <!-- NAV -->
-<nav>
-  <img src="/logo.png" alt="3AMAK Trades" class="nav-logo-img" />
-  <div class="nav-right">
-    <div class="lang-toggle">
-      <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')">عربي</button>
-      <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
-    </div>
-    <a href="#apply" class="nav-cta"></a>
+<nav class="bl-b1 bl-pad">
+  <div class="bl-mark">
+    <img src="/logo.png" alt="3AMAK Trades" class="nav-logo-img" onerror="this.outerHTML='<span class=\'fallback\'>3AMAK TRADES</span>'" />
   </div>
+  <div class="bl-nav">
+    <a href="#propfirm" data-key="nav_system"></a>
+    <a href="#mentor" data-key="nav_mentor"></a>
+    <a href="#proof" data-key="nav_proof"></a>
+  </div>
+  <p class="bl-status"><i></i> <span data-key="nav_status"></span></p>
+  <div class="lang-toggle bl-lang">
+    <button class="lang-btn active" data-lang="ar" onclick="setLang('ar')">عربي</button>
+    <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+  </div>
+  <a href="#apply" class="nav-cta bl-btn-nav" data-key="nav_apply"></a>
 </nav>
 
 <!-- HERO -->
-<section id="hero">
-  <div class="hero-content fade-up visible">
-    <div class="hero-video fade-up">
-      <div class="video-container">
-        <div class="video-placeholder has-thumb" id="vslThumb" data-yt-id="_BGpKOyCGIY" style="background-image:url('https://img.youtube.com/vi/_BGpKOyCGIY/maxresdefault.jpg');cursor:pointer;">
-          <div class="play-btn"><svg width="26" height="26" viewBox="0 0 24 24" fill="#000"><path d="M8 5v14l11-7z"/></svg></div>
+<section id="hero" class="bl-pad">
+  <svg class="bl-candles" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <line x1="0" y1="330" x2="1200" y2="330" stroke="#241D08" stroke-width="1"/>
+    <g class="bl-candle" style="transform-origin:46px 330px;animation-delay:.02s">
+      <line x1="46" y1="248" x2="46" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="34" y="268" width="24" height="42" fill="#7A6218"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:138px 330px;animation-delay:.08s">
+      <line x1="138" y1="216" x2="138" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="126" y="252" width="24" height="58" fill="#141210"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:230px 330px;animation-delay:.14s">
+      <line x1="230" y1="260" x2="230" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="218" y="278" width="24" height="34" fill="#7A6218"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:322px 330px;animation-delay:.2s">
+      <line x1="322" y1="192" x2="322" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="310" y="236" width="24" height="66" fill="#141210"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:414px 330px;animation-delay:.26s">
+      <line x1="414" y1="238" x2="414" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="402" y="262" width="24" height="46" fill="#7A6218"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:506px 330px;animation-delay:.32s">
+      <line x1="506" y1="176" x2="506" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="494" y="224" width="24" height="72" fill="#141210"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:598px 330px;animation-delay:.38s">
+      <line x1="598" y1="222" x2="598" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="586" y="250" width="24" height="52" fill="#7A6218"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:690px 330px;animation-delay:.44s">
+      <line x1="690" y1="150" x2="690" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="678" y="204" width="24" height="82" fill="#141210"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:782px 330px;animation-delay:.5s">
+      <line x1="782" y1="204" x2="782" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="770" y="234" width="24" height="60" fill="#7A6218"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:874px 330px;animation-delay:.56s">
+      <line x1="874" y1="164" x2="874" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="862" y="212" width="24" height="76" fill="#141210"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:966px 330px;animation-delay:.62s">
+      <line x1="966" y1="228" x2="966" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="954" y="254" width="24" height="50" fill="#7A6218"/>
+    </g>
+    <g class="bl-candle" style="transform-origin:1058px 330px;animation-delay:.68s">
+      <line x1="1058" y1="140" x2="1058" y2="330" stroke="#7A6218" stroke-width="1.4"/>
+      <rect x="1046" y="196" width="24" height="88" fill="#141210"/>
+    </g>
+    <g class="bl-candle bl-candle-live" style="transform-origin:1150px 330px;animation-delay:.74s">
+      <line x1="1150" y1="108" x2="1150" y2="330" stroke="#D4AF37" stroke-width="1.6"/>
+      <rect x="1136" y="160" width="28" height="100" fill="#D4AF37"/>
+    </g>
+  </svg>
+
+  <div class="bl-b2-inner">
+    <div class="bl-hero-grid">
+      <div class="bl-hero-copy">
+        <h1 class="bl-h1">
+          <span class="sm" data-key="hero_kicker"></span>
+          <span class="lg"><span data-key="hero_h1_a"></span> <em data-key="hero_h1_em"></em></span>
+        </h1>
+        <p class="bl-sub" data-key="hero_sub"></p>
+        <p class="bl-fine" data-key="hero_fine"></p>
+      </div>
+
+      <div class="bl-hero-media">
+        <div class="bl-bar">
+          <svg viewBox="0 0 900 500" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points="0,56 900,56 828,0 72,0" fill="#7A6218"/>
+            <rect x="0" y="56" width="900" height="444" fill="#141412"/>
+            <g stroke="#7A6218" stroke-width="1">
+              <line x1="0" y1="56" x2="900" y2="56"/>
+              <line x1="72" y1="0" x2="72" y2="56"/><line x1="828" y1="0" x2="828" y2="56"/>
+            </g>
+            <g stroke="#D4AF37" stroke-width="1" opacity=".35">
+              <line x1="0" y1="413" x2="900" y2="413"/>
+            </g>
+          </svg>
+          <span class="bl-bar-play"></span>
         </div>
       </div>
     </div>
-    <div class="hero-text">
-      <div class="hero-badge">
-        <span class="hero-badge-text"></span>
-      </div>
-      <h1 class="hero-headline">
-        <span class="hero-h1"></span>
-        <span class="hero-h1-g g"></span>
-      </h1>
-      <p class="hero-sub"></p>
-      <div class="hero-pills">
-        <span class="pill"></span>
-        <span class="pill"></span>
-        <span class="pill"></span>
-      </div>
-      <a href="#apply" class="cta-btn"><span class="main"></span><span class="sub"></span></a>
-    </div>
-  </div>
-  <div class="hero-chart">
-    <canvas id="liveChartCanvas" aria-hidden="true"></canvas>
   </div>
 </section>
 
