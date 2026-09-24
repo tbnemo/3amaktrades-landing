@@ -276,7 +276,15 @@
     @media (max-width: 1180px) {
       .bl-bar, [dir="rtl"] .bl-bar { transform: none; }
     }
-    .bl-bar svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    /* poster-only decoration: scoped separately from .bl-bar (the box/sizing
+       class) because the play handler reuses .bl-bar alone on the live
+       iframe -- if the scrim lived on .bl-bar it would darken the playing
+       video too. */
+    .bl-bar-poster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .bl-bar-poster::after {
+      content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(ellipse at center, rgba(5,5,5,.5) 0%, rgba(5,5,5,.15) 45%, rgba(5,5,5,0) 70%);
+    }
     .bl-bar-play {
       position: relative; z-index: 2; width: 0; height: 0;
       border-block: 34px solid transparent;
@@ -1517,18 +1525,8 @@ function render() {
       </div>
 
       <div class="bl-hero-media">
-        <div class="bl-bar" role="button" tabindex="0" aria-label="Play video" data-yt-id="_BGpKOyCGIY">
-          <svg viewBox="0 0 900 500" preserveAspectRatio="none" aria-hidden="true">
-            <polygon points="0,56 900,56 828,0 72,0" fill="#7A6218"/>
-            <rect x="0" y="56" width="900" height="444" fill="#141412"/>
-            <g stroke="#7A6218" stroke-width="1">
-              <line x1="0" y1="56" x2="900" y2="56"/>
-              <line x1="72" y1="0" x2="72" y2="56"/><line x1="828" y1="0" x2="828" y2="56"/>
-            </g>
-            <g stroke="#D4AF37" stroke-width="1" opacity=".35">
-              <line x1="0" y1="413" x2="900" y2="413"/>
-            </g>
-          </svg>
+        <div class="bl-bar bl-bar-poster" role="button" tabindex="0" aria-label="Play video" data-yt-id="_BGpKOyCGIY">
+          <img src="https://img.youtube.com/vi/_BGpKOyCGIY/maxresdefault.jpg" alt="" onerror="this.onerror=null;this.src='https://img.youtube.com/vi/_BGpKOyCGIY/hqdefault.jpg'" />
           <span class="bl-bar-play"></span>
         </div>
       </div>
@@ -2485,7 +2483,7 @@ function render() {
         iframe.title = 'VSL';
         iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
         iframe.allowFullscreen = true;
-        iframe.className = blBar.className;
+        iframe.className = 'bl-bar';
         iframe.style.cssText = 'border:0;cursor:auto;';
         blBar.replaceWith(iframe);
       };
