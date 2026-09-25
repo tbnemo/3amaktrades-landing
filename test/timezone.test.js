@@ -31,6 +31,7 @@ test('Istanbul has no DST, so summer and winter share an offset', () => {
 
 test('round-trips wall times in zones with odd offsets and odd DST', () => {
   // Kathmandu is +05:45; Lord Howe shifts by only 30 minutes.
+  let asserted = 0;
   for (const zone of ['America/Toronto', 'Europe/Istanbul', 'Asia/Riyadh',
                       'Australia/Lord_Howe', 'Asia/Kathmandu']) {
     for (let day = 0; day < 365; day++) {
@@ -42,9 +43,15 @@ test('round-trips wall times in zones with odd offsets and odd DST', () => {
         const want = `${String(h).padStart(2, '0')}:30`;
         assert.ok(inZone(ms, zone).endsWith(want),
           `${zone} ${y}-${mo}-${d} ${want} -> ${inZone(ms, zone)}`);
+        asserted++;
       }
     }
   }
+  // Without this floor the whole sweep can pass having asserted nothing at all:
+  // a wallTimeExistsInZone that always returned false would `continue` past
+  // every iteration and still report green.
+  assert.ok(asserted >= 7000,
+    `sweep asserted only ${asserted} times -- it is not actually testing anything`);
 });
 
 test('flags the spring-forward gap, where a wall time does not exist', () => {
