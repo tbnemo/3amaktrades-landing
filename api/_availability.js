@@ -42,6 +42,11 @@ function normalizeTemplate(raw) {
     const start = tz.parseHm(d.start) ? d.start : DEFAULT_TEMPLATE.days[key].start;
     const end = tz.parseHm(d.end) ? d.end : DEFAULT_TEMPLATE.days[key].end;
     days[key] = {
+      // Absence or non-true value means DISABLED, deliberately. Availability fails closed,
+      // because opening hours nobody configured would produce real unwanted bookings, whereas
+      // showing no times is visible and recoverable from the admin page. The legitimate
+      // first-run path is covered by loadTemplate() substituting the whole DEFAULT_TEMPLATE,
+      // and validateTemplate is the strict gate on the admin save path.
       enabled: d.enabled === true,
       start: start.length === 4 ? `0${start}` : start, // '9:00' -> '09:00'
       end: end.length === 4 ? `0${end}` : end,
@@ -100,7 +105,11 @@ function computeSlotsForDay({ template, ymd, busy = [], nowMs }) {
 
   const slotMs = tpl.slotMinutes * 60 * 1000;
   const bufferMs = tpl.bufferMinutes * 60 * 1000;
-  const earliest = nowMs + tpl.minNoticeHours * 60 * 60 * 1000;
+  // A caller that forgets nowMs must not silently lose the minimum-notice rule:
+  // NaN comparisons are always false, which would make every slot bookable.
+  // An explicitly passed nowMs (including 0) still wins, keeping tests pure.
+  const now = Number.isFinite(nowMs) ? nowMs : Date.now();
+  const earliest = now + tpl.minNoticeHours * 60 * 60 * 1000;
 
   // The window's edges are wall times in the template's zone, so they move with
   // DST rather than being a fixed number of ms from midnight.

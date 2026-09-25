@@ -64,6 +64,21 @@ test('honours minNoticeHours', () => {
   assert.deepEqual(slots.map(s => s.startMs), [at(10, 0), at(10, 30)]);
 });
 
+test('omitting nowMs does not silently lose the minNoticeHours rule', () => {
+  const template = { ...TPL, minNoticeHours: 12 };
+  // Without the guard, undefined becomes NaN, and startMs < NaN is always false,
+  // bypassing the notice filter. With the guard, it uses Date.now() and the filter works.
+  // Use a past date to verify: an old date should be filtered out by the notice window.
+  const pastDate = { y: 2026, mo: 1, d: 1 }; // 2026-01-01 is well before today
+  const slots = av.computeSlotsForDay({
+    template, ymd: pastDate, busy: [],
+    // Intentionally omit nowMs to test the guard
+    nowMs: undefined,
+  });
+  // With the guard in place, Date.now() is used, and this old date gets filtered by minNoticeHours.
+  assert.equal(slots.length, 0, 'omitting nowMs should not bypass the minNoticeHours rule');
+});
+
 test('skips wall times lost to the spring-forward gap (R9)', () => {
   // Toronto jumps 02:00 -> 03:00 on 2026-03-08 (a Sunday).
   const template = {
@@ -73,6 +88,19 @@ test('skips wall times lost to the spring-forward gap (R9)', () => {
   const slots = av.computeSlotsForDay({
     template, ymd: { y: 2026, mo: 3, d: 8 }, busy: [], nowMs: 0,
   });
+  // With the DST guard removed this test must FAIL. Asserting "no slot says
+  // 02:xx" does not achieve that: the nonexistent 02:00/02:30 collapse onto the
+  // same instants as the real 01:00/01:30, so a broken implementation emits
+  // duplicates that all read back as hour 1 or 3. The duplicate count is the
+  // real signal.
+  const starts = slots.map(s => s.startMs);
+  assert.equal(new Set(starts).size, starts.length, 'emitted duplicate slot instants');
+  assert.deepEqual(
+    slots.map(s => {
+      const p = tz.zoneDateParts(s.startMs, 'America/Toronto');
+      return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`;
+    }),
+    ['01:00', '01:30', '03:00', '03:30']);
   // Every emitted slot must read back at the wall time it claims.
   for (const s of slots) {
     const p = tz.zoneDateParts(s.startMs, 'America/Toronto');
@@ -125,6 +153,17 @@ test('normalizeTemplate repairs junk without throwing', () => {
   for (const k of tz.WEEKDAY_KEYS) assert.ok(n.days[k], `missing day ${k}`);
   assert.doesNotThrow(() => av.normalizeTemplate(null));
   assert.doesNotThrow(() => av.normalizeTemplate('garbage'));
+});
+
+test('a template with no days block fails closed rather than opening default hours', () => {
+  const n = av.normalizeTemplate({
+    timezone: 'America/Toronto', slotMinutes: 30, bufferMinutes: 15, minNoticeHours: 12,
+  });
+  // Deliberate: hours nobody configured must never become bookable.
+  for (const k of tz.WEEKDAY_KEYS) assert.equal(n.days[k].enabled, false, `${k} should be disabled`);
+  // start/end still get sane defaults so downstream never sees undefined.
+  assert.equal(n.days.mon.start, '09:00');
+  assert.equal(n.days.mon.end, '17:00');
 });
 
 test('validateTemplate rejects an end at or before its start', () => {
