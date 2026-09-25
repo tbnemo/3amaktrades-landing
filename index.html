@@ -820,6 +820,11 @@
     .form-confirm .cta-btn-wa { border-color: var(--gold-lo); color: var(--gold); border-radius: 0; }
     .form-confirm .cta-btn-wa:hover { border-color: var(--gold); background: var(--gold); color: var(--ink); }
     .form-confirm .cta-btn-wa svg { fill: currentColor; }
+    /* the IG glyph is an outline icon (rounded square + circle + dot), not a
+       solid one like the WhatsApp glyph above -- the blanket fill:currentColor
+       rule above filled the whole shape solid, hiding the circle/dot detail
+       inside it (looked like a plain blob). Overridden back to outline here. */
+    .form-confirm .cta-btn-wa svg.ig-icon { fill: none; stroke: currentColor; }
 
     /* ══ BAND 6 — MENTOR (Bullion) ══ */
     #mentor { background: var(--void); padding-block: clamp(44px,6vw,86px); }
@@ -2042,7 +2047,7 @@ function render() {
             <span data-key="confirm_wa_btn"></span>
           </a>
           <a href="https://ig.me/m/3amaktrades" class="cta-btn-wa" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+            <svg class="ig-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
             <span data-key="confirm_ig_btn"></span>
           </a>
         </div>
