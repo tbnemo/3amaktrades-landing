@@ -2,7 +2,11 @@
   "name": "3amaktrades-landing",
   "version": "1.0.0",
   "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
+    "@vercel/blob": "^2.8.0",
     "node-fetch": "^2.7.0"
   }
 }
