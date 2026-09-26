@@ -230,6 +230,50 @@ test('ORDERING (inverse): a FAILED sendReminder results in patchEvent NOT being 
   });
 });
 
+test('BATCH ISOLATION: a throwing sendReminder does not abort the run -- the handler still resolves 200, the throwing event is skipped without being marked reminded, and a LATER event in the same batch is still processed', async () => {
+  envSetup();
+  const throwingEvent = makeEvent({ id: 'evt-throws', startMs: futureMs(1) });
+  const laterEvent = makeEvent({ id: 'evt-after-throw', startMs: futureMs(3) });
+  const patchSpy = spyStub({ ok: true, event: {} });
+
+  const sendStub = async (b) => {
+    if (b.eventId === 'evt-throws') throw new Error('boom: malformed event data');
+    return { ok: true };
+  };
+
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [throwingEvent, laterEvent] }) },
+    { obj: email, key: 'sendReminder', value: sendStub },
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+
+    assert.equal(res._status, 200,
+      'the handler must still resolve and produce a response, not throw out of the exported function');
+    assert.equal(res._json.ok, true);
+    assert.equal(res._json.skipped, 1, 'the throwing event must be counted as skipped');
+    assert.equal(res._json.sent, 1,
+      'a LATER event in the same batch must still be processed -- this is what proves batch isolation, not merely "it did not crash"');
+    assert.equal(patchSpy.calls.length, 1, 'only the successfully-sent later event may be patched');
+    assert.equal(patchSpy.calls[0][0], 'evt-after-throw');
+  });
+});
+
+test('a wrong-LENGTH bearer header returns 401 and does not throw', async () => {
+  envSetup(); // CRON_SECRET = SECRET ('test-cron-secret')
+  const listSpy = spyStub({ ok: true, events: [] });
+  await withStubs([{ obj: gcal, key: 'listEvents', value: listSpy }], async () => {
+    const res = makeRes();
+    // Deliberately a different length than `Bearer ${SECRET}` -- a naive
+    // crypto.timingSafeEqual call without a length guard would throw on this
+    // instead of cleanly returning false.
+    await assert.doesNotReject(() => handler(reqGet('x'), res));
+    assert.equal(res._status, 401);
+    assert.equal(listSpy.calls.length, 0, 'listEvents must not run with a wrong-length token');
+  });
+});
+
 test('listEvents returning CALENDAR_NOT_CONNECTED -> 503; a generic failure -> 502', async () => {
   envSetup();
   await withStubs([

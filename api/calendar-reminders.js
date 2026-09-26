@@ -10,6 +10,7 @@ const guard = require('./_booking-guard');
 const email = require('./_email');
 const { loadTemplate } = require('./_load-template');
 const { makeBookingToken } = require('./_booking-token');
+const { safeEqual } = require('./_admin-auth');
 
 const LEAD_HOURS = Number(process.env.REMINDER_LEAD_HOURS) || 24;
 
@@ -19,7 +20,10 @@ function authorized(req) {
   // run against every upcoming booking.
   if (!secret) return false;
   const header = (req.headers && req.headers.authorization) || '';
-  return header === `Bearer ${secret}`;
+  // Constant-time, matching how this codebase compares every other secret against
+  // attacker-supplied input. safeEqual length-checks before timingSafeEqual, which
+  // throws on a length mismatch.
+  return safeEqual(header, `Bearer ${secret}`);
 }
 
 module.exports = async function handler(req, res) {
@@ -58,28 +62,35 @@ module.exports = async function handler(req, res) {
     const startMs = Date.parse(event.start && event.start.dateTime);
     if (!Number.isFinite(startMs) || startMs < now) { skipped++; continue; }
 
-    const result = await email.sendReminder({
-      eventId: event.id,
-      name: meta.visitorName || '—',
-      email: meta.visitorEmail,
-      phone: meta.visitorPhone || '',
-      startMs,
-      endMs: Date.parse(event.end && event.end.dateTime) || startMs,
-      visitorTimeZone: meta.visitorTimeZone || 'UTC',
-      templateTimeZone: tplRes.template.timezone,
-      manageToken: makeBookingToken(event.id, meta.visitorEmail),
-      meetLink: event.hangoutLink || '',
-      lang: meta.lang || 'en',
-    });
-
-    if (result.ok) {
-      await gcal.patchEvent(event.id, {
-        extendedProperties: { private: { reminderSent: '1' } },
+    try {
+      const result = await email.sendReminder({
+        eventId: event.id,
+        name: meta.visitorName || '—',
+        email: meta.visitorEmail,
+        phone: meta.visitorPhone || '',
+        startMs,
+        endMs: Date.parse(event.end && event.end.dateTime) || startMs,
+        visitorTimeZone: meta.visitorTimeZone || 'UTC',
+        templateTimeZone: tplRes.template.timezone,
+        manageToken: makeBookingToken(event.id, meta.visitorEmail),
+        meetLink: event.hangoutLink || '',
+        lang: meta.lang || 'en',
       });
-      sent++;
-    } else {
-      // Leave the flag unset so the next run retries.
-      console.error('reminder failed for', event.id, result.reason);
+
+      if (result.ok) {
+        await gcal.patchEvent(event.id, {
+          extendedProperties: { private: { reminderSent: '1' } },
+        });
+        sent++;
+      } else {
+        // Leave the flag unset so the next run retries.
+        console.error('reminder failed for', event.id, result.reason);
+        skipped++;
+      }
+    } catch (e) {
+      // Per-item isolation: one bad event must not sink the whole batch, and it
+      // must NOT be marked reminded -- the next run should retry it.
+      console.error('reminder threw for', event.id, e.message);
       skipped++;
     }
   }

@@ -109,5 +109,5 @@ function verifyState(state) {
 
 module.exports = {
   SESSION_COOKIE, sessionSecret, checkPasscode, issueSessionCookie,
-  clearSessionCookie, verifySession, requireAdmin, signState, verifyState,
+  clearSessionCookie, verifySession, requireAdmin, signState, verifyState, safeEqual,
 };
