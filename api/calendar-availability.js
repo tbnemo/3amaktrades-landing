@@ -12,6 +12,12 @@ const { loadTemplate } = require('./_load-template');
 const MAX_DAYS = 31;
 
 module.exports = async function handler(req, res) {
+  // Set once, up front, so every branch -- including 405 and every error
+  // response -- carries it. Availability changes the moment anything lands on
+  // the calendar, and a cached error is worse than a cached success: a stale
+  // CALENDAR_NOT_CONNECTED would keep telling visitors booking is unavailable
+  // long after it was connected.
+  res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'GET') return res.status(405).end();
 
   const dateRaw = (req.query && req.query.date) || '';
@@ -61,8 +67,6 @@ module.exports = async function handler(req, res) {
     }));
   }
 
-  // Slots move with the calendar, so they must never be cached.
-  res.setHeader('Cache-Control', 'no-store');
   return res.status(200).json({
     ok: true,
     timezone: template.timezone,
