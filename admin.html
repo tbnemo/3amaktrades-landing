@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<!--
+  Deliberately English-only and dir="ltr": this is a single-operator internal
+  tool (Omar connecting his own Google Calendar and setting his own hours),
+  not a public-facing surface. index.html is bilingual Arabic/English and
+  RTL-first; this page intentionally does not mirror that -- there is no
+  audience here to serve in Arabic.
+-->
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow">
+  <title>3AMAK Trades — Admin</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *{box-sizing:border-box;}
+
+    :root{
+      --void:#050505;
+      --band:#101010;
+      --band-2:#181817;
+      --gold:#D4AF37;
+      --gold-lo:#7A6218;
+      --bone:#F2EEE4;
+      --dim:#8B887F;
+      --ink:#0A0802;
+      --slab:#1C1C1A;
+    }
+
+    html,body{margin:0;padding:0;background:var(--void);}
+    body{
+      font-family:'Inter',system-ui,sans-serif;
+      color:var(--bone);
+      min-height:100vh;
+      padding-block:0;
+    }
+
+    h1,h2,h3{
+      font-family:'Big Shoulders Display',sans-serif;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.02em;
+      margin:0 0 .6em;
+      color:var(--bone);
+    }
+
+    a{color:var(--gold);}
+
+    .wrap{max-width:760px;margin:0 auto;padding:clamp(20px,4vw,48px) 20px 80px;}
+
+    header.page-head{
+      padding-block:24px;border-block-end:1px solid var(--gold-lo);
+      margin-block-end:32px;
+    }
+    header.page-head h1{font-size:clamp(22px,3vw,30px);margin:0;}
+    header.page-head p{color:var(--dim);font-size:13px;margin:.5em 0 0;}
+
+    section.panel{
+      background:var(--band-2);
+      padding:clamp(18px,2.6vw,28px);
+      margin-block-end:28px;
+      border:0; border-radius:0;
+    }
+    section.panel h2{font-size:clamp(17px,1.8vw,20px);}
+
+    /* ══ forms ══ */
+    label{display:block;font-size:12px;font-weight:600;letter-spacing:.08em;
+      text-transform:uppercase;color:var(--dim);margin-block-end:6px;}
+
+    .input, select.input{
+      width:100%;
+      background:transparent;
+      color:var(--bone);
+      font-family:inherit;
+      font-size:16px;
+      font-weight:600;
+      border:0;
+      border-block-end:1px solid var(--gold-lo);
+      border-radius:0;
+      padding:10px 2px 11px;
+      outline:none;
+      transition:border-color .15s ease;
+      appearance:none;
+    }
+    .input:focus, select.input:focus{border-block-end-color:var(--gold);}
+    .input::placeholder{color:var(--dim);}
+    select.input{cursor:pointer;}
+    select.input option{background:var(--band);color:var(--bone);}
+
+    .field{margin-block-end:20px;max-width:320px;}
+    .field-row{display:flex;gap:20px;flex-wrap:wrap;}
+    .field-row .field{flex:1 1 200px;}
+
+    button, .btn{
+      font-family:'Big Shoulders Display',sans-serif;
+      font-weight:800;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      border:none;
+      border-radius:0;
+      cursor:pointer;
+    }
+    .btn-primary{
+      background:var(--gold);color:var(--ink);
+      padding:13px 28px;font-size:16px;
+      display:inline-block;text-decoration:none;
+    }
+    .btn-primary:hover{background:var(--bone);}
+    .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+
+    /* checkbox, styled square to match the site's flat no-radius system */
+    input[type="checkbox"]{
+      appearance:none; -webkit-appearance:none;
+      width:20px;height:20px;flex-shrink:0;margin:0;
+      border:1px solid var(--gold-lo); border-radius:0;
+      background:transparent; cursor:pointer; position:relative;
+    }
+    input[type="checkbox"]:checked{background:var(--gold);border-color:var(--gold);}
+    input[type="checkbox"]:checked::after{
+      content:''; position:absolute; left:6px; top:2px;
+      width:5px;height:10px;
+      border:solid var(--ink); border-width:0 2px 2px 0;
+      transform:rotate(45deg);
+    }
+    input[type="checkbox"]:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+    /* ══ readiness panel ══ */
+    dl.status-grid{
+      display:grid; grid-template-columns:1fr auto; gap:8px 16px;
+      margin:0 0 20px; font-size:14px;
+    }
+    dl.status-grid dt{color:var(--dim);}
+    dl.status-grid dd{margin:0;font-weight:700;color:var(--bone);text-align:right;}
+    dl.status-grid dd.redirect-uri{
+      font-family:monospace; font-size:12px; text-align:left; grid-column:1 / -1;
+      color:var(--gold); word-break:break-all; background:var(--slab);
+      padding:8px 10px; margin-block-start:2px;
+    }
+
+    ul.plain-list{list-style:none;margin:0;padding:0;}
+    ul.plain-list li{
+      padding-block:9px; border-block-end:1px solid #241D08;
+      font-size:14px; color:var(--bone);
+    }
+    ul.plain-list li:last-child{border-block-end:none;}
+
+    ul.error-list{
+      list-style:none;margin:14px 0 0;padding:0;
+      border-inline-start:2px solid var(--gold);
+    }
+    ul.error-list li{padding:4px 0 4px 12px;font-size:13px;color:var(--gold);}
+
+    .note-success{
+      color:var(--gold); font-size:13px; font-weight:700;
+      margin-block-end:16px; padding:10px 12px; background:var(--slab);
+      border-inline-start:2px solid var(--gold);
+    }
+    .note-error{
+      color:var(--gold); font-size:13px; margin-block-start:12px;
+    }
+
+    /* ══ weekly availability form ══ */
+    .day-row{
+      display:grid; grid-template-columns:150px 1fr auto 1fr;
+      align-items:center; gap:14px;
+      padding-block:12px; border-block-end:1px solid #241D08;
+    }
+    .day-row:last-of-type{border-block-end:none;}
+    .day-toggle{display:flex;align-items:center;gap:10px;margin:0;}
+    .day-toggle span{
+      text-transform:none; font-weight:600; letter-spacing:0;
+      font-size:15px; color:var(--bone);
+    }
+    .day-to{color:var(--dim);font-size:13px;text-align:center;}
+    .hhmm{max-width:90px;text-align:center;letter-spacing:.05em;}
+
+    .tz-row{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+    .tz-row .field{flex:1 1 240px;}
+    #tzNow{display:block;font-size:13px;color:var(--dim);margin-block-end:11px;}
+    #tzNow.error-text{color:var(--gold);}
+
+    .form-actions{margin-block-start:24px;display:flex;align-items:center;gap:16px;}
+
+    .gate-wrap{
+      min-height:100vh; display:flex; align-items:center; justify-content:center;
+      padding:20px;
+    }
+    .gate-box{
+      width:100%; max-width:340px; background:var(--band-2);
+      padding:clamp(24px,4vw,36px);
+    }
+    .gate-box h1{font-size:22px;margin-block-end:.3em;}
+    .gate-box p{color:var(--dim);font-size:13px;margin:0 0 22px;}
+    #gateForm .field{max-width:none;margin-block-end:18px;}
+    #gateError{color:var(--gold);font-size:13px;margin-block-end:14px;}
+
+    [hidden]{display:none !important;}
+  </style>
+</head>
+<body>
+
+  <div id="gate" class="gate-wrap">
+    <div class="gate-box">
+      <h1>3AMAK Trades Admin</h1>
+      <p>Enter the admin passcode to manage the booking calendar.</p>
+      <form id="gateForm">
+        <div class="field">
+          <label for="passcodeInput">Passcode</label>
+          <input class="input" type="password" id="passcodeInput" autocomplete="current-password" />
+        </div>
+        <div id="gateError" hidden></div>
+        <button type="submit" class="btn-primary">Enter</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <div class="wrap">
+      <header class="page-head">
+        <h1>Booking Admin</h1>
+        <p>Connect the calendar and set the hours strangers are allowed to book.</p>
+      </header>
+
+      <section class="panel" id="readinessPanel">
+        <h2>Readiness</h2>
+        <dl class="status-grid">
+          <dt>Blob storage configured</dt><dd id="blobConfigured">—</dd>
+          <dt>Calendar connected</dt><dd id="calendarConnected">—</dd>
+          <dt>Email (Resend) configured</dt><dd id="resendConfigured">—</dd>
+          <dt>OAuth redirect URI</dt><dd id="redirectUri" class="redirect-uri">—</dd>
+        </dl>
+        <ul class="plain-list" id="blockersList"></ul>
+      </section>
+
+      <section class="panel" id="connectPanel">
+        <h2>Connect Calendar</h2>
+        <div id="connectSuccess" class="note-success" hidden>
+          Google Calendar connected successfully.
+        </div>
+        <p id="connectState" style="color:var(--dim);font-size:14px;margin-block-end:16px;">—</p>
+        <a id="connectBtn" class="btn-primary" href="/api/calendar-oauth-start">Connect Google Calendar</a>
+      </section>
+
+      <section class="panel" id="availabilityPanel">
+        <h2>Weekly Availability</h2>
+        <div id="storageMissingNote" class="note-error" hidden>
+          The Vercel Blob store does not exist yet, so this form shows the default
+          hours only -- saving will fail until the store is created (Storage → Create
+          Database → Blob) and the deployment is redeployed.
+        </div>
+
+        <form id="availabilityForm">
+          <div id="daysRows"></div>
+
+          <div class="field-row" style="margin-block-start:24px;">
+            <div class="field">
+              <label for="slotMinutes">Slot length</label>
+              <select class="input" id="slotMinutes"></select>
+            </div>
+            <div class="field">
+              <label for="bufferMinutes">Buffer (minutes)</label>
+              <input class="input" type="number" id="bufferMinutes" min="0" max="240" step="1" />
+            </div>
+            <div class="field">
+              <label for="minNoticeHours">Minimum notice (hours)</label>
+              <input class="input" type="number" id="minNoticeHours" min="0" max="720" step="1" />
+            </div>
+          </div>
+
+          <div class="tz-row">
+            <div class="field">
+              <label for="timezoneInput">Time zone</label>
+              <input class="input" type="text" id="timezoneInput" list="tzList" placeholder="America/Toronto" autocomplete="off" />
+              <datalist id="tzList"></datalist>
+            </div>
+            <span id="tzNow"></span>
+          </div>
+
+          <ul class="error-list" id="formErrors" hidden></ul>
+          <div class="note-success" id="formSuccess" hidden>Saved.</div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Save Hours</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // Mirrors ALLOWED_SLOT_MINUTES in api/_availability.js -- admin.html is a
+    // static page with no bundler, so it cannot import that CommonJS constant
+    // directly. Keep this list in sync by hand; the server validates on save
+    // regardless, so drift here produces a readable 400, not a silent bad save.
+    const SLOT_MINUTE_OPTIONS = [15, 20, 30, 45, 60, 90, 120];
+
+    const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const DAY_LABELS = {
+      mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
+      fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
+    };
+
+    // Used only if the runtime has no Intl.supportedValuesOf('timeZone').
+    const FALLBACK_TIMEZONES = [
+      'America/Toronto', 'Europe/Istanbul', 'America/New_York',
+      'America/Vancouver', 'Europe/London', 'Asia/Riyadh', 'Asia/Dubai', 'UTC',
+    ];
+
+    function $(id) { return document.getElementById(id); }
+
+    function buildDayRows() {
+      const wrap = $('daysRows');
+      wrap.innerHTML = '';
+      for (const key of DAY_KEYS) {
+        const row = document.createElement('div');
+        row.className = 'day-row';
+        row.dataset.day = key;
+        row.innerHTML = `
+          <label class="day-toggle">
+            <input type="checkbox" id="day-${key}-enabled" />
+            <span>${DAY_LABELS[key]}</span>
+          </label>
+          <input class="input hhmm" type="text" id="day-${key}-start" placeholder="09:00" maxlength="5" inputmode="numeric" />
+          <span class="day-to">to</span>
+          <input class="input hhmm" type="text" id="day-${key}-end" placeholder="17:00" maxlength="5" inputmode="numeric" />
+        `;
+        wrap.appendChild(row);
+      }
+    }
+
+    function buildSlotOptions() {
+      const sel = $('slotMinutes');
+      sel.innerHTML = '';
+      for (const m of SLOT_MINUTE_OPTIONS) {
+        const opt = document.createElement('option');
+        opt.value = String(m);
+        opt.textContent = `${m} minutes`;
+        sel.appendChild(opt);
+      }
+    }
+
+    function buildTimezoneList() {
+      const list = $('tzList');
+      list.innerHTML = '';
+      let zones = null;
+      try {
+        if (typeof Intl.supportedValuesOf === 'function') {
+          zones = Intl.supportedValuesOf('timeZone');
+        }
+      } catch (e) {
+        zones = null;
+      }
+      if (!Array.isArray(zones) || zones.length === 0) zones = FALLBACK_TIMEZONES;
+      for (const z of zones) {
+        const opt = document.createElement('option');
+        opt.value = z;
+        list.appendChild(opt);
+      }
+    }
+
+    // Recomputed whenever the field changes, so picking the wrong zone is
+    // obvious immediately instead of silently shifting every future booking.
+    function updateTzNow() {
+      const tzValue = $('timezoneInput').value.trim();
+      const out = $('tzNow');
+      if (!tzValue) { out.textContent = ''; out.classList.remove('error-text'); return; }
+      try {
+        const fmt = new Intl.DateTimeFormat('en-US', {
+          timeZone: tzValue, weekday: 'short',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+        });
+        out.textContent = `Local time there: ${fmt.format(new Date())}`;
+        out.classList.remove('error-text');
+      } catch (e) {
+        out.textContent = 'Unrecognized time zone -- check spelling.';
+        out.classList.add('error-text');
+      }
+    }
+
+    function populateForm(template) {
+      const days = template.days || {};
+      for (const key of DAY_KEYS) {
+        const d = days[key] || { enabled: false, start: '09:00', end: '17:00' };
+        $(`day-${key}-enabled`).checked = d.enabled === true;
+        $(`day-${key}-start`).value = d.start || '09:00';
+        $(`day-${key}-end`).value = d.end || '17:00';
+      }
+      $('slotMinutes').value = String(template.slotMinutes);
+      $('bufferMinutes').value = template.bufferMinutes;
+      $('minNoticeHours').value = template.minNoticeHours;
+      $('timezoneInput').value = template.timezone || '';
+      updateTzNow();
+    }
+
+    function collectTemplate() {
+      const days = {};
+      for (const key of DAY_KEYS) {
+        days[key] = {
+          enabled: $(`day-${key}-enabled`).checked,
+          start: $(`day-${key}-start`).value.trim(),
+          end: $(`day-${key}-end`).value.trim(),
+        };
+      }
+      return {
+        timezone: $('timezoneInput').value.trim(),
+        days,
+        slotMinutes: Number($('slotMinutes').value),
+        bufferMinutes: Number($('bufferMinutes').value),
+        minNoticeHours: Number($('minNoticeHours').value),
+      };
+    }
+
+    function showGate() { $('gate').hidden = false; $('app').hidden = true; }
+    function showApp() { $('gate').hidden = true; $('app').hidden = false; }
+
+    function renderStatus(status) {
+      $('blobConfigured').textContent = status.blobConfigured ? 'Yes' : 'No';
+      $('calendarConnected').textContent = status.calendarConnected ? 'Yes' : 'No';
+      $('resendConfigured').textContent = status.resendConfigured ? 'Yes' : 'No';
+      $('redirectUri').textContent = status.redirectUri || '(not available)';
+
+      const list = $('blockersList');
+      list.innerHTML = '';
+      if (Array.isArray(status.blockers) && status.blockers.length > 0) {
+        for (const b of status.blockers) {
+          const li = document.createElement('li');
+          li.textContent = b;
+          list.appendChild(li);
+        }
+      } else {
+        const li = document.createElement('li');
+        li.textContent = 'Nothing blocking -- fully configured.';
+        list.appendChild(li);
+      }
+
+      $('connectState').textContent = status.calendarConnected
+        ? `Connected. Calendar: ${status.calendarId || 'primary'}`
+        : 'Not connected yet.';
+      $('connectBtn').textContent = status.calendarConnected
+        ? 'Reconnect Google Calendar'
+        : 'Connect Google Calendar';
+    }
+
+    // Returns true when the caller is authenticated (status loaded and app shown).
+    async function loadStatus() {
+      let res;
+      try {
+        res = await fetch('/api/admin/status');
+      } catch (e) {
+        showGate();
+        $('gateError').textContent = 'Network error -- try again.';
+        $('gateError').hidden = false;
+        return false;
+      }
+      if (res.status === 401) { showGate(); return false; }
+      const data = await res.json().catch(() => ({}));
+      renderStatus(data);
+      showApp();
+      return true;
+    }
+
+    async function loadAvailability() {
+      let res;
+      try {
+        res = await fetch('/api/admin/availability');
+      } catch (e) {
+        return;
+      }
+      if (res.status === 401) { showGate(); return; }
+      const data = await res.json().catch(() => ({}));
+      if (data && data.template) {
+        populateForm(data.template);
+        $('storageMissingNote').hidden = !data.storageMissing;
+      }
+    }
+
+    async function init() {
+      buildDayRows();
+      buildSlotOptions();
+      buildTimezoneList();
+
+      if (new URLSearchParams(location.search).get('connected') === '1') {
+        $('connectSuccess').hidden = false;
+      }
+
+      const authed = await loadStatus();
+      if (authed) await loadAvailability();
+
+      $('timezoneInput').addEventListener('input', updateTzNow);
+      $('timezoneInput').addEventListener('change', updateTzNow);
+    }
+
+    $('gateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('gateError').hidden = true;
+      const passcode = $('passcodeInput').value;
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passcode }),
+        });
+        // The passcode is never stored (no localStorage/sessionStorage) -- the
+        // server issues an HttpOnly session cookie the browser holds instead.
+        $('passcodeInput').value = '';
+        if (res.status === 200) {
+          const authed = await loadStatus();
+          if (authed) await loadAvailability();
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        $('gateError').textContent = data.error || `Login failed (status ${res.status})`;
+        $('gateError').hidden = false;
+      } catch (err) {
+        $('gateError').textContent = 'Network error -- try again.';
+        $('gateError').hidden = false;
+      }
+    });
+
+    $('availabilityForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      $('formErrors').hidden = true;
+      $('formErrors').innerHTML = '';
+      $('formSuccess').hidden = true;
+
+      const template = collectTemplate();
+      let res, data;
+      try {
+        res = await fetch('/api/admin/availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ template }),
+        });
+        data = await res.json().catch(() => ({}));
+      } catch (err) {
+        $('formErrors').innerHTML = '<li>Network error -- try again.</li>';
+        $('formErrors').hidden = false;
+        return;
+      }
+
+      if (res.status === 401) { showGate(); return; }
+
+      if (res.status === 200 && data.ok) {
+        $('formSuccess').hidden = false;
+        populateForm(data.template);
+        $('storageMissingNote').hidden = true;
+        return;
+      }
+
+      const errs = Array.isArray(data.errors) && data.errors.length > 0
+        ? data.errors
+        : [`Save failed (status ${res.status})`];
+      for (const msg of errs) {
+        const li = document.createElement('li');
+        li.textContent = msg;
+        $('formErrors').appendChild(li);
+      }
+      $('formErrors').hidden = false;
+    });
+
+    init();
+  </script>
+</body>
+</html>
