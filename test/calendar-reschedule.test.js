@@ -84,6 +84,20 @@ function ourEvent({ startMs, endMs, overrides = {} }) {
   };
 }
 
+// An event as listEvents returns it for a booking THIS system created. The
+// bookingSource marker is what makes the id tie-break legitimate: it is evidence
+// that the other side of the race runs the same guard and will withdraw. Without
+// it the event is foreign and we must yield outright.
+function listedOurs(id, isoStart, isoEnd) {
+  return {
+    id,
+    start: { dateTime: isoStart },
+    end: { dateTime: isoEnd },
+    status: 'confirmed',
+    extendedProperties: { private: { bookingSource: guard.EVENT_MARKER } },
+  };
+}
+
 function goodBody(newStartMs, overrides = {}) {
   return {
     eventId: EVENT_ID,
@@ -195,12 +209,14 @@ test('lost race: 409, and patchEvent is called a second time restoring the ORIGI
     { obj: gcal, key: 'getEvent', value: async () => ({ ok: true, event: ourEvent({ startMs: oldStart, endMs: oldEnd }) }) },
     { obj: gcal, key: 'freeBusy', value: async () => ({ ok: true, busy: [] }) },
     { obj: gcal, key: 'patchEvent', value: patchSpy },
-    // 'aaa-other' sorts first -> ours (EVENT_ID = 'evt-reschedule-1') loses.
+    // 'aaa-other' sorts first -> ours (EVENT_ID = 'evt-reschedule-1') loses. BOTH
+    // carry the marker, so this exercises the id tie-break itself rather than the
+    // foreign-clash shortcut.
     { obj: gcal, key: 'listEvents', value: async () => ({
         ok: true,
         events: [
-          { id: 'aaa-other', start: { dateTime: isoNewStart }, end: { dateTime: isoNewEnd }, status: 'confirmed' },
-          { id: EVENT_ID, start: { dateTime: isoNewStart }, end: { dateTime: isoNewEnd }, status: 'confirmed' },
+          listedOurs('aaa-other', isoNewStart, isoNewEnd),
+          listedOurs(EVENT_ID, isoNewStart, isoNewEnd),
         ],
       }) },
     { obj: bslack, key: 'postBookingChanged', value: async () => ({ ts: null }) },
@@ -217,6 +233,99 @@ test('lost race: 409, and patchEvent is called a second time restoring the ORIGI
     const [, restorePayload] = patchSpy.calls[1];
     assert.equal(restorePayload.start.dateTime, isoOldStart);
     assert.equal(restorePayload.end.dateTime, isoOldEnd);
+    // This booking had never been reminded, so the restored flag is the same
+    // "not sent" empty string.
+    assert.equal(restorePayload.extendedProperties.private.reminderSent, '');
+  });
+});
+
+// The move patch clears reminderSent so a moved call is reminded again. If the move
+// is then rolled back, that clear must be undone too -- otherwise a booking whose
+// reminder had ALREADY been sent gets reminded a second time, for a time it was
+// never moved to.
+test('lost race: the rollback restores reminderSent, so an already-reminded booking is not re-armed', async () => {
+  envSetup();
+  const oldStart = validSlotStartMs();
+  const oldEnd = oldStart + 30 * 60 * 1000;
+  const newStart = oldStart + 4 * 3600 * 1000;
+  const newEnd = newStart + 30 * 60 * 1000;
+  const isoNewStart = new Date(newStart).toISOString();
+  const isoNewEnd = new Date(newEnd).toISOString();
+
+  const alreadyReminded = ourEvent({ startMs: oldStart, endMs: oldEnd });
+  alreadyReminded.extendedProperties.private.reminderSent = '1';
+
+  const patchSpy = spyStub({ ok: true, event: { hangoutLink: '' } });
+
+  await withStubs([
+    { obj: gcal, key: 'getEvent', value: async () => ({ ok: true, event: alreadyReminded }) },
+    { obj: gcal, key: 'freeBusy', value: async () => ({ ok: true, busy: [] }) },
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+    { obj: gcal, key: 'listEvents', value: async () => ({
+        ok: true,
+        events: [
+          listedOurs('aaa-other', isoNewStart, isoNewEnd),
+          listedOurs(EVENT_ID, isoNewStart, isoNewEnd),
+        ],
+      }) },
+    { obj: bslack, key: 'postBookingChanged', value: async () => ({ ts: null }) },
+    { obj: email, key: 'sendRescheduleNotice', value: async () => ({ ok: true }) },
+  ], async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', body: goodBody(newStart) }, res);
+
+    assert.equal(res._status, 409);
+    assert.equal(patchSpy.calls.length, 2);
+    // The move cleared it...
+    assert.equal(patchSpy.calls[0][1].extendedProperties.private.reminderSent, '');
+    // ...and the rollback must put it back.
+    assert.equal(patchSpy.calls[1][1].extendedProperties.private.reminderSent, '1',
+      'a rolled-back move must not re-arm a reminder that was already sent');
+  });
+});
+
+// Omar converted the booking to an all-day event in Google Calendar, so
+// event.start.dateTime is absent and Date.parse() yields NaN. The rollback used to
+// call new Date(NaN).toISOString(), which throws RangeError: the request 500s with
+// no body AND the event is left sitting at the clashing new time. There is no
+// original time to restore, so the correct behaviour is a clean 409 plus a loud log.
+test('lost race on an all-day event: 409 without throwing, and no time-restoring patch is attempted', async () => {
+  envSetup();
+  const oldStart = validSlotStartMs();
+  const oldEnd = oldStart + 30 * 60 * 1000;
+  const newStart = oldStart + 4 * 3600 * 1000;
+  const newEnd = newStart + 30 * 60 * 1000;
+  const isoNewStart = new Date(newStart).toISOString();
+  const isoNewEnd = new Date(newEnd).toISOString();
+
+  // Same metadata, but all-day `date` sides instead of `dateTime`.
+  const allDay = ourEvent({ startMs: oldStart, endMs: oldEnd });
+  allDay.start = { date: '2026-12-01' };
+  allDay.end = { date: '2026-12-02' };
+
+  const patchSpy = spyStub({ ok: true, event: { hangoutLink: '' } });
+
+  await withStubs([
+    { obj: gcal, key: 'getEvent', value: async () => ({ ok: true, event: allDay }) },
+    { obj: gcal, key: 'freeBusy', value: async () => ({ ok: true, busy: [] }) },
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+    { obj: gcal, key: 'listEvents', value: async () => ({
+        ok: true,
+        events: [
+          listedOurs('aaa-other', isoNewStart, isoNewEnd),
+          listedOurs(EVENT_ID, isoNewStart, isoNewEnd),
+        ],
+      }) },
+    { obj: bslack, key: 'postBookingChanged', value: async () => ({ ts: null }) },
+    { obj: email, key: 'sendRescheduleNotice', value: async () => ({ ok: true }) },
+  ], async () => {
+    const res = makeRes();
+    await assert.doesNotReject(() => handler({ method: 'POST', body: goodBody(newStart) }, res));
+
+    assert.equal(res._status, 409, 'must be a clean 409, not an unhandled RangeError');
+    assert.equal(res._json.error, 'SLOT_TAKEN');
+    assert.equal(patchSpy.calls.length, 1,
+      'only the move patch may run -- there is no valid original time to restore');
   });
 });
 

@@ -100,15 +100,17 @@ module.exports = async function handler(req, res) {
       return res.status(409).json({ ok: false, error: 'SLOT_TAKEN',
         message: 'Someone booked that time a moment before you.' });
     }
+  } else {
+    // Deliberately fail OPEN -- the event already exists, and failing the request
+    // now would tell the visitor "not booked" about a booking that is on the
+    // calendar. But this is the ONLY double-booking protection there is, so a
+    // skipped check must never be silent.
+    console.error('double-booking guard SKIPPED for event', eventId,
+      '-- listEvents failed:', after.reason);
   }
   // -------------------------------------------------------------------------
 
-  const meetLink = (inserted.event.hangoutLink)
-    || (inserted.event.conferenceData
-        && inserted.event.conferenceData.entryPoints
-        && (inserted.event.conferenceData.entryPoints
-             .find(p => p.entryPointType === 'video') || {}).uri)
-    || '';
+  const meetLink = gcal.meetLinkFor(inserted.event);
 
   const token = makeBookingToken(eventId, addr);
   const booking = {

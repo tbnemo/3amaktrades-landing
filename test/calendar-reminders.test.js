@@ -260,6 +260,32 @@ test('BATCH ISOLATION: a throwing sendReminder does not abort the run -- the han
   });
 });
 
+// The reminder used to read only event.hangoutLink, so a Meet link that lives ONLY
+// in conferenceData.entryPoints was silently dropped from the reminder email -- the
+// one email whose entire job is to get the visitor to the call.
+test('the reminder carries a Meet link that exists only in conferenceData.entryPoints', async () => {
+  envSetup();
+  const event = makeEvent({ id: 'evt-entrypoints', startMs: futureMs() });
+  delete event.hangoutLink;
+  event.conferenceData = { entryPoints: [
+    { entryPointType: 'phone', uri: 'tel:+15550100' },
+    { entryPointType: 'video', uri: 'https://meet.google.com/abc-defg-hij' },
+  ] };
+
+  const sendSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [event] }) },
+    { obj: email, key: 'sendReminder', value: sendSpy },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.sent, 1);
+    assert.equal(sendSpy.calls[0][0].meetLink, 'https://meet.google.com/abc-defg-hij');
+  });
+});
+
 test('a wrong-LENGTH bearer header returns 401 and does not throw', async () => {
   envSetup(); // CRON_SECRET = SECRET ('test-cron-secret')
   const listSpy = spyStub({ ok: true, events: [] });

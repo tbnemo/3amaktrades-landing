@@ -5,6 +5,7 @@
 // the visitor "couldn't load times" rather than a 500 stack trace.
 const nodeFetch = require('node-fetch');
 const store = require('./_blob-store');
+const { baseUrl } = require('./_site-url');
 
 const NOT_CONNECTED = 'CALENDAR_NOT_CONNECTED';
 const SCOPE = 'https://www.googleapis.com/auth/calendar';
@@ -25,14 +26,9 @@ function __resetTokenCacheForTests() {
 
 function calendarId() { return process.env.GOOGLE_CALENDAR_ID || 'primary'; }
 
-function baseUrl() {
-  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '');
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://3amaktrades.com';
-}
-
 // LOCKED to the URI registered on the Google Cloud OAuth client. Renaming the
-// endpoint file without updating Google Cloud breaks the consent round-trip.
+// endpoint file -- or letting baseUrl() resolve to a per-deployment hostname --
+// breaks the consent round-trip with redirect_uri_mismatch.
 function redirectUri() { return `${baseUrl()}/api/calendar-oauth-callback`; }
 
 function consentUrl(state) {
@@ -206,6 +202,18 @@ async function insertEvent(event) {
   return { ok: false, reason: first.reason };
 }
 
+// A Meet link arrives EITHER as the top-level hangoutLink or only inside
+// conferenceData.entryPoints, depending on how the event was created. Reading
+// just one of the two silently drops the join link out of an email, so all three
+// senders resolve it through here rather than each keeping their own guess.
+function meetLinkFor(event) {
+  if (!event) return '';
+  if (event.hangoutLink) return event.hangoutLink;
+  const points = (event.conferenceData && event.conferenceData.entryPoints) || [];
+  const video = points.find(p => p && p.entryPointType === 'video');
+  return (video && video.uri) || '';
+}
+
 async function getEvent(eventId) {
   const res = await authed(
     `/calendars/${encodeURIComponent(calendarId())}/events/${encodeURIComponent(eventId)}`);
@@ -233,6 +241,6 @@ async function deleteEvent(eventId) {
 module.exports = {
   NOT_CONNECTED, SCOPE, consentUrl, redirectUri, calendarId, baseUrl,
   exchangeCodeForTokens, saveRefreshToken, isConnected, getAccessToken,
-  freeBusy, listEvents, getEvent, insertEvent, patchEvent, deleteEvent,
+  freeBusy, listEvents, getEvent, insertEvent, patchEvent, deleteEvent, meetLinkFor,
   __resetTokenCacheForTests, __setFetchForTests,
 };

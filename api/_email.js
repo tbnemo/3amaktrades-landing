@@ -7,18 +7,13 @@
 // ############################################################################
 const nodeFetch = require('node-fetch');
 const { escapeHtml, safeUrl } = require('./_html');
+const { baseUrl } = require('./_site-url');
 
 const RESEND_URL = 'https://api.resend.com/emails';
 
 function fromAddress() {
   // Resend's shared sender works before 3amaktrades.com is verified for sending.
   return process.env.RESEND_FROM || '3AMAK Trades <onboarding@resend.dev>';
-}
-
-function baseUrl() {
-  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, '');
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return 'https://3amaktrades.com';
 }
 
 // Renders the booking time in the visitor's own zone -- the one thing in these
@@ -42,15 +37,11 @@ function formatWhen(startMs, timeZone, lang) {
   }
 }
 
-function manageLinks(b) {
-  const q = `eventId=${encodeURIComponent(b.eventId)}`
-    + `&email=${encodeURIComponent(b.email)}`
-    + `&token=${encodeURIComponent(b.manageToken || '')}`;
-  return {
-    reschedule: `${baseUrl()}/?booking=reschedule&${q}`,
-    cancel: `${baseUrl()}/?booking=cancel&${q}`,
-  };
-}
+// NOTE: these emails deliberately advertise no reschedule/cancel links. The
+// endpoints exist and are tested, but nothing reads a `booking` query param yet,
+// so a link would have dropped the visitor on the homepage with no explanation.
+// `manageToken` is still minted and still valid, so the flow can be wired up
+// later without reworking anything here.
 
 async function send({ to, subject, html }) {
   if (!process.env.RESEND_API_KEY) {
@@ -88,7 +79,6 @@ function shell(bodyHtml) {
 }
 
 async function sendBookingConfirmation(b) {
-  const links = manageLinks(b);
   // PLACEHOLDER COPY — collaborative design pass pending
   const subject = '[PLACEHOLDER] Your call is booked';
   // PLACEHOLDER COPY — collaborative design pass pending
@@ -97,14 +87,11 @@ async function sendBookingConfirmation(b) {
     <p>[PLACEHOLDER] Your call is confirmed for
        <strong>${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, b.lang))}</strong>
        (${escapeHtml(b.visitorTimeZone)}).</p>
-    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
-    <p>[PLACEHOLDER] <a href="${escapeHtml(links.reschedule)}">Reschedule</a>
-       &middot; <a href="${escapeHtml(links.cancel)}">Cancel</a></p>`);
+    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}`);
   return send({ to: b.email, subject, html });
 }
 
 async function sendRescheduleNotice(b) {
-  const links = manageLinks(b);
   // PLACEHOLDER COPY — collaborative design pass pending
   const subject = '[PLACEHOLDER] Your call was moved';
   // PLACEHOLDER COPY — collaborative design pass pending
@@ -113,9 +100,7 @@ async function sendRescheduleNotice(b) {
     <p>[PLACEHOLDER] Your call is now
        <strong>${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, b.lang))}</strong>
        (${escapeHtml(b.visitorTimeZone)}).</p>
-    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
-    <p>[PLACEHOLDER] <a href="${escapeHtml(links.reschedule)}">Reschedule again</a>
-       &middot; <a href="${escapeHtml(links.cancel)}">Cancel</a></p>`);
+    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}`);
   return send({ to: b.email, subject, html });
 }
 
@@ -132,7 +117,6 @@ async function sendCancellationNotice(b) {
 }
 
 async function sendReminder(b) {
-  const links = manageLinks(b);
   // PLACEHOLDER COPY — collaborative design pass pending
   const subject = '[PLACEHOLDER] Your call is coming up';
   // PLACEHOLDER COPY — collaborative design pass pending
@@ -141,12 +125,11 @@ async function sendReminder(b) {
     <p>[PLACEHOLDER] Reminder: your call is
        <strong>${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, b.lang))}</strong>
        (${escapeHtml(b.visitorTimeZone)}).</p>
-    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
-    <p>[PLACEHOLDER] <a href="${escapeHtml(links.cancel)}">Cancel</a></p>`);
+    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}`);
   return send({ to: b.email, subject, html });
 }
 
 module.exports = {
   sendBookingConfirmation, sendRescheduleNotice, sendCancellationNotice,
-  sendReminder, formatWhen, manageLinks, escapeHtml,
+  sendReminder, formatWhen, escapeHtml,
 };

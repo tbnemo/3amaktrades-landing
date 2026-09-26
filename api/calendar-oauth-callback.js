@@ -8,10 +8,17 @@ const { escapeHtml } = require('./_html');
 function page(title, body) {
   // Deliberately minimal: this is a redirect waypoint Omar sees for a moment,
   // not a designed surface.
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+  //
+  // `title` is escaped even though all five callers pass hardcoded literals. This
+  // is the file where a reflected-XSS was already found and fixed once, so the
+  // safety belongs in the renderer rather than in caller discipline. `body` is
+  // NOT escaped -- it is markup by contract, and every interpolation inside it
+  // escapes its own untrusted parts.
+  const safeTitle = escapeHtml(title);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${safeTitle}</title>
 <style>body{background:#050505;color:#F2EEE4;font-family:system-ui,sans-serif;padding:48px;}
 a{color:#D4AF37;}code{color:#8B887F;}</style></head>
-<body><h1 style="color:#D4AF37">${title}</h1>${body}
+<body><h1 style="color:#D4AF37">${safeTitle}</h1>${body}
 <p><a href="/admin.html">Back to the admin page</a></p></body></html>`;
 }
 
@@ -54,3 +61,8 @@ module.exports = async function handler(req, res) {
   res.writeHead(302, { Location: '/admin.html?connected=1' });
   return res.end();
 };
+
+// Test-only handle on the renderer, matching this codebase's `__…ForTests`
+// convention. Vercel routes the exported function; extra properties on it are
+// inert.
+module.exports.__pageForTests = page;

@@ -73,7 +73,7 @@ module.exports = async function handler(req, res) {
         visitorTimeZone: meta.visitorTimeZone || 'UTC',
         templateTimeZone: tplRes.template.timezone,
         manageToken: makeBookingToken(event.id, meta.visitorEmail),
-        meetLink: event.hangoutLink || '',
+        meetLink: gcal.meetLinkFor(event),
         lang: meta.lang || 'en',
       });
 

@@ -45,3 +45,26 @@ test('callback does not reflect a hostile error value into the rendered page', a
   assert.equal(res._body.includes('alert(1)'), false);
   assert.equal(res._body.includes('</script>'), false);
 });
+
+// All five callers currently pass hardcoded literal titles, so this is
+// behaviour-neutral today. It is asserted anyway because this is the exact file
+// where a reflected-XSS was already found and fixed once: escaping inside the
+// renderer makes the guarantee structural instead of depending on every future
+// caller remembering. The title also lands in <title>, where a raw `</title>` would
+// close the element early and let markup out.
+test('page() cannot emit raw markup from a hostile title', () => {
+  const page = callback.__pageForTests;
+  assert.equal(typeof page, 'function', 'the renderer must be reachable for this test');
+
+  const out = page('</title><script>alert(1)</script>', '<p>body</p>');
+  assert.equal(out.includes('<script>'), false);
+  assert.equal(out.includes('</script>'), false);
+  assert.equal(out.includes('</title><'), false);
+  assert.match(out, /&lt;script&gt;/);
+  // The body is markup by contract and must still pass through untouched.
+  assert.match(out, /<p>body<\/p>/);
+
+  const quoted = page('" onload="alert(1)', '');
+  assert.equal(quoted.includes('onload="alert(1)'), false);
+  assert.match(quoted, /&quot;/);
+});

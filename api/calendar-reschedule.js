@@ -54,6 +54,11 @@ module.exports = async function handler(req, res) {
       message: 'That time is no longer available.' });
   }
 
+  // Captured BEFORE the move clears it: if the move is rolled back below, a
+  // booking that had already been reminded must not be re-armed and reminded a
+  // second time.
+  const originalReminderSent = meta.reminderSent || '';
+
   const patched = await gcal.patchEvent(event.id, {
     start: { dateTime: new Date(startMs).toISOString(), timeZone: 'UTC' },
     end: { dateTime: new Date(endMs).toISOString(), timeZone: 'UTC' },
@@ -73,13 +78,32 @@ module.exports = async function handler(req, res) {
   if (after.ok) {
     const clash = guard.overlapping(after.events, startMs, endMs);
     if (guard.shouldRollBack(event.id, clash)) {
-      await gcal.patchEvent(event.id, {
-        start: { dateTime: new Date(oldStart).toISOString(), timeZone: 'UTC' },
-        end: { dateTime: new Date(oldEnd).toISOString(), timeZone: 'UTC' },
-      });
+      if (Number.isFinite(oldStart) && Number.isFinite(oldEnd)) {
+        await gcal.patchEvent(event.id, {
+          start: { dateTime: new Date(oldStart).toISOString(), timeZone: 'UTC' },
+          end: { dateTime: new Date(oldEnd).toISOString(), timeZone: 'UTC' },
+          // Undo the reminder re-arm too, or a booking that was already reminded
+          // gets reminded twice after a lost race.
+          extendedProperties: { private: { reminderSent: originalReminderSent } },
+        });
+      } else {
+        // The booking had no dateTime to begin with -- it was converted to an
+        // all-day event in Google Calendar. There is no original time to restore,
+        // and new Date(NaN).toISOString() would throw a RangeError, 500ing this
+        // request AND leaving the event parked at the clashing new time. Yield the
+        // 409 and make the un-restorable state loud instead.
+        console.error('reschedule rollback could NOT restore the original time for event',
+          event.id, '-- start/end carried no dateTime (all-day or malformed);',
+          'the event is left at the new time and needs manual attention');
+      }
       return res.status(409).json({ ok: false, error: 'SLOT_TAKEN',
         message: 'Someone took that time a moment before you.' });
     }
+  } else {
+    // Fail open, as in calendar-book.js: the move already happened. But this is the
+    // only double-booking protection on the reschedule path, so log it.
+    console.error('double-booking guard SKIPPED for event', event.id,
+      '-- listEvents failed:', after.reason);
   }
 
   const visitorTimeZone = tz.isValidTimeZone(body.visitorTimeZone)
@@ -91,7 +115,7 @@ module.exports = async function handler(req, res) {
     phone: meta.visitorPhone || '', startMs, endMs,
     visitorTimeZone, templateTimeZone: template.timezone,
     manageToken: makeBookingToken(event.id, meta.visitorEmail),
-    meetLink: patched.event.hangoutLink || '', lang: meta.lang || 'en',
+    meetLink: gcal.meetLinkFor(patched.event), lang: meta.lang || 'en',
   };
 
   try { await bslack.postBookingChanged(booking, 'rescheduled', meta.slackTs || null); }

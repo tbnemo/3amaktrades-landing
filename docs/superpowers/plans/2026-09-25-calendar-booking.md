@@ -40,8 +40,12 @@ Auto-provided by Vercel once the Blob store exists: `BLOB_READ_WRITE_TOKEN`.
 | `ADMIN_SESSION_SECRET` | No | derived via HMAC from `GOOGLE_CLIENT_SECRET` |
 | `GOOGLE_CALENDAR_ID` | No | `'primary'` |
 | `RESEND_FROM` | No | `'onboarding@resend.dev'` (Resend shared sender) |
-| `PUBLIC_BASE_URL` | No | derived from `VERCEL_URL`, else `https://3amaktrades.com` |
+| `PUBLIC_BASE_URL` | **Yes** — OAuth cannot complete without it | `VERCEL_PROJECT_PRODUCTION_URL`, then `VERCEL_URL`, then `https://3amaktrades.com` |
 | `CRON_SECRET` | No | if unset, the reminder endpoint refuses to run |
+
+**`PUBLIC_BASE_URL` must byte-match the origin of the redirect URI registered on the Google Cloud OAuth client** (i.e. `<PUBLIC_BASE_URL>/api/calendar-oauth-callback` must equal the registered URI exactly, trailing slash included). Google compares the redirect URI as a literal string and rejects anything else with `Error 400: redirect_uri_mismatch`.
+
+`VERCEL_URL` **cannot** be relied on for this: it is always set on Vercel but is the *per-deployment* hostname, unique to every single deploy, so it can never match one registered URI. `VERCEL_PROJECT_PRODUCTION_URL` (the stable production domain) is preferred over it, but only an explicit `PUBLIC_BASE_URL` is guaranteed to match what was registered. The same value builds the links inside every transactional email, so a wrong value also sends deployment-hash hosts to visitors. Resolved in exactly one place: `api/_site-url.js`.
 
 ---
 
@@ -59,6 +63,7 @@ Auto-provided by Vercel once the Blob store exists: `BLOB_READ_WRITE_TOKEN`.
 | `api/_booking-token.js` | Stateless HMAC token authorising a visitor to reschedule/cancel their own booking. |
 | `api/_email.js` | Resend sending. Four transactional emails, all PLACEHOLDER copy. |
 | `api/_booking-slack.js` | Booking notifications, built on the existing `api/_slack.js`. |
+| `api/_site-url.js` | The single `baseUrl()`. One copy only: it builds both the OAuth redirect URI and every emailed link, so a divergent copy breaks one of the two. |
 
 **Endpoints:**
 
@@ -119,6 +124,7 @@ Implement these as written. Each is recorded in the final report.
 - **R3 — Per-booking metadata lives in the event's `extendedProperties.private`** (`bookingSource`, `visitorEmail`, `visitorTimeZone`, `slackTs`, `reminderSent`). *Why:* keeps "the calendar is the record" literally true and avoids a third blob. *Cost if wrong:* none material.
 - **R4 — Booking notifications go to `CHANNEL_WARM_LEADS`**, threading reschedule/cancel onto the original message via the stored `slackTs`. *Why:* a booked call is warmer than a raw application, and that is where `wa-click.js` already sends warm signals. *Cost if wrong:* one constant.
 - **R5 — Double-booking rollback uses a deterministic tie-break.** If the post-insert overlap check finds more than one event, the event with the lexicographically smallest `id` wins and every other booking rolls itself back. *Why:* the spec's plain "roll back if more than one exists" makes both sides of a true simultaneous race cancel, leaving nobody booked. *Cost if wrong:* none; strictly safer.
+  - **R5 refined (final review):** the tie-break is only sound when BOTH racers run this guard, which is true only when two of *our own* bookings collide. If any overlapping event lacks our `bookingSource` marker — Omar booked on his phone, another Google client wrote, or `freeBusy` lagged a just-created event — nobody withdraws on the other side, so winning the tie-break would leave a genuine double-booking standing while the visitor is told "confirmed". Any foreign overlap therefore yields **unconditionally**; the id tie-break applies only among our own events.
 - **R6 — `/api/calendar-availability` accepts an optional `days=N`** (1–31, default 1) returning a map of date → slots. *Why:* the widget must "auto-select the first day with real openings" and draw a day strip; per-day requests would be N round trips and N free/busy queries. The single-`date` contract from the spec still works unchanged. *Cost if wrong:* none; additive.
 - **R7 — A Google Meet link is requested for each booking, with automatic fallback.** If the insert is rejected for conference reasons, retry once without `conferenceData`. *Why:* "book a call" needs somewhere to meet, and the confirmation email needs a join link. *Cost if wrong:* drop the `createRequest` block; bookings still work.
 - **R8 — Reminder de-duplication is a flag on the event** (`reminderSent: '1'`), driven by a Vercel Cron. *Why:* no bookings table to track sends. **Note:** Vercel's Hobby plan permits only once-per-day crons; the plan ships `0 * * * *` (hourly) and the final report flags that it may need relaxing depending on plan.
@@ -3527,4 +3533,5 @@ Run through this before declaring the plan done.
 5. **Email copy is placeholder** by explicit instruction — the collaborative pass is still owed.
 6. **Cron frequency may violate the Hobby plan** (daily maximum); confirm the plan or relax the schedule.
 7. **Resend sends from the shared `onboarding@resend.dev`** until `3amaktrades.com` is verified for sending.
+8. **Reschedule and cancel are API-only — there is no visitor-facing UI yet.** `/api/calendar-reschedule` and `/api/calendar-cancel` are complete and tested, and `manageToken` is still minted and returned by `/api/calendar-book`, but nothing reads a `booking` query param on the front end (the widget's reschedule mode was deferred by the spec). The emails therefore no longer advertise reschedule/cancel links: shipping a link that silently lands a high-intent lead on the homepage is worse than not offering one. Wiring the flow later needs no change to the endpoints or the token.
 

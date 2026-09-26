@@ -25,12 +25,21 @@ function overlapping(events, startMs, endMs) {
 // R5: the spec says "roll back if more than one now exists", but applied
 // literally both sides of a simultaneous race would cancel and nobody would end
 // up booked. A deterministic tie-break on event id means exactly one survives.
+//
+// R5 refined: the id tie-break only works when BOTH sides run this guard, which is
+// true only when two of OUR OWN bookings race. If the clashing event is not ours --
+// the owner booked on his phone, another client wrote, or freeBusy simply hadn't
+// caught up yet -- nobody withdraws on the other side, so we must yield outright
+// rather than gamble on id ordering.
 function shouldRollBack(ourEventId, overlappingEvents) {
-  if (!overlappingEvents || overlappingEvents.length <= 1) return false;
-  const winner = overlappingEvents
-    .map(e => e.id)
-    .filter(Boolean)
-    .sort()[0];
+  const list = (overlappingEvents || []).filter(Boolean);
+  if (list.length <= 1) return false;
+  const anyForeign = list.some(e => {
+    const meta = (e.extendedProperties && e.extendedProperties.private) || {};
+    return meta.bookingSource !== EVENT_MARKER;
+  });
+  if (anyForeign) return true;
+  const winner = list.map(e => e.id).filter(Boolean).sort()[0];
   return winner !== ourEventId;
 }
 

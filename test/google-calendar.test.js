@@ -130,6 +130,39 @@ test('insertEvent retries without conferencing if Meet creation is rejected (R7)
   assert.equal(bodies[1].conferenceData, undefined, 'retry should drop conferenceData');
 });
 
+// Google returns the Meet URL in one of two places depending on how the event was
+// created. calendar-book.js always read both; reschedule and reminders read only
+// hangoutLink, so a link that existed ONLY in entryPoints vanished from those two
+// emails. One resolver, used by all three, is what stops that drifting again.
+test('meetLinkFor reads hangoutLink OR the video entry point, and never throws', () => {
+  assert.equal(
+    gcal.meetLinkFor({ hangoutLink: 'https://meet.google.com/top-level' }),
+    'https://meet.google.com/top-level');
+
+  assert.equal(gcal.meetLinkFor({
+    conferenceData: { entryPoints: [
+      { entryPointType: 'phone', uri: 'tel:+15550100' },
+      { entryPointType: 'video', uri: 'https://meet.google.com/from-entry-points' },
+    ] },
+  }), 'https://meet.google.com/from-entry-points');
+
+  // hangoutLink wins when both are present.
+  assert.equal(gcal.meetLinkFor({
+    hangoutLink: 'https://meet.google.com/top-level',
+    conferenceData: { entryPoints: [{ entryPointType: 'video', uri: 'https://meet.google.com/other' }] },
+  }), 'https://meet.google.com/top-level');
+
+  // Nothing usable -> empty string, so the email simply omits the join paragraph.
+  assert.equal(gcal.meetLinkFor({}), '');
+  assert.equal(gcal.meetLinkFor({ hangoutLink: '' }), '');
+  assert.equal(gcal.meetLinkFor({ conferenceData: {} }), '');
+  assert.equal(gcal.meetLinkFor({ conferenceData: { entryPoints: [] } }), '');
+  assert.equal(gcal.meetLinkFor({ conferenceData: { entryPoints: [{ entryPointType: 'phone', uri: 'tel:+1' }] } }), '');
+  assert.equal(gcal.meetLinkFor({ conferenceData: { entryPoints: [null, { entryPointType: 'video' }] } }), '');
+  assert.equal(gcal.meetLinkFor(null), '');
+  assert.equal(gcal.meetLinkFor(undefined), '');
+});
+
 test('a Google error surfaces as ok:false rather than throwing', async () => {
   envSetup();
   store.__setClientForTests(memoryBlob({
