@@ -78,3 +78,39 @@ test('booking is exclusive to the two upper tiers, unknown/empty codes do not bo
   assert.equal(tierFor('').bookShown, false);
   assert.equal(tierFor(undefined).bookShown, false);
 });
+
+// ---------------------------------------------------------------------
+// Fix round 1: `{ once: true }` on the bookCallBtn click listener consumed
+// the listener the instant it fired, regardless of what happened inside the
+// handler. If /booking-widget.js failed to load (network blip, ad-blocker,
+// etc.), the script's onerror re-enabled the button visually but no click
+// listener remained attached -- a silent dead end for the highest-intent
+// ($1k+) leads on the site. The fix removes { once: true } (the
+// bookingWidgetLoading guard already prevents a double-mount, and success
+// hides the button) and makes onerror restore the WhatsApp/Instagram DM
+// fallback so a visitor is never left with a live-looking but dead button.
+// These two assertions read the actual source text so they fail if either
+// property regresses.
+// ---------------------------------------------------------------------
+
+const bookBtnListenerMatch = src.match(/bookBtn\.addEventListener\([^;]+\);/);
+assert.ok(bookBtnListenerMatch, 'Could not find the bookCallBtn click listener registration in index.html -- source may have moved/changed.');
+const bookBtnListenerSrc = bookBtnListenerMatch[0];
+
+const onErrorMatch = src.match(/s\.onerror = \(\) => \{([\s\S]*?)\n\s*\};/);
+assert.ok(onErrorMatch, 'Could not find the booking-widget script s.onerror handler in index.html -- source may have moved/changed.');
+const onErrorBody = onErrorMatch[1];
+
+test('bookCallBtn click listener registration does NOT use { once: true }', () => {
+  assert.doesNotMatch(
+    bookBtnListenerSrc,
+    /\{\s*once\s*:\s*true\s*\}/,
+    'bookCallBtn listener must not consume itself on first click -- a failed ' +
+    'script load would then leave a visually-enabled but dead button.'
+  );
+});
+
+test('script s.onerror handler restores the WhatsApp/Instagram DM fallback', () => {
+  assert.match(onErrorBody, /confirmWaLabel/, 'onerror handler must re-show confirmWaLabel on a failed script load');
+  assert.match(onErrorBody, /confirmTalkRow/, 'onerror handler must re-show confirmTalkRow on a failed script load');
+});

@@ -2701,7 +2701,11 @@ function render() {
       bookBtn.style.display = '';
       // Loaded on demand: most visitors never reach this tier, so the widget
       // should not be part of the initial page weight.
-      bookBtn.addEventListener('click', () => openBookingWidget(payload), { once: true });
+      // No { once: true }: the bookingWidgetLoading guard already prevents a
+      // double-mount, and on success the button is hidden. Consuming the listener
+      // on the first click would leave a visually-enabled but dead button if the
+      // widget script failed to load.
+      bookBtn.addEventListener('click', () => openBookingWidget(payload));
     }
 
     // Ad-pixel conversion event. Inert until the pixel scripts in <head> are
@@ -2774,6 +2778,10 @@ function render() {
       bookingWidgetLoading = false;
       btn.disabled = false;
       host.style.display = 'none';
+      // The widget asset failed to load. Put the DM paths back in front of them
+      // rather than leaving a live-looking button and no way to reach anyone.
+      document.getElementById('confirmWaLabel').style.display = '';
+      document.getElementById('confirmTalkRow').style.display = '';
     };
     document.head.appendChild(s);
   }
