@@ -1,5 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const auth = require('../api/_admin-auth');
 
 function reqWithCookie(cookie) { return { headers: cookie ? { cookie } : {} }; }
@@ -69,6 +70,23 @@ test('OAuth state round-trips and rejects forgery', () => {
   assert.equal(auth.verifyState(`${s}x`), false);
   assert.equal(auth.verifyState('nope'), false);
   assert.equal(auth.verifyState(''), false);
+});
+
+test('verifyState rejects an expired state', () => {
+  process.env.ADMIN_SESSION_SECRET = 'session-secret';
+  // Build an already-expired state payload the same way signState does,
+  // signed with the same secret, without changing signState's signature.
+  const payload = Buffer.from(JSON.stringify({ exp: Date.now() - 1000, n: 'deadbeef' }), 'utf8')
+    .toString('base64url');
+  const sig = crypto.createHmac('sha256', auth.sessionSecret()).update(payload).digest('base64url');
+  assert.equal(auth.verifyState(`${payload}.${sig}`), false);
+});
+
+test('a state signed with a different secret does not verify', () => {
+  process.env.ADMIN_SESSION_SECRET = 'secret-a';
+  const s = auth.signState();
+  process.env.ADMIN_SESSION_SECRET = 'secret-b';
+  assert.equal(auth.verifyState(s), false);
 });
 
 test('requireAdmin writes a 401 and returns false when unauthorised', () => {

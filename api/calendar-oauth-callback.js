@@ -3,6 +3,7 @@
 // Google Cloud console is updated to match.
 const auth = require('./_admin-auth');
 const gcal = require('./_google-calendar');
+const { escapeHtml } = require('./_html');
 
 function page(title, body) {
   // Deliberately minimal: this is a redirect waypoint Omar sees for a moment,
@@ -20,7 +21,16 @@ module.exports = async function handler(req, res) {
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
-  if (error) return res.status(400).send(page('Connection cancelled', `<p><code>${error}</code></p>`));
+  if (error) {
+    // Attacker-controlled: this branch runs BEFORE auth.verifyState(state), so
+    // this endpoint is reachable by anyone with no signed state at all. Real
+    // OAuth error codes are short snake_case tokens; anything else is rendered
+    // generically rather than echoed back, and what IS echoed is HTML-escaped.
+    const safeError = /^[a-z0-9_.-]{1,64}$/i.test(String(error || ''))
+      ? String(error)
+      : 'unknown_error';
+    return res.status(400).send(page('Connection cancelled', `<p><code>${escapeHtml(safeError)}</code></p>`));
+  }
   if (!code) return res.status(400).send(page('Missing code', '<p>Google returned no authorization code.</p>'));
   if (!auth.verifyState(state)) {
     return res.status(400).send(page('Expired or invalid link',
@@ -30,14 +40,14 @@ module.exports = async function handler(req, res) {
   const exchanged = await gcal.exchangeCodeForTokens(code);
   if (!exchanged.ok) {
     return res.status(502).send(page('Could not exchange the code',
-      `<p><code>${exchanged.reason}</code></p>`));
+      `<p><code>${escapeHtml(exchanged.reason)}</code></p>`));
   }
 
   const saved = await gcal.saveRefreshToken(exchanged.refreshToken);
   if (!saved.ok) {
     const hint = saved.reason === 'BLOB_NOT_CONFIGURED'
       ? '<p>The Vercel Blob store does not exist yet, so there is nowhere to save the token. Create it in the Vercel dashboard (Storage &rarr; Create Database &rarr; Blob), redeploy, then connect again.</p>'
-      : `<p><code>${saved.reason}</code></p>`;
+      : `<p><code>${escapeHtml(saved.reason)}</code></p>`;
     return res.status(503).send(page('Calendar authorised, but not saved', hint));
   }
 
