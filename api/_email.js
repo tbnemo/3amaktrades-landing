@@ -6,7 +6,7 @@
 // # the user. Only the SENDING MECHANISM and TRIGGER POINTS are complete.     #
 // ############################################################################
 const nodeFetch = require('node-fetch');
-const { escapeHtml } = require('./_html');
+const { escapeHtml, safeUrl } = require('./_html');
 
 const RESEND_URL = 'https://api.resend.com/emails';
 
@@ -23,13 +23,22 @@ function baseUrl() {
 
 // Renders the booking time in the visitor's own zone -- the one thing in these
 // emails that is genuinely load-bearing rather than placeholder.
+//
+// Never throws: these senders must always resolve to {ok,...}, because an email
+// formatting quirk must not cost a booking that is already on the calendar.
+// Note the catch below cannot be the only guard -- new Date(NaN).toISOString()
+// itself throws, so a non-finite instant has to be rejected up front.
 function formatWhen(startMs, timeZone, lang) {
+  if (!Number.isFinite(startMs)) return '';
   try {
     return new Intl.DateTimeFormat(lang === 'ar' ? 'ar' : 'en-GB', {
       timeZone, dateStyle: 'full', timeStyle: 'short',
     }).format(startMs);
   } catch (e) {
-    return new Date(startMs).toISOString();
+    // Reached when timeZone is invalid. startMs is known finite here, but keep
+    // this defensive rather than assuming.
+    const d = new Date(startMs);
+    return Number.isFinite(d.getTime()) ? d.toISOString() : '';
   }
 }
 
@@ -88,7 +97,7 @@ async function sendBookingConfirmation(b) {
     <p>[PLACEHOLDER] Your call is confirmed for
        <strong>${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, b.lang))}</strong>
        (${escapeHtml(b.visitorTimeZone)}).</p>
-    ${b.meetLink ? `<p>[PLACEHOLDER] Join link: <a href="${escapeHtml(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
+    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
     <p>[PLACEHOLDER] <a href="${escapeHtml(links.reschedule)}">Reschedule</a>
        &middot; <a href="${escapeHtml(links.cancel)}">Cancel</a></p>`);
   return send({ to: b.email, subject, html });
@@ -104,7 +113,7 @@ async function sendRescheduleNotice(b) {
     <p>[PLACEHOLDER] Your call is now
        <strong>${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, b.lang))}</strong>
        (${escapeHtml(b.visitorTimeZone)}).</p>
-    ${b.meetLink ? `<p>[PLACEHOLDER] Join link: <a href="${escapeHtml(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
+    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
     <p>[PLACEHOLDER] <a href="${escapeHtml(links.reschedule)}">Reschedule again</a>
        &middot; <a href="${escapeHtml(links.cancel)}">Cancel</a></p>`);
   return send({ to: b.email, subject, html });
@@ -132,7 +141,7 @@ async function sendReminder(b) {
     <p>[PLACEHOLDER] Reminder: your call is
        <strong>${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, b.lang))}</strong>
        (${escapeHtml(b.visitorTimeZone)}).</p>
-    ${b.meetLink ? `<p>[PLACEHOLDER] Join link: <a href="${escapeHtml(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
+    ${safeUrl(b.meetLink) ? `<p>[PLACEHOLDER] Join link: <a href="${safeUrl(b.meetLink)}">${escapeHtml(b.meetLink)}</a></p>` : ''}
     <p>[PLACEHOLDER] <a href="${escapeHtml(links.cancel)}">Cancel</a></p>`);
   return send({ to: b.email, subject, html });
 }

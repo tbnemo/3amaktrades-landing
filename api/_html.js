@@ -7,4 +7,12 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-module.exports = { escapeHtml };
+// Only http(s) may reach an href. Escaping alone does not stop a
+// `javascript:` URL, and these links are rendered in mail clients.
+function safeUrl(u) {
+  const s = String(u == null ? '' : u).trim();
+  if (!/^https?:\/\//i.test(s)) return '';
+  return escapeHtml(s);
+}
+
+module.exports = { escapeHtml, safeUrl };
