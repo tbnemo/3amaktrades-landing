@@ -820,6 +820,12 @@
     .form-confirm .cta-btn-wa { border-color: var(--gold-lo); color: var(--gold); border-radius: 0; }
     .form-confirm .cta-btn-wa:hover { border-color: var(--gold); background: var(--gold); color: var(--ink); }
     .form-confirm .cta-btn-wa svg { fill: currentColor; }
+    /* same case as the IG glyph: the calendar icon is an outline (rounded body +
+       two tabs + a rule), not a solid one like the WhatsApp glyph, so the blanket
+       fill:currentColor rule above fills its whole body solid gold. An svg's own
+       fill="none" attribute cannot win -- presentation attributes lose to every
+       CSS rule -- so override back to outline here, as .ig-icon does. */
+    .form-confirm .cta-btn-wa svg.cal-icon { fill: none; stroke: currentColor; }
     #bookingWidgetHost { display: none; margin-block-start: 28px; border-radius: 0; }
 
     /* ══ BAND 6 — MENTOR (Bullion) ══ */
@@ -2100,7 +2106,7 @@ function render() {
         <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_book_label"
            id="confirmBookLabel" style="display:none"></p>
         <button type="button" class="cta-btn-wa" id="bookCallBtn" style="display:none">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <svg class="cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <rect x="3" y="5" width="18" height="16"/><path d="M8 3v4M16 3v4M3 11h18"/>
           </svg>
           <span data-key="confirm_book_btn"></span>
@@ -2731,7 +2737,11 @@ function render() {
 
     const host = document.getElementById('bookingWidgetHost');
     const btn = document.getElementById('bookCallBtn');
-    host.style.display = '';
+    // MUST be an explicit value, NOT ''. Unlike confirmWaLabel/confirmTalkRow,
+    // #bookingWidgetHost is hidden by a stylesheet rule as well as by its inline
+    // style, so clearing the inline value falls back to `display:none` from the
+    // rule and the widget mounts into a container the visitor can never see.
+    host.style.display = 'block';
     btn.disabled = true;
 
     const mount = () => {
