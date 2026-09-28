@@ -11,6 +11,11 @@ const vercelBlob = require('@vercel/blob');
 const BLOB_NOT_CONFIGURED = 'BLOB_NOT_CONFIGURED';
 const AVAILABILITY_BLOB = 'availability-template.json';
 const OAUTH_BLOB = 'oauth-refresh-token.json';
+// Failed admin passcode attempts. Its own document rather than a field on either
+// of the two above: those are read on the visitor-facing hot path, and a login
+// counter has no business being rewritten there. Also private -- it reveals when
+// someone is guessing.
+const LOGIN_ATTEMPTS_BLOB = 'login-attempts.json';
 
 let client = { get: vercelBlob.get, put: vercelBlob.put };
 
@@ -55,5 +60,5 @@ async function writeJson(pathname, data) {
 
 module.exports = {
   readJson, writeJson, isConfigured, __setClientForTests,
-  BLOB_NOT_CONFIGURED, AVAILABILITY_BLOB, OAUTH_BLOB,
+  BLOB_NOT_CONFIGURED, AVAILABILITY_BLOB, OAUTH_BLOB, LOGIN_ATTEMPTS_BLOB,
 };
