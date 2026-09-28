@@ -195,6 +195,67 @@ test('a foreign overlapping event rolls our booking back even when our id sorts 
   });
 });
 
+// The counterpart of the test above, and the whole point of the declined-invite
+// filter. Availability is computed from freeBusy, which does NOT count an event
+// Omar has declined -- so the slot is offered, correctly. The guard reads
+// events.list, which DOES still return the declined event. While the two
+// disagreed, this exact sequence played out on every attempt: insert succeeds ->
+// guard sees the declined event -> no bookingSource on it, so "foreign conflict"
+// -> roll back -> 409 "someone booked that time a moment before you". The slot
+// was permanently unbookable and the message was a lie: nobody had raced anyone.
+//
+// This has to go through the handler, not just guard.overlapping(): a unit test on
+// the filter would stay green even if this call site never passed `attendees`
+// through, which is precisely the class of no-op the earlier review caught.
+test('a slot holding an invite Omar DECLINED still books: the guard must not treat it as a foreign conflict', async () => {
+  envSetup();
+  const startMs = validSlotStartMs();
+  const endMs = startMs + 30 * 60 * 1000;
+  const isoStart = new Date(startMs).toISOString();
+  const isoEnd = new Date(endMs).toISOString();
+
+  const ourEventId = 'zzz-ours';   // sorts LAST, so a surviving foreign clash rolls us back
+  const insertSpy = spyStub({ ok: true, event: { id: ourEventId } });
+  const deleteSpy = spyStub({ ok: true });
+
+  await withStubs([
+    // freeBusy leaves the slot open, exactly as it does for a declined invite.
+    { obj: gcal, key: 'freeBusy', value: async () => ({ ok: true, busy: [] }) },
+    { obj: gcal, key: 'insertEvent', value: insertSpy },
+    { obj: gcal, key: 'listEvents', value: async () => ({
+        ok: true,
+        events: [
+          listedOurs(ourEventId, isoStart, isoEnd),
+          {
+            id: 'aaa-declined-invite',
+            start: { dateTime: isoStart },
+            end: { dateTime: isoEnd },
+            status: 'confirmed',
+            // Somebody else's meeting, still listed, but Omar said no. Real shape:
+            // the owner's copy is the attendees entry flagged self:true.
+            attendees: [
+              { email: 'organizer@example.com', organizer: true, responseStatus: 'accepted' },
+              { email: 'omar@example.com', self: true, responseStatus: 'declined' },
+            ],
+          },
+        ],
+      }) },
+    { obj: gcal, key: 'deleteEvent', value: deleteSpy },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: bslack, key: 'postBookingCreated', value: async () => ({ ts: null }) },
+    { obj: email, key: 'sendBookingConfirmation', value: async () => ({ ok: true }) },
+  ], async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', body: goodBody(startMs) }, res);
+
+    assert.equal(res._status, 200, 'a declined invite must not block the booking');
+    assert.equal(res._json.ok, true);
+    assert.equal(res._json.eventId, ourEventId);
+    assert.equal(deleteSpy.calls.length, 0,
+      'the booking must NOT be rolled back -- freeBusy already decided that slot was free');
+  });
+});
+
 // The Meet link can arrive ONLY inside conferenceData.entryPoints.
 test('the Meet link is resolved from conferenceData.entryPoints when hangoutLink is absent', async () => {
   envSetup();

@@ -10,10 +10,32 @@ function instant(side) {
   return Number.isFinite(ms) ? ms : null;
 }
 
+// The slot list this system offers is built from freeBusy (api/_availability.js),
+// but this guard reads events.list, and the two do NOT agree about declined
+// invites: freeBusy does not count an event the calendar owner has declined,
+// while events.list still returns it. That disagreement made any slot holding a
+// declined invite PERMANENTLY unbookable -- availability offered it (correctly),
+// the insert succeeded, then this guard saw the declined event, found no
+// bookingSource on it, classified it as a foreign conflict, rolled the brand new
+// booking back and returned 409 "someone booked that time a moment before you".
+// Not a race, and not self-correcting: it repeated for every visitor, forever.
+//
+// Google's Events resource represents the owner's own copy of an event as the
+// `attendees` entry flagged `self: true`; its `responseStatus` is one of
+// needsAction | declined | tentative | accepted. `declined` there is exactly what
+// freeBusy ignores, so skipping it here is what brings the two back into
+// agreement. A GUEST declining is irrelevant -- the owner is still busy.
+function ownerDeclined(event) {
+  const attendees = event && event.attendees;
+  if (!Array.isArray(attendees)) return false;
+  return attendees.some(a => a && a.self === true && a.responseStatus === 'declined');
+}
+
 function overlapping(events, startMs, endMs) {
   return (events || []).filter(e => {
     if (!e || e.status === 'cancelled') return false;
     if (e.transparency === 'transparent') return false; // marked "free", not busy
+    if (ownerDeclined(e)) return false;                 // freeBusy does not count it either
     const s = instant(e.start), en = instant(e.end);
     if (s === null || en === null) return false;
     // Strict inequality: an event ending exactly when the slot starts does not
@@ -43,4 +65,4 @@ function shouldRollBack(ourEventId, overlappingEvents) {
   return winner !== ourEventId;
 }
 
-module.exports = { EVENT_MARKER, overlapping, shouldRollBack };
+module.exports = { EVENT_MARKER, overlapping, ownerDeclined, shouldRollBack };
