@@ -12,7 +12,34 @@ const { loadTemplate } = require('./_load-template');
 const { makeBookingToken } = require('./_booking-token');
 const { safeEqual } = require('./_admin-auth');
 
-const LEAD_HOURS = Number(process.env.REMINDER_LEAD_HOURS) || 24;
+// Read per call rather than captured once at module load. This single number, the
+// cron period, and the template's minNoticeHours are the three things the whole
+// delivery guarantee rests on (see test/reminder-delivery-guarantee.test.js), and
+// a module-load constant is unreachable from a test that wants to vary it -- which
+// is exactly why the window behaviour went untested through two review rounds.
+// Env vars are fixed for the life of a deployment, so reading per call costs
+// nothing.
+function leadHours() {
+  const n = Number(process.env.REMINDER_LEAD_HOURS);
+  return Number.isFinite(n) && n > 0 ? n : 24;
+}
+
+// The window handed to listEvents: bookings starting between now and now+lead.
+function reminderWindow(nowMs) {
+  return { timeMinMs: nowMs, timeMaxMs: nowMs + leadHours() * 60 * 60 * 1000 };
+}
+
+// Whether a cron run happening at nowMs would send this booking's reminder.
+// listEvents returns everything INTERSECTING the window, so a call already under
+// way comes back too -- the lower bound is what drops it, because reminding
+// someone about a call that has started is worse than useless. The upper bound
+// re-states Google's own filter locally, so the rule lives in one place and the
+// delivery simulation can exercise the real thing instead of a copy of it.
+function wouldRemind(startMs, nowMs) {
+  if (!Number.isFinite(startMs)) return false;
+  const { timeMinMs, timeMaxMs } = reminderWindow(nowMs);
+  return startMs >= timeMinMs && startMs <= timeMaxMs;
+}
 
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
@@ -26,7 +53,7 @@ function authorized(req) {
   return safeEqual(header, `Bearer ${secret}`);
 }
 
-module.exports = async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
   if (!authorized(req)) {
     return res.status(401).json({ ok: false,
@@ -34,13 +61,13 @@ module.exports = async function handler(req, res) {
   }
 
   const now = Date.now();
-  const windowEnd = now + LEAD_HOURS * 60 * 60 * 1000;
+  const listWindow = reminderWindow(now);
 
   // Only events this system created can be reminded -- Omar's own meetings are
   // none of our business.
   const listed = await gcal.listEvents({
-    timeMinIso: new Date(now).toISOString(),
-    timeMaxIso: new Date(windowEnd).toISOString(),
+    timeMinIso: new Date(listWindow.timeMinMs).toISOString(),
+    timeMaxIso: new Date(listWindow.timeMaxMs).toISOString(),
     privateExtendedProperty: `bookingSource=${guard.EVENT_MARKER}`,
   });
   if (!listed.ok) {
@@ -60,7 +87,7 @@ module.exports = async function handler(req, res) {
     if (!meta.visitorEmail) { skipped++; continue; }
 
     const startMs = Date.parse(event.start && event.start.dateTime);
-    if (!Number.isFinite(startMs) || startMs < now) { skipped++; continue; }
+    if (!wouldRemind(startMs, now)) { skipped++; continue; }
 
     try {
       const result = await email.sendReminder({
@@ -96,4 +123,11 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(200).json({ ok: true, considered: listed.events.length, sent, skipped });
-};
+}
+
+module.exports = handler;
+// Exported so the delivery guarantee can be proved against the REAL window
+// arithmetic rather than a re-implementation of it in a test.
+module.exports.leadHours = leadHours;
+module.exports.reminderWindow = reminderWindow;
+module.exports.wouldRemind = wouldRemind;

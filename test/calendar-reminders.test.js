@@ -321,6 +321,129 @@ test('listEvents returning CALENDAR_NOT_CONNECTED -> 503; a generic failure -> 5
   });
 });
 
+// ---------------------------------------------------------------------------
+// The window itself. Until now NOTHING in this file asserted what timeMin/timeMax
+// the handler actually asks Google for, because the lead time was a module-load
+// constant no test could vary. That window IS the reminder mechanism: if it is
+// computed wrongly, every test above still passes (they all hand the handler
+// events directly) while production quietly reminds nobody.
+// ---------------------------------------------------------------------------
+
+const FIXED_NOW = Date.UTC(2027, 6, 14, 0, 0, 0); // a Wednesday, 00:00 UTC
+
+function withFixedNow(nowMs, fn) {
+  const orig = Date.now;
+  Date.now = () => nowMs;
+  return Promise.resolve(fn()).finally(() => { Date.now = orig; });
+}
+
+async function captureWindow(leadEnv) {
+  const had = Object.prototype.hasOwnProperty.call(process.env, 'REMINDER_LEAD_HOURS');
+  const prev = process.env.REMINDER_LEAD_HOURS;
+  if (leadEnv === undefined) delete process.env.REMINDER_LEAD_HOURS;
+  else process.env.REMINDER_LEAD_HOURS = leadEnv;
+
+  try {
+    envSetup();
+    const listSpy = spyStub({ ok: true, events: [] });
+    let arg;
+    await withStubs([{ obj: gcal, key: 'listEvents', value: listSpy }], () =>
+      withFixedNow(FIXED_NOW, async () => {
+        const res = makeRes();
+        await handler(reqGet(SECRET), res);
+        assert.equal(res._status, 200);
+        assert.equal(listSpy.calls.length, 1);
+        arg = listSpy.calls[0][0];
+      }));
+    return arg;
+  } finally {
+    if (had) process.env.REMINDER_LEAD_HOURS = prev;
+    else delete process.env.REMINDER_LEAD_HOURS;
+  }
+}
+
+test('WINDOW: listEvents is asked for exactly [now, now + REMINDER_LEAD_HOURS]', async () => {
+  // The deployed value. If the handler ignored the env var, timeMax would land
+  // 24h out and this fails -- which is the whole point.
+  const arg = await captureWindow('36');
+  assert.equal(arg.timeMinIso, new Date(FIXED_NOW).toISOString(),
+    'timeMin must be now: a window starting in the past would re-list finished calls');
+  assert.equal(arg.timeMaxIso, new Date(FIXED_NOW + 36 * 3600000).toISOString(),
+    'timeMax must be now + 36h, read from REMINDER_LEAD_HOURS');
+});
+
+test('WINDOW: the lead time falls back to 24h when REMINDER_LEAD_HOURS is absent or unusable', async () => {
+  for (const bad of [undefined, '', 'garbage', '0', '-5']) {
+    const arg = await captureWindow(bad);
+    assert.equal(arg.timeMaxIso, new Date(FIXED_NOW + 24 * 3600000).toISOString(),
+      `REMINDER_LEAD_HOURS=${JSON.stringify(bad)} must fall back to 24h, never to 0 or a negative window`);
+  }
+});
+
+test('WINDOW: leadHours() reads the env var live rather than freezing it at module load', () => {
+  const had = Object.prototype.hasOwnProperty.call(process.env, 'REMINDER_LEAD_HOURS');
+  const prev = process.env.REMINDER_LEAD_HOURS;
+  try {
+    process.env.REMINDER_LEAD_HOURS = '36';
+    assert.equal(handler.leadHours(), 36);
+    process.env.REMINDER_LEAD_HOURS = '48';
+    assert.equal(handler.leadHours(), 48,
+      'a module-load constant would still report 36 here -- that is the bug this replaces');
+    assert.deepEqual(handler.reminderWindow(1000),
+      { timeMinMs: 1000, timeMaxMs: 1000 + 48 * 3600000 });
+  } finally {
+    if (had) process.env.REMINDER_LEAD_HOURS = prev;
+    else delete process.env.REMINDER_LEAD_HOURS;
+  }
+});
+
+test('WINDOW: wouldRemind covers both edges -- inclusive at now and at now+lead, exclusive outside', () => {
+  const had = Object.prototype.hasOwnProperty.call(process.env, 'REMINDER_LEAD_HOURS');
+  const prev = process.env.REMINDER_LEAD_HOURS;
+  try {
+    process.env.REMINDER_LEAD_HOURS = '36';
+    const now = FIXED_NOW, lead = 36 * 3600000;
+    assert.equal(handler.wouldRemind(now, now), true, 'starting exactly now: still remind');
+    assert.equal(handler.wouldRemind(now + lead, now), true, 'the far edge is inside the window');
+    assert.equal(handler.wouldRemind(now - 1, now), false, 'already under way: never remind');
+    assert.equal(handler.wouldRemind(now + lead + 1, now), false, 'beyond the window: not yet');
+    assert.equal(handler.wouldRemind(NaN, now), false, 'an unparseable start is never reminded');
+  } finally {
+    if (had) process.env.REMINDER_LEAD_HOURS = prev;
+    else delete process.env.REMINDER_LEAD_HOURS;
+  }
+});
+
+test('WINDOW: an event starting beyond now+lead is skipped even if listEvents hands it over', async () => {
+  // Google's own filter should already have excluded it, so this is belt and
+  // braces -- but the handler must not depend on an upstream filter for a rule it
+  // states itself, or a Google quirk turns into a reminder sent days too early.
+  const had = Object.prototype.hasOwnProperty.call(process.env, 'REMINDER_LEAD_HOURS');
+  const prev = process.env.REMINDER_LEAD_HOURS;
+  process.env.REMINDER_LEAD_HOURS = '24';
+  try {
+    envSetup();
+    const tooFar = makeEvent({ id: 'evt-beyond-window', startMs: futureMs(30) }); // 30h > 24h
+    const inWindow = makeEvent({ id: 'evt-inside-window', startMs: futureMs(5) });
+    const sendSpy = spyStub({ ok: true });
+    await withStubs([
+      { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [tooFar, inWindow] }) },
+      { obj: email, key: 'sendReminder', value: sendSpy },
+      { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    ], async () => {
+      const res = makeRes();
+      await handler(reqGet(SECRET), res);
+      assert.equal(res._status, 200);
+      assert.equal(res._json.sent, 1);
+      assert.equal(res._json.skipped, 1);
+      assert.deepEqual(sendSpy.calls.map(c => c[0].eventId), ['evt-inside-window']);
+    });
+  } finally {
+    if (had) process.env.REMINDER_LEAD_HOURS = prev;
+    else delete process.env.REMINDER_LEAD_HOURS;
+  }
+});
+
 test('a non-GET method returns 405', async () => {
   envSetup();
   const res = makeRes();

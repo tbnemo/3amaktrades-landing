@@ -1,6 +1,6 @@
 {
   "version": 2,
   "crons": [
-    { "path": "/api/calendar-reminders", "schedule": "0 13 * * *" }
+    { "path": "/api/calendar-reminders", "schedule": "0 0 * * *" }
   ]
 }

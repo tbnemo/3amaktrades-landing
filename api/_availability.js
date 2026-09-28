@@ -23,7 +23,17 @@ const DEFAULT_TEMPLATE = {
   },
   slotMinutes: 30,
   bufferMinutes: 15,
-  minNoticeHours: 12,
+  // 24, not 12, and the reason is reminder delivery rather than scheduling taste.
+  // The reminder cron can only run ONCE A DAY (Vercel Hobby caps cron frequency),
+  // so a booking is reminded only if some daily tick falls inside
+  // [max(bookedAt, start - REMINDER_LEAD_HOURS), start]. That interval is
+  // min(noticeHours, leadHours) long, so a daily tick is guaranteed to land in it
+  // only when min(noticeHours, leadHours) >= 24. At 12 the interval could be 12h
+  // long and miss every tick entirely -- a booking that silently got no reminder
+  // at all. See test/reminder-delivery-guarantee.test.js, which proves the
+  // invariant and re-derives it against the live cron schedule in vercel.json.
+  // Lowering this below 24 reopens that hole; that test is what will say so.
+  minNoticeHours: 24,
 };
 
 function clamp(n, lo, hi, fallback) {
