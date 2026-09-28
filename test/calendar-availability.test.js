@@ -25,6 +25,27 @@ function envSetup() {
   store.__setClientForTests(emptyBlobClient());
 }
 
+// The handler reads the real clock (nowMs: Date.now()), so the probe date MUST be
+// derived from now rather than hardcoded. A literal date passes only until the day
+// it arrives: it was three days out when this file was written, and once "today"
+// caught up to it the minimum-notice rule emptied it and the busy-interval test
+// below started failing with "need at least one open slot". Thirty days out clears
+// any plausible minNoticeHours (the cap is 720h = 30d, and the default is a day),
+// and Mon-Fri is what the default template actually opens.
+function futureWeekdayYmd() {
+  const base = new Date(Date.now() + 30 * 86400000);
+  let y = base.getUTCFullYear(), mo = base.getUTCMonth() + 1, d = base.getUTCDate();
+  while (true) {
+    const wd = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+    if (wd >= 1 && wd <= 5) break; // Mon-Fri
+    const next = new Date(Date.UTC(y, mo - 1, d + 1));
+    y = next.getUTCFullYear(); mo = next.getUTCMonth() + 1; d = next.getUTCDate();
+  }
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+const DATE = futureWeekdayYmd();
+
 // gcal.freeBusy is monkey-patched directly (rather than stubbing its fetch
 // layer) because the endpoint only cares about freeBusy's {ok, busy, reason}
 // contract, not how it gets there. Every test that patches it MUST restore
@@ -38,7 +59,7 @@ function withFreeBusy(stub, fn) {
 test('happy path: days=3 returns 3 date keys of parseable ISO slots plus template fields', async () => {
   envSetup();
   await withFreeBusy(async () => ({ ok: true, busy: [] }), async () => {
-    const req = { method: 'GET', query: { date: '2026-09-28', days: '3' } };
+    const req = { method: 'GET', query: { date: DATE, days: '3' } };
     const res = makeRes();
     await handler(req, res);
 
@@ -75,11 +96,11 @@ test('a busy interval reported in numeric epoch ms removes exactly that slot', a
   // Pass 1: no busy intervals at all -- capture the very first open slot.
   let firstSlot;
   await withFreeBusy(async () => ({ ok: true, busy: [] }), async () => {
-    const req = { method: 'GET', query: { date: '2026-09-28' } };
+    const req = { method: 'GET', query: { date: DATE } };
     const res = makeRes();
     await handler(req, res);
     assert.equal(res._status, 200);
-    const slots = res._json.days['2026-09-28'];
+    const slots = res._json.days[DATE];
     assert.ok(slots.length > 0, 'need at least one open slot for this test to mean anything');
     firstSlot = slots[0];
   });
@@ -93,11 +114,11 @@ test('a busy interval reported in numeric epoch ms removes exactly that slot', a
   await withFreeBusy(
     async () => ({ ok: true, busy: [{ start: busyStart, end: busyEnd }] }),
     async () => {
-      const req = { method: 'GET', query: { date: '2026-09-28' } };
+      const req = { method: 'GET', query: { date: DATE } };
       const res = makeRes();
       await handler(req, res);
       assert.equal(res._status, 200);
-      const slots = res._json.days['2026-09-28'];
+      const slots = res._json.days[DATE];
       const stillThere = slots.some(s => s.start === firstSlot.start && s.end === firstSlot.end);
       assert.equal(stillThere, false,
         'the slot matching the reported busy interval must be removed');
@@ -109,7 +130,7 @@ test('Cache-Control: no-store is set on success and on error responses', async (
   envSetup();
 
   await withFreeBusy(async () => ({ ok: true, busy: [] }), async () => {
-    const req = { method: 'GET', query: { date: '2026-09-28' } };
+    const req = { method: 'GET', query: { date: DATE } };
     const res = makeRes();
     await handler(req, res);
     assert.equal(res._status, 200);
@@ -124,7 +145,7 @@ test('Cache-Control: no-store is set on success and on error responses', async (
 
   // CALENDAR_NOT_CONNECTED error response.
   await withFreeBusy(async () => ({ ok: false, reason: gcal.NOT_CONNECTED }), async () => {
-    const req = { method: 'GET', query: { date: '2026-09-28' } };
+    const req = { method: 'GET', query: { date: DATE } };
     const res = makeRes();
     await handler(req, res);
     assert.equal(res._status, 503);
@@ -149,7 +170,7 @@ test('BLOB_NOT_CONFIGURED (503) when the blob store has no credentials', async (
   store.__setClientForTests(emptyBlobClient());
 
   const res = makeRes();
-  await handler({ method: 'GET', query: { date: '2026-09-28' } }, res);
+  await handler({ method: 'GET', query: { date: DATE } }, res);
   assert.equal(res._status, 503);
   assert.equal(res._json.error, 'BLOB_NOT_CONFIGURED');
 
@@ -160,7 +181,7 @@ test('CALENDAR_NOT_CONNECTED (503) when freeBusy reports the calendar is not con
   envSetup();
   await withFreeBusy(async () => ({ ok: false, reason: gcal.NOT_CONNECTED }), async () => {
     const res = makeRes();
-    await handler({ method: 'GET', query: { date: '2026-09-28' } }, res);
+    await handler({ method: 'GET', query: { date: DATE } }, res);
     assert.equal(res._status, 503);
     assert.equal(res._json.error, 'CALENDAR_NOT_CONNECTED');
   });
@@ -170,7 +191,7 @@ test('UPSTREAM (502) when freeBusy fails for any other reason', async () => {
   envSetup();
   await withFreeBusy(async () => ({ ok: false, reason: 'some google 500 error' }), async () => {
     const res = makeRes();
-    await handler({ method: 'GET', query: { date: '2026-09-28' } }, res);
+    await handler({ method: 'GET', query: { date: DATE } }, res);
     assert.equal(res._status, 502);
     assert.equal(res._json.error, 'UPSTREAM');
   });
@@ -183,7 +204,7 @@ test('days is clamped into [1, 31] for out-of-range and non-numeric input', asyn
       ['99', 31], ['0', 1], ['-5', 1], ['abc', 1], [undefined, 1],
     ];
     for (const [daysParam, expectedKeys] of cases) {
-      const query = { date: '2026-09-28' };
+      const query = { date: DATE };
       if (daysParam !== undefined) query.days = daysParam;
       const res = makeRes();
       await handler({ method: 'GET', query }, res);
