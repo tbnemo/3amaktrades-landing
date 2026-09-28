@@ -825,6 +825,13 @@
        rule above filled the whole shape solid, hiding the circle/dot detail
        inside it (looked like a plain blob). Overridden back to outline here. */
     .form-confirm .cta-btn-wa svg.ig-icon { fill: none; stroke: currentColor; }
+    /* same case as the IG glyph: the calendar icon is an outline (rounded body +
+       two tabs + a rule), not a solid one like the WhatsApp glyph, so the blanket
+       fill:currentColor rule above fills its whole body solid gold. An svg's own
+       fill="none" attribute cannot win -- presentation attributes lose to every
+       CSS rule -- so override back to outline here, as .ig-icon does. */
+    .form-confirm .cta-btn-wa svg.cal-icon { fill: none; stroke: currentColor; }
+    #bookingWidgetHost { display: none; margin-block-start: 28px; border-radius: 0; }
 
     /* ══ BAND 6 — MENTOR (Bullion) ══ */
     #mentor { background: var(--void); padding-block: clamp(44px,6vw,86px); }
@@ -1294,6 +1301,27 @@ const t = {
     confirm_ig_btn: "تواصل عبر إنستغرام",
     confirm_discord_label: "بدك تنضم عالمجتمع هلق؟",
     confirm_discord_btn: "انضم لسيرفر الديسكورد",
+    confirm_book_label: "أو بتحب تحجز مكالمة مع عمر مباشرة؟",
+    confirm_book_btn: "احجز مكالمة",
+    book_loading: "عم نجيب الأوقات المتاحة...",
+    book_pick_day: "اختار اليوم",
+    book_pick_time: "اختار الوقت",
+    book_no_slots_day: "ما في أوقات فاضية هذا اليوم.",
+    book_no_slots_range: "ما في أوقات فاضية هالفترة. جرب راسلنا عالواتساب.",
+    book_tz_label: "التوقيت تبعك",
+    book_your_details: "معلوماتك",
+    book_name_label: "الاسم",
+    book_email_label: "الإيميل",
+    book_phone_label: "الموبايل",
+    book_confirm_btn: "ثبّت الحجز",
+    book_confirming: "عم نثبّت الحجز...",
+    book_slot_taken: "هذا الوقت انحجز قبل شوي. اختار وقت تاني.",
+    book_generic_error: "صار خطأ. جرب مرة تانية.",
+    book_unavailable: "الحجز مش متاح هلق. راسلنا عالواتساب وبنرتبلك موعد.",
+    book_booked_title: "تم الحجز! 🎉",
+    book_booked_body: "بعتنالك إيميل فيه كل التفاصيل.",
+    book_today: "اليوم",
+    book_change: "تغيير",
     step_of: "من",
   },
   en: {
@@ -1443,6 +1471,27 @@ const t = {
     confirm_ig_btn: "Chat on Instagram",
     confirm_discord_label: "Want to join the community now?",
     confirm_discord_btn: "Join Discord",
+    confirm_book_label: "Or book a call with Omar directly?",
+    confirm_book_btn: "Book a Call",
+    book_loading: "Loading available times...",
+    book_pick_day: "Pick a day",
+    book_pick_time: "Pick a time",
+    book_no_slots_day: "No times open on this day.",
+    book_no_slots_range: "No times open in this period. Message us on WhatsApp instead.",
+    book_tz_label: "Your timezone",
+    book_your_details: "Your details",
+    book_name_label: "Name",
+    book_email_label: "Email",
+    book_phone_label: "Phone",
+    book_confirm_btn: "Confirm booking",
+    book_confirming: "Confirming...",
+    book_slot_taken: "That time was just taken. Pick another one.",
+    book_generic_error: "Something went wrong. Please try again.",
+    book_unavailable: "Booking isn't available right now. Message us on WhatsApp and we'll set a time.",
+    book_booked_title: "You're booked! 🎉",
+    book_booked_body: "We've emailed you all the details.",
+    book_today: "Today",
+    book_change: "Change",
     step_of: "of",
   }
 };
@@ -2056,6 +2105,18 @@ function render() {
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.3 5.3A18 18 0 0 0 15.6 4a12.3 12.3 0 0 0-.6 1.2 16.5 16.5 0 0 0-5 0A12.3 12.3 0 0 0 9.4 4a18 18 0 0 0-4.7 1.4C1.9 9.3 1.2 13 1.5 16.6a18 18 0 0 0 5.5 2.7c.4-.6.8-1.3 1.2-2a11.6 11.6 0 0 1-1.9-.9l.5-.4a12.9 12.9 0 0 0 10.4 0l.5.4c-.6.3-1.2.6-1.9.9.3.7.8 1.4 1.2 2a18 18 0 0 0 5.5-2.7c.4-4.2-.7-7.8-2.2-11.3ZM9 14.3c-.8 0-1.5-.8-1.5-1.7S8.1 11 9 11s1.5.8 1.5 1.7-.7 1.6-1.5 1.6Zm6 0c-.8 0-1.5-.8-1.5-1.7S14.2 11 15 11s1.5.8 1.5 1.7-.7 1.6-1.5 1.6Z"/></svg>
           <span data-key="confirm_discord_btn"></span>
         </a>
+
+        <!-- Book a Call -- only rendered for the 1k-3k / 3k+ tiers, shown
+             alongside the WhatsApp/Instagram row rather than replacing it. -->
+        <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_book_label"
+           id="confirmBookLabel" style="display:none"></p>
+        <button type="button" class="cta-btn-wa" id="bookCallBtn" style="display:none">
+          <svg class="cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16"/><path d="M8 3v4M16 3v4M3 11h18"/>
+          </svg>
+          <span data-key="confirm_book_btn"></span>
+        </button>
+        <div id="bookingWidgetHost" style="display:none"></div>
       </div>
 
     </div><!-- end form-box -->
@@ -2641,6 +2702,23 @@ function render() {
     document.getElementById('confirmWaLabel').style.display = isLowBudget ? 'none' : '';
     document.getElementById('confirmTalkRow').style.display = isLowBudget ? 'none' : '';
 
+    // The $1k+ tiers can skip the DM round-trip and put a call straight on
+    // Omar's calendar. Everyone else keeps the DM paths unchanged.
+    const canBook = payload.budgetCode === '1k-3k' || payload.budgetCode === '3k+';
+    const bookLabel = document.getElementById('confirmBookLabel');
+    const bookBtn = document.getElementById('bookCallBtn');
+    if (canBook) {
+      bookLabel.style.display = '';
+      bookBtn.style.display = '';
+      // Loaded on demand: most visitors never reach this tier, so the widget
+      // should not be part of the initial page weight.
+      // No { once: true }: the bookingWidgetLoading guard already prevents a
+      // double-mount, and on success the button is hidden. Consuming the listener
+      // on the first click would leave a visually-enabled but dead button if the
+      // widget script failed to load.
+      bookBtn.addEventListener('click', () => openBookingWidget(payload));
+    }
+
     // Ad-pixel conversion event. Inert until the pixel scripts in <head> are
     // uncommented with real Pixel IDs -- fbq/ttq won't exist before that.
     if (typeof fbq === 'function') fbq('track', 'Lead');
@@ -2653,6 +2731,74 @@ function render() {
         name: payload.name, phone: payload.phone, ts: applicationTs,
       })], { type: 'application/json' }));
     }, { once: true });
+  }
+
+  // Pulls in booking-widget.js the first time someone asks to book, then mounts
+  // it with the details the Apply form already collected.
+  let bookingWidgetLoading = false;
+  function openBookingWidget(payload) {
+    if (bookingWidgetLoading) return;
+    bookingWidgetLoading = true;
+
+    const host = document.getElementById('bookingWidgetHost');
+    const btn = document.getElementById('bookCallBtn');
+    // MUST be an explicit value, NOT ''. Unlike confirmWaLabel/confirmTalkRow,
+    // #bookingWidgetHost is hidden by a stylesheet rule as well as by its inline
+    // style, so clearing the inline value falls back to `display:none` from the
+    // rule and the widget mounts into a container the visitor can never see.
+    host.style.display = 'block';
+    btn.disabled = true;
+
+    const mount = () => {
+      btn.style.display = 'none';
+      document.getElementById('confirmBookLabel').style.display = 'none';
+      window.BookingWidget.mount(host, {
+        lang,
+        dir: lang === 'ar' ? 'rtl' : 'ltr',
+        extraFields: {
+          name: payload.name === '—' ? '' : payload.name,
+          email: payload.email === '—' ? '' : payload.email,
+          phone: payload.phone === '—' ? '' : payload.phone,
+        },
+        rangeDays: 14,
+        texts: {
+          loading: txt('book_loading'), pick_day: txt('book_pick_day'),
+          pick_time: txt('book_pick_time'), no_slots_day: txt('book_no_slots_day'),
+          no_slots_range: txt('book_no_slots_range'), tz_label: txt('book_tz_label'),
+          your_details: txt('book_your_details'), name_label: txt('book_name_label'),
+          email_label: txt('book_email_label'), phone_label: txt('book_phone_label'),
+          confirm_btn: txt('book_confirm_btn'), confirming: txt('book_confirming'),
+          slot_taken: txt('book_slot_taken'), generic_error: txt('book_generic_error'),
+          unavailable: txt('book_unavailable'), booked_title: txt('book_booked_title'),
+          booked_body: txt('book_booked_body'), today: txt('book_today'),
+          change: txt('book_change'),
+        },
+        onBooked: () => {
+          // The widget renders its own booked state; nothing more to do here.
+        },
+        onUnavailable: () => {
+          // Booking is down or not connected. Put the DM paths back in front of
+          // them rather than leaving a dead end.
+          document.getElementById('confirmWaLabel').style.display = '';
+          document.getElementById('confirmTalkRow').style.display = '';
+        },
+      });
+    };
+
+    if (window.BookingWidget) return mount();
+    const s = document.createElement('script');
+    s.src = '/booking-widget.js';
+    s.onload = mount;
+    s.onerror = () => {
+      bookingWidgetLoading = false;
+      btn.disabled = false;
+      host.style.display = 'none';
+      // The widget asset failed to load. Put the DM paths back in front of them
+      // rather than leaving a live-looking button and no way to reach anyone.
+      document.getElementById('confirmWaLabel').style.display = '';
+      document.getElementById('confirmTalkRow').style.display = '';
+    };
+    document.head.appendChild(s);
   }
 
   // shake animation
