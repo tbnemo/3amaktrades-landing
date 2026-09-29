@@ -9,6 +9,10 @@ const store = require('../_blob-store');
 const { loadCheckinTemplate } = require('../_load-checkin-template');
 
 module.exports = async function handler(req, res) {
+  // Mirrors admin/checkin-clients.js: the template changes the moment Omar
+  // edits it, and a cached 401 or a cached stale template is worse than no
+  // caching at all.
+  res.setHeader('Cache-Control', 'no-store');
   if (!auth.requireAdmin(req, res)) return;
 
   if (req.method === 'GET') {

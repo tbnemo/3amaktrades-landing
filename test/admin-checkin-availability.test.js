@@ -249,3 +249,20 @@ test('an unsupported method (DELETE) while authenticated -> 405', async () => {
   await handler(authedReq('DELETE'), res);
   assert.equal(res._status, 405);
 });
+
+// Mirrors admin/checkin-clients.js: this template changes the moment Omar
+// edits it, so a cached 401 or a cached stale template is worse than none.
+test('every response carries Cache-Control: no-store', async () => {
+  envSetup();
+  const res = makeRes();
+  await handler(authedReq('GET'), res);
+  assert.equal(res._headers['Cache-Control'], 'no-store');
+});
+
+test('Cache-Control: no-store is set even when unauthenticated', async () => {
+  envSetup();
+  const res = makeRes();
+  await handler({ method: 'GET', headers: {} }, res);
+  assert.equal(res._status, 401);
+  assert.equal(res._headers['Cache-Control'], 'no-store');
+});
