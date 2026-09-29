@@ -250,6 +250,30 @@ test('an unsupported method (DELETE) while authenticated -> 405', async () => {
   assert.equal(res._status, 405);
 });
 
+// Same bug as admin/availability.js: loadCheckinTemplate() returns
+// {ok:false, reason:X, template:<defaults>} for BOTH "blob store never
+// configured" (legitimate first run) AND a genuine read failure. Before this
+// fix, only BLOB_NOT_CONFIGURED was special-cased and every other failure
+// reason fell through to the same 200 used for a real load -- handing back
+// fabricated defaults disguised as Omar's real saved check-in hours. A
+// genuine read failure must surface as a clear error, not a silent 200.
+test('authenticated GET when the read fails for a reason OTHER than BLOB_NOT_CONFIGURED -> 502, not a fabricated 200', async () => {
+  envSetup();
+  await withStubs([
+    { obj: store, key: 'readJson', value: spyStub({ ok: false, reason: 'some-genuine-blob-error' }) },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('GET'), res);
+    assert.equal(res._status, 502);
+    assert.equal(res._json.ok, false);
+    assert.ok(Array.isArray(res._json.errors) && res._json.errors.length > 0);
+    assert.ok(res._json.errors.some(e => /some-genuine-blob-error/.test(e)),
+      `expected the failure reason to surface in the error message, got: ${JSON.stringify(res._json.errors)}`);
+    assert.equal(res._json.template, undefined);
+    assert.equal(res._json.storageMissing, undefined);
+  });
+});
+
 // Mirrors admin/checkin-clients.js: this template changes the moment Omar
 // edits it, so a cached 401 or a cached stale template is worse than none.
 test('every response carries Cache-Control: no-store', async () => {

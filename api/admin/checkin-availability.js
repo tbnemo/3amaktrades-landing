@@ -23,6 +23,22 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, template: tplRes.template,
         usedDefault: true, storageMissing: true });
     }
+    if (!tplRes.ok) {
+      // A genuine read failure (a real Blob API error, corrupted JSON,
+      // network failure) -- NOT the legitimate "never saved yet" case above.
+      // loadCheckinTemplate() still hands back a default template on this
+      // path, but it must never be served as ok:true: the admin page would
+      // render it as if it were Omar's real saved check-in hours, and a
+      // Save from there would silently overwrite them with defaults he
+      // never chose.
+      return res.status(502).json({
+        ok: false,
+        errors: [`Failed to load the saved check-in hours (${tplRes.reason}). ` +
+          'Do not save from this page until this is resolved -- the form has ' +
+          'not loaded real data, and saving now would overwrite the real ' +
+          'check-in hours with defaults.'],
+      });
+    }
     return res.status(200).json({ ok: true, template: tplRes.template,
       usedDefault: !!tplRes.usedDefault, storageMissing: false });
   }
