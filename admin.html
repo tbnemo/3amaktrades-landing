@@ -163,6 +163,12 @@
     .note-error{
       color:var(--gold); font-size:13px; margin-block-start:12px;
     }
+    /* A plain informational hint, not an error -- e.g. the check-in
+       minimum-notice reminder-delivery warning. Never blocks a save. */
+    .field-hint{
+      color:var(--dim); font-size:12px; line-height:1.5;
+      margin-block-start:6px; margin-block-end:0;
+    }
 
     /* ══ weekly availability form ══ */
     .day-row{
@@ -374,6 +380,7 @@
               <div class="field">
                 <label for="chk-minNoticeHours">Minimum notice (hours)</label>
                 <input class="input" type="number" id="chk-minNoticeHours" min="0" max="720" step="1" />
+                <p class="field-hint" id="chk-minNoticeWarning" hidden></p>
               </div>
             </div>
 
@@ -539,6 +546,29 @@
       }
     }
 
+    // The reminder-delivery guarantee (api/calendar-reminders.js +
+    // api/_availability.js -- see test/reminder-delivery-guarantee.test.js)
+    // needs min(minNoticeHours, REMINDER_LEAD_HOURS) >= the cron's period,
+    // effectively 24h since the cron runs once daily on Vercel's Hobby plan.
+    // This mirrors calendar-reminders.js's leadHours() fallback of 24 exactly
+    // -- it is not a separate number, just read here instead of from an env
+    // var this static page has no access to.
+    //
+    // Check-in notice is EXPECTED to be shorter than the applicant one, so a
+    // low value here is a legitimate choice, not a mistake -- hence a plain
+    // warning rather than a blocked save or a raised floor.
+    const REMINDER_LEAD_HOURS_DEFAULT = 24;
+
+    function updateMinNoticeWarning() {
+      const el = $('chk-minNoticeWarning');
+      const hours = Number($('chk-minNoticeHours').value);
+      const tooShort = Number.isFinite(hours) && hours < REMINDER_LEAD_HOURS_DEFAULT;
+      el.textContent = tooShort
+        ? `Bookings made with less than ${REMINDER_LEAD_HOURS_DEFAULT} hours' notice won't receive a reminder email.`
+        : '';
+      el.hidden = !tooShort;
+    }
+
     function populateForm(prefix, template) {
       const days = template.days || {};
       for (const key of DAY_KEYS) {
@@ -552,6 +582,9 @@
       $(`${prefix}minNoticeHours`).value = template.minNoticeHours;
       $(`${prefix}timezoneInput`).value = template.timezone || '';
       updateTzNow(prefix);
+      // The warning applies to the check-in form only -- the applicant one
+      // has no such element, and the spec scopes this warning to check-ins.
+      if (prefix === PREFIX_CHECKINS) updateMinNoticeWarning();
     }
 
     function collectTemplate(prefix) {
@@ -872,6 +905,11 @@
         $(`${prefix}timezoneInput`).addEventListener('input', () => updateTzNow(prefix));
         $(`${prefix}timezoneInput`).addEventListener('change', () => updateTzNow(prefix));
       }
+
+      // Check-in only -- same input/change pattern as the time-zone live
+      // check above, recomputed as the admin types rather than only on save.
+      $('chk-minNoticeHours').addEventListener('input', updateMinNoticeWarning);
+      $('chk-minNoticeHours').addEventListener('change', updateMinNoticeWarning);
     }
 
     $('gateForm').addEventListener('submit', async (e) => {

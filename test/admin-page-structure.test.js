@@ -78,6 +78,58 @@ test('the check-in hours form mirrors the applicant one with a chk- prefix on ev
   }
 });
 
+// The check-in minimum-notice field needs a plain, non-blocking warning when
+// the value is too low for the reminder-delivery guarantee to hold -- NOT a
+// validation error, and NOT present on the applicant form (which has no such
+// element at all).
+test('the check-in minNoticeHours warning element exists, is hidden by default, and is check-in only', () => {
+  const ids = new Set(idsIn(html));
+  assert.ok(ids.has('chk-minNoticeWarning'), 'missing chk-minNoticeWarning element');
+  assert.equal(ids.has('minNoticeWarning'), false,
+    'the reminder-delivery warning is scoped to check-ins only, per the spec');
+
+  const el = html.match(/<p[^>]*id="chk-minNoticeWarning"[^>]*>/);
+  assert.ok(el, 'chk-minNoticeWarning must be a <p>');
+  assert.match(el[0], /\bhidden\b/, 'the warning must start hidden');
+
+  // It must sit right after the chk-minNoticeHours input, inside the same field.
+  const inputAt = html.indexOf('id="chk-minNoticeHours"');
+  const warnAt = html.indexOf('id="chk-minNoticeWarning"');
+  assert.ok(inputAt !== -1 && warnAt > inputAt && warnAt - inputAt < 200,
+    'the warning must sit immediately after the chk-minNoticeHours input');
+});
+
+// The threshold must be the SAME default calendar-reminders.js's leadHours()
+// falls back to, not an invented number -- this is a client-side echo of a
+// server-side constant, and the two must never drift apart.
+test('the minNoticeHours warning uses REMINDER_LEAD_HOURS\'s documented default of 24, not an invented number', () => {
+  assert.match(html, /REMINDER_LEAD_HOURS_DEFAULT\s*=\s*24\b/,
+    'the warning threshold must be the documented REMINDER_LEAD_HOURS default (24)');
+  assert.match(html, /won't receive a reminder email/i);
+});
+
+// Recomputed live as the admin types, on the same input/change pattern the
+// time-zone field already uses -- not only checked on save.
+test('the minNoticeHours warning is wired to the chk-minNoticeHours field\'s own input/change events', () => {
+  const idx = html.indexOf("$('chk-minNoticeHours').addEventListener");
+  assert.ok(idx !== -1, 'chk-minNoticeHours must be wired directly, not only read on submit');
+  const window = html.slice(idx, idx + 400);
+  assert.match(window, /addEventListener\('input',\s*updateMinNoticeWarning\)/);
+  assert.match(window, /addEventListener\('change',\s*updateMinNoticeWarning\)/);
+});
+
+test('saving the check-in hours form does not reject a low minNoticeHours (warning only, never a hard floor)', () => {
+  // The save handler's only rejection path is a non-200/non-ok response from
+  // the server; nothing client-side must short-circuit the submit based on
+  // minNoticeHours. Assert there is no early-return/validation gate keyed on
+  // minNoticeHours inside the submit handler.
+  const submitIdx = html.indexOf('addEventListener(\'submit\'');
+  assert.ok(submitIdx !== -1);
+  const handlerWindow = html.slice(submitIdx, submitIdx + 1500);
+  assert.equal(/minNoticeHours/.test(handlerWindow), false,
+    'the submit handler must not gate on minNoticeHours -- the warning must never block a save');
+});
+
 test('the client manager has a table body, an add form, and its message slots', () => {
   const ids = new Set(idsIn(html));
   const required = [
