@@ -5,6 +5,9 @@ const gcal = require('../api/_google-calendar');
 const guard = require('../api/_booking-guard');
 const email = require('../api/_email');
 const handler = require('../api/calendar-reminders');
+const cemail = require('../api/_checkin-email');
+const loadCheckinMod = require('../api/_load-checkin-template');
+const av = require('../api/_availability');
 
 function makeRes() {
   return {
@@ -449,4 +452,269 @@ test('a non-GET method returns 405', async () => {
   const res = makeRes();
   await handler({ method: 'POST', headers: { authorization: `Bearer ${SECRET}` } }, res);
   assert.equal(res._status, 405);
+});
+
+// ---- audience branching -------------------------------------------------
+// calendar-reminders.js is ONE cron job serving both audiences (Vercel Hobby
+// caps cron count/frequency, and this project already spends its single daily
+// slot here). The loop already walks every event carrying the shared
+// bookingSource marker, so the only thing that must be right is which sender
+// each event gets.
+
+function makeCheckinEvent({ id, startMs, endMs, visitorEmail = EMAIL, reminderSent }) {
+  // The existing makeEvent already merges `extra` into extendedProperties.private,
+  // so the only difference from an applicant fixture is the audience tag.
+  return makeEvent({ id, startMs, endMs, visitorEmail, reminderSent,
+    extra: { audience: 'checkin' } });
+}
+
+test('a checkin-tagged event goes to sendCheckinReminder, never to the applicant sendReminder', async () => {
+  envSetup();
+  const appSpy = spyStub({ ok: true });
+  const ciSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeCheckinEvent({ id: 'evt-ci', startMs: futureMs(2) }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: email, key: 'sendReminder', value: appSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: ciSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.sent, 1);
+    assert.equal(ciSpy.calls.length, 1, 'the check-in sender must be used');
+    assert.equal(appSpy.calls.length, 0, 'the applicant sender must NOT be used');
+  });
+});
+
+test('an untagged (applicant) event still goes to the applicant sendReminder', async () => {
+  envSetup();
+  const appSpy = spyStub({ ok: true });
+  const ciSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeEvent({ id: 'evt-app', startMs: futureMs(2) }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: email, key: 'sendReminder', value: appSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: ciSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    assert.equal(appSpy.calls.length, 1);
+    assert.equal(ciSpy.calls.length, 0);
+  });
+});
+
+test('a mixed batch routes each event to its own sender in ONE run', async () => {
+  envSetup();
+  const appSpy = spyStub({ ok: true });
+  const ciSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeEvent({ id: 'evt-app-1', startMs: futureMs(2) }),
+        makeCheckinEvent({ id: 'evt-ci-1', startMs: futureMs(3) }),
+        makeEvent({ id: 'evt-app-2', startMs: futureMs(4) }),
+        makeCheckinEvent({ id: 'evt-ci-2', startMs: futureMs(5) }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: email, key: 'sendReminder', value: appSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: ciSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.considered, 4);
+    assert.equal(res._json.sent, 4);
+    assert.deepEqual(appSpy.calls.map(c => c[0].eventId).sort(), ['evt-app-1', 'evt-app-2']);
+    assert.deepEqual(ciSpy.calls.map(c => c[0].eventId).sort(), ['evt-ci-1', 'evt-ci-2']);
+  });
+});
+
+// A check-in booked against a DIFFERENT timezone than the applicant hours must
+// be described to Omar in the check-in template's zone, not the applicant one.
+test('a check-in reminder carries the CHECK-IN template timezone; an applicant one carries the applicant zone', async () => {
+  envSetup();
+  const appSpy = spyStub({ ok: true });
+  const ciSpy = spyStub({ ok: true });
+  const checkinTpl = av.normalizeTemplate({
+    timezone: 'Europe/Istanbul',
+    days: av.DEFAULT_TEMPLATE.days,
+    slotMinutes: 15, bufferMinutes: 0, minNoticeHours: 24,
+  });
+  await withStubs([
+    { obj: loadCheckinMod, key: 'loadCheckinTemplate', value: async () => ({ ok: true, template: checkinTpl, usedDefault: false }) },
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeEvent({ id: 'evt-app', startMs: futureMs(2) }),
+        makeCheckinEvent({ id: 'evt-ci', startMs: futureMs(3) }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: email, key: 'sendReminder', value: appSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: ciSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    assert.equal(ciSpy.calls[0][0].templateTimeZone, 'Europe/Istanbul');
+    assert.equal(appSpy.calls[0][0].templateTimeZone, 'America/Toronto');
+  });
+});
+
+test('a check-in reminder receives the full Booking shape the check-in senders expect', async () => {
+  envSetup();
+  const ciSpy = spyStub({ ok: true });
+  const startMs = futureMs(2);
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeCheckinEvent({ id: 'evt-shape', startMs, endMs: startMs + 15 * 60000 }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: cemail, key: 'sendCheckinReminder', value: ciSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    const b = ciSpy.calls[0][0];
+    assert.equal(b.eventId, 'evt-shape');
+    assert.equal(b.name, 'Jane Doe');
+    assert.equal(b.email, EMAIL);
+    assert.equal(b.phone, '555-0100');
+    assert.equal(b.startMs, startMs);
+    assert.equal(b.endMs, startMs + 15 * 60000);
+    assert.equal(b.visitorTimeZone, 'America/Toronto');
+    assert.equal(typeof b.templateTimeZone, 'string');
+    assert.equal(typeof b.manageToken, 'string');
+    assert.ok(b.manageToken.length > 0);
+    assert.equal(b.meetLink, 'https://meet.example/abc');
+    assert.equal(b.lang, 'en');
+  });
+});
+
+test('an already-reminded check-in event is skipped, exactly like an applicant one', async () => {
+  envSetup();
+  const ciSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeCheckinEvent({ id: 'evt-done', startMs: futureMs(2), reminderSent: '1' }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: cemail, key: 'sendCheckinReminder', value: ciSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._json.sent, 0);
+    assert.equal(res._json.skipped, 1);
+    assert.equal(ciSpy.calls.length, 0);
+  });
+});
+
+test('a successful check-in reminder sets reminderSent AFTER the send, never before', async () => {
+  envSetup();
+  const order = [];
+  const patchSpy = async (...args) => { order.push('patch'); return { ok: true, event: {} }; };
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeCheckinEvent({ id: 'evt-flag', startMs: futureMs(2) }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: async () => { order.push('send'); return { ok: true }; } },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._json.sent, 1);
+    assert.deepEqual(order, ['send', 'patch'],
+      'a duplicate reminder is a far smaller failure than a call the client forgets');
+  });
+});
+
+test('a failing check-in reminder leaves the flag unset and raises a system alert', async () => {
+  envSetup();
+  const patchSpy = spyStub({ ok: true, event: {} });
+  const alertSpy = spyStub(undefined);
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeCheckinEvent({ id: 'evt-mailfail', startMs: futureMs(2) }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: async () => ({ ok: false, reason: 'resend 422' }) },
+    { obj: require('../api/_slack'), key: 'postSystemAlert', value: alertSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._json.sent, 0);
+    assert.equal(res._json.skipped, 1);
+    assert.equal(patchSpy.calls.length, 0, 'the flag must stay unset so a later run can retry');
+    assert.equal(alertSpy.calls.length, 1);
+    assert.match(String(alertSpy.calls[0][0]), /evt-mailfail/);
+  });
+});
+
+// Per-item isolation: one throwing check-in must not sink the applicant events
+// in the same batch.
+test('a throwing check-in sender does not prevent the other events in the batch from being reminded', async () => {
+  envSetup();
+  const appSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeCheckinEvent({ id: 'evt-boom', startMs: futureMs(2) }),
+        makeEvent({ id: 'evt-fine', startMs: futureMs(3) }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: cemail, key: 'sendCheckinReminder', value: async () => { throw new Error('boom'); } },
+    { obj: email, key: 'sendReminder', value: appSpy },
+    { obj: require('../api/_slack'), key: 'postSystemAlert', value: async () => {} },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.sent, 1);
+    assert.equal(res._json.skipped, 1);
+    assert.equal(appSpy.calls.length, 1, 'the applicant event must still be reminded');
+  });
+});
+
+test('a check-in event with no visitorEmail is skipped without sending', async () => {
+  envSetup();
+  const ciSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeCheckinEvent({ id: 'evt-noemail', startMs: futureMs(2), visitorEmail: null }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: cemail, key: 'sendCheckinReminder', value: ciSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._json.skipped, 1);
+    assert.equal(ciSpy.calls.length, 0);
+  });
+});
+
+// A failed check-in template read must not stop applicant reminders, and must
+// not stop check-in reminders either -- loadCheckinTemplate always returns a
+// usable default template alongside its !ok.
+test('a failing check-in template read still reminds both audiences', async () => {
+  envSetup();
+  const appSpy = spyStub({ ok: true });
+  const ciSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: loadCheckinMod, key: 'loadCheckinTemplate', value: async () => ({
+        ok: false, reason: 'blob get 500', template: av.normalizeTemplate(av.DEFAULT_TEMPLATE) }) },
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeEvent({ id: 'evt-app', startMs: futureMs(2) }),
+        makeCheckinEvent({ id: 'evt-ci', startMs: futureMs(3) }),
+      ] }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: email, key: 'sendReminder', value: appSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: ciSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.sent, 2);
+    assert.equal(ciSpy.calls[0][0].templateTimeZone, 'America/Toronto');
+  });
 });

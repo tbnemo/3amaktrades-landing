@@ -11,7 +11,13 @@ const email = require('./_email');
 const { loadTemplate } = require('./_load-template');
 const { makeBookingToken } = require('./_booking-token');
 const { safeEqual } = require('./_admin-auth');
-const { postSystemAlert } = require('./_slack');
+// Whole module objects, not destructured -- so a test's monkey-patch of a
+// property (`slack.postSystemAlert = spy`) is visible here at call time
+// instead of being frozen to whatever the property held at require() time.
+const slack = require('./_slack');
+const cemail = require('./_checkin-email');
+const { isCheckinEvent } = require('./_checkin-audience');
+const checkinTemplateMod = require('./_load-checkin-template');
 
 // Read per call rather than captured once at module load. This single number, the
 // cron period, and the template's minNoticeHours are the three things the whole
@@ -79,7 +85,17 @@ async function handler(req, res) {
     });
   }
 
+  // BOTH templates, once per run. The two audiences may sit in different
+  // timezones, and the reminder has to describe the call in the right one.
+  // Making the second read conditional on the batch containing a check-in would
+  // add a branch to the one function whose failure mode is a silently missed
+  // reminder -- one extra blob read a day is the cheaper trade.
+  //
+  // Neither loader can fail destructively: both return a usable normalized
+  // template alongside a !ok, so a blob hiccup degrades the displayed timezone
+  // rather than dropping the reminder.
   const tplRes = await loadTemplate();
+  const checkinTplRes = await checkinTemplateMod.loadCheckinTemplate();
   let sent = 0, skipped = 0;
 
   for (const event of listed.events) {
@@ -90,8 +106,17 @@ async function handler(req, res) {
     const startMs = Date.parse(event.start && event.start.dateTime);
     if (!wouldRemind(startMs, now)) { skipped++; continue; }
 
+    // The ONE audience decision in this loop. `audience` is absent on every
+    // applicant booking (calendar-book.js never writes it), so the default is
+    // the applicant sender and no existing behaviour changes.
+    const isCheckin = isCheckinEvent(meta);
+    const sendReminderFor = isCheckin ? cemail.sendCheckinReminder : email.sendReminder;
+    const templateTimeZone = isCheckin
+      ? checkinTplRes.template.timezone
+      : tplRes.template.timezone;
+
     try {
-      const result = await email.sendReminder({
+      const result = await sendReminderFor({
         eventId: event.id,
         name: meta.visitorName || '—',
         email: meta.visitorEmail,
@@ -99,7 +124,7 @@ async function handler(req, res) {
         startMs,
         endMs: Date.parse(event.end && event.end.dateTime) || startMs,
         visitorTimeZone: meta.visitorTimeZone || 'UTC',
-        templateTimeZone: tplRes.template.timezone,
+        templateTimeZone,
         manageToken: makeBookingToken(event.id, meta.visitorEmail),
         meetLink: gcal.meetLinkFor(event),
         lang: meta.lang || 'en',
@@ -111,21 +136,24 @@ async function handler(req, res) {
         });
         sent++;
       } else {
-        // Leave the flag unset so the next run retries -- though with the current
-        // cron/window settings there's exactly one eligible tick per booking, so
-        // in practice this visitor gets no reminder at all. That's exactly why
-        // this alert matters: it's the only signal anyone gets that it happened.
+        // Leave the flag unset so the next run retries -- though with the
+        // current cron/window settings there's exactly one eligible tick per
+        // booking, so in practice this recipient gets no reminder at all.
+        // That's exactly why this alert matters: it's the only signal anyone
+        // gets that it happened.
         console.error('reminder failed for', event.id, result.reason);
-        await postSystemAlert(`*Reminder send failed* for \`${event.id}\` (${meta.visitorEmail || 'unknown'}): `
-          + `${result.reason}. With the current settings this booking likely gets no reminder at all.`);
+        await slack.postSystemAlert(`*Reminder send failed* for \`${event.id}\` (${meta.visitorEmail || 'unknown'})`
+          + `${isCheckin ? ' [check-in]' : ''}: ${result.reason}. `
+          + `With the current settings this booking likely gets no reminder at all.`);
         skipped++;
       }
     } catch (e) {
       // Per-item isolation: one bad event must not sink the whole batch, and it
       // must NOT be marked reminded -- the next run should retry it.
       console.error('reminder threw for', event.id, e.message);
-      await postSystemAlert(`*Reminder send threw* for \`${event.id}\` (${meta.visitorEmail || 'unknown'}): `
-        + `${e.message}. With the current settings this booking likely gets no reminder at all.`);
+      await slack.postSystemAlert(`*Reminder send threw* for \`${event.id}\` (${meta.visitorEmail || 'unknown'})`
+        + `${isCheckin ? ' [check-in]' : ''}: ${e.message}. `
+        + `With the current settings this booking likely gets no reminder at all.`);
       skipped++;
     }
   }
