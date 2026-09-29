@@ -157,6 +157,52 @@ test('the client email input is required and typed as an email; name and phone a
   }
 });
 
+// Backend fix: a GET on /api/admin/availability or checkin-availability now
+// returns {ok:false, ...} (502) for a genuine read failure, rather than
+// silently disguising it as a successful 200 with fabricated defaults (see
+// api/admin/availability.js and api/admin/checkin-availability.js). The
+// frontend has no jsdom/behavioral test harness in this repo (admin.html's
+// JS is only ever asserted against statically, as the rest of this file
+// does), so this is a structural check that the relevant guard code exists,
+// not a simulated fetch/render test.
+test('loadAvailabilityInto only renders a template when the response is ok:true, not merely when a template key is present', () => {
+  const idx = html.indexOf('async function loadAvailabilityInto');
+  assert.ok(idx !== -1, 'loadAvailabilityInto not found');
+  const fnWindow = html.slice(idx, idx + 2000);
+  assert.match(fnWindow, /data\s*&&\s*data\.ok\s*&&\s*data\.template/,
+    'loadAvailabilityInto must require data.ok, not just data.template, before populating the form -- ' +
+    'a 502 failure response has no template at all, but a shape check alone must not treat any ' +
+    'template-shaped payload as a successful load');
+});
+
+// The whole point of the backend fix is worthless if the admin page still
+// quietly renders nothing-in-particular on a load failure and lets Save
+// proceed as if the form held real data.
+test('loadAvailabilityInto shows a load-error message and disables Save when the GET does not come back ok:true', () => {
+  const idx = html.indexOf('async function loadAvailabilityInto');
+  const fnWindow = html.slice(idx, idx + 2000);
+  assert.match(fnWindow, /submitBtn\.disabled\s*=\s*true/,
+    'a failed load must disable the Save button for that tab');
+  assert.match(fnWindow, /noteEl\.hidden\s*=\s*false/,
+    'a failed load must surface a visible note, not fail silently');
+});
+
+// Disabling the button alone is not a reliable submit guard (Enter-key
+// submits do not consistently respect a disabled submit control across
+// browsers), so the submit handler itself must also refuse to proceed.
+test('the availability form submit handler refuses to submit when its tab never loaded a real template', () => {
+  const idx = html.indexOf('function wireAvailabilityForm');
+  assert.ok(idx !== -1, 'wireAvailabilityForm not found');
+  const fnWindow = html.slice(idx, idx + 1500);
+  assert.match(fnWindow, /loadFailed\[prefix\]/,
+    'the submit handler must check the load-failure flag for its own prefix before collecting/sending the form');
+  // And that check must come before the template is collected/sent.
+  const guardAt = fnWindow.search(/loadFailed\[prefix\]/);
+  const collectAt = fnWindow.indexOf('collectTemplate(prefix)');
+  assert.ok(guardAt !== -1 && collectAt !== -1 && guardAt < collectAt,
+    'the loadFailed guard must run before collectTemplate/submit, not after');
+});
+
 test('the page talks to all four admin endpoints and to no visitor-facing one', () => {
   for (const url of [
     '/api/admin/status', '/api/admin/login',

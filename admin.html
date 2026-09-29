@@ -477,6 +477,20 @@
     const PREFIX_APPLICANTS = '';
     const PREFIX_CHECKINS = 'chk-';
 
+    // Set to true for a prefix when loadAvailabilityInto() could not load a
+    // real template for it (the server's GET returned something other than a
+    // successful ok:true + template -- e.g. the new 502 for a genuine read
+    // failure). The submit handler checks this BEFORE collecting/sending the
+    // form: disabling the Save button alone is not enough to rely on (a form
+    // can still submit via Enter in some browsers), and this is the one place
+    // both tabs' submit handlers already run through.
+    const loadFailed = { [PREFIX_APPLICANTS]: false, [PREFIX_CHECKINS]: false };
+
+    // The storageMissing note's original wording, captured once before any
+    // fetch can overwrite it, so it can be restored if a later successful
+    // load follows an earlier error.
+    const storageMissingText = {};
+
     function buildDayRows(prefix) {
       const wrap = $(`${prefix}daysRows`);
       wrap.innerHTML = '';
@@ -658,18 +672,46 @@
     // how the two would drift -- and a drifted copy on an admin page is how
     // hours get saved to the wrong audience.
     async function loadAvailabilityInto(prefix, endpoint, noteId) {
+      const noteEl = $(noteId);
+      if (!(noteId in storageMissingText)) storageMissingText[noteId] = noteEl.textContent;
+      const submitBtn = $(`${prefix}availabilityForm`).querySelector('button[type="submit"]');
+
+      function showLoadError(msg) {
+        loadFailed[prefix] = true;
+        noteEl.textContent = msg;
+        noteEl.hidden = false;
+        if (submitBtn) submitBtn.disabled = true;
+      }
+
       let res;
       try {
         res = await fetch(endpoint);
       } catch (e) {
+        showLoadError('Could not reach the server to load hours -- try reloading the ' +
+          'page. Do not save until this succeeds, or you may overwrite the real ' +
+          'saved hours with blank defaults.');
         return;
       }
       if (res.status === 401) { showGate(); return; }
       const data = await res.json().catch(() => ({}));
-      if (data && data.template) {
+      if (data && data.ok && data.template) {
+        loadFailed[prefix] = false;
         populateForm(prefix, data.template);
-        $(noteId).hidden = !data.storageMissing;
+        noteEl.textContent = storageMissingText[noteId];
+        noteEl.hidden = !data.storageMissing;
+        if (submitBtn) submitBtn.disabled = false;
+        return;
       }
+      // The server could not load a real template (e.g. the 502 a genuine
+      // read failure now returns) -- data.template does not exist here, so
+      // there is nothing safe to render into the form. Showing the previous
+      // fabricated defaults as if they were real is exactly the bug this
+      // guards against.
+      const msg = (data && Array.isArray(data.errors) && data.errors.length > 0)
+        ? data.errors[0]
+        : `Could not load saved hours (status ${res.status}). Do not save until ` +
+          'this is resolved -- the form has not loaded real data.';
+      showLoadError(msg);
     }
 
     function wireAvailabilityForm(prefix, endpoint, noteId) {
@@ -680,6 +722,18 @@
         errorsEl.hidden = true;
         errorsEl.innerHTML = '';
         successEl.hidden = true;
+
+        // The form never successfully loaded a real template for this tab
+        // (see loadAvailabilityInto's new failure branch) -- submitting now
+        // would save over Omar's real hours with whatever happens to be
+        // sitting in these fields. Checked here, not only via the disabled
+        // button, because a disabled submit button does not reliably block
+        // an Enter-key submit in every browser.
+        if (loadFailed[prefix]) {
+          errorsEl.innerHTML = '<li>Hours failed to load -- reload the page before saving.</li>';
+          errorsEl.hidden = false;
+          return;
+        }
 
         const template = collectTemplate(prefix);
         let res, data;
