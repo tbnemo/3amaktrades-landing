@@ -331,6 +331,30 @@ test('a throwing Slack stub and a throwing email stub still result in a 200', as
   delete require.cache[handlerPath];
 });
 
+// A resolved {ok:false} is not a throw -- the cancellation notice was sent
+// without error and simply failed. That silent failure must still surface,
+// not just the throwing case above.
+test('a cancellation notice that returns {ok:false} raises a system alert but keeps the 200', async () => {
+  envSetup();
+  const alertSpy = spyStub(undefined);
+  await withStubs(baseStubs([
+    { obj: gcal, key: 'getEvent', value: async () => ({ ok: true, event: checkinEvent() }) },
+    { obj: gcal, key: 'deleteEvent', value: async () => ({ ok: true }) },
+    { obj: cemail, key: 'sendCheckinCancellationNotice', value: async () => ({ ok: false, reason: 'resend 422' }) },
+    { obj: require('../api/_slack'), key: 'postSystemAlert', value: alertSpy },
+  ]), async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody() }, res);
+    assert.equal(res._status, 200);
+    assert.deepEqual(res._json, { ok: true });
+    assert.equal(alertSpy.calls.length, 1, 'a silently undelivered cancellation notice must be visible');
+    assert.match(String(alertSpy.calls[0][0]), new RegExp(EVENT_ID));
+    assert.match(String(alertSpy.calls[0][0]), /resend 422/);
+  });
+  delete require.cache[handlerPath];
+});
+
 test('an all-day event still cancels without throwing', async () => {
   envSetup();
   const allDay = checkinEvent();

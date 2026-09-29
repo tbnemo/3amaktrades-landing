@@ -637,6 +637,36 @@ test('a throwing Slack stub and a throwing email stub still result in a 200', as
   delete require.cache[handlerPath];
 });
 
+// A resolved {ok:false} is not a throw -- the reschedule notice was sent
+// without error and simply failed. That silent failure must still surface,
+// not just the throwing case above.
+test('a reschedule notice that returns {ok:false} raises a system alert but keeps the 200', async () => {
+  envSetup();
+  const oldStart = validSlotStartMs();
+  const oldEnd = oldStart + 15 * 60 * 1000;
+  const newStart = oldStart + 2 * 3600 * 1000;
+  const newEnd = newStart + 15 * 60 * 1000;
+  const alertSpy = spyStub(undefined);
+
+  await withStubs(baseStubs([
+    { obj: gcal, key: 'getEvent', value: async () => ({ ok: true, event: checkinEvent({ startMs: oldStart, endMs: oldEnd }) }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: {} }) },
+    { obj: gcal, key: 'listEvents', value: async () => ({
+        ok: true, events: [listedOurs(EVENT_ID, new Date(newStart).toISOString(), new Date(newEnd).toISOString())] }) },
+    { obj: cemail, key: 'sendCheckinRescheduleNotice', value: async () => ({ ok: false, reason: 'resend 422' }) },
+    { obj: require('../api/_slack'), key: 'postSystemAlert', value: alertSpy },
+  ]), async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody(newStart) }, res);
+    assert.equal(res._status, 200);
+    assert.equal(alertSpy.calls.length, 1, 'a silently undelivered reschedule notice must be visible');
+    assert.match(String(alertSpy.calls[0][0]), new RegExp(EVENT_ID));
+    assert.match(String(alertSpy.calls[0][0]), /resend 422/);
+  });
+  delete require.cache[handlerPath];
+});
+
 test('non-POST requests return 405', async () => {
   envSetup();
   for (const method of ['GET', 'PUT', 'DELETE']) {
