@@ -131,6 +131,22 @@ test('the page is marked noindex: a direct client link is not a public page', ()
   assert.match(html, /<meta\s+name="robots"\s+content="noindex/i);
 });
 
+test('a 502 from checkin-verify shows its own message, distinct from the generic non-match copy', () => {
+  const idx = html.indexOf("res.status === 502");
+  assert.ok(idx !== -1, 'the verify submit handler must branch on 502');
+  const window = html.slice(idx, idx + 300);
+  assert.match(window, /Something went wrong checking that/,
+    'a 502 (infra failure) must not collapse into the generic "could not verify" message');
+});
+
+test('the inline error containers announce themselves to screen readers', () => {
+  for (const id of ['verifyError', 'pickerError']) {
+    const el = html.match(new RegExp(`<div[^>]*id="${id}"[^>]*>`));
+    assert.ok(el, `${id} element not found`);
+    assert.match(el[0], /aria-live="polite"/, `#${id} must carry aria-live="polite"`);
+  }
+});
+
 test('slot times are only ever FORMATTED from the absolute ISO instants the server sends', () => {
   // No manual offset arithmetic on instants: the server sends absolute ISO and
   // Intl does the zone work, which is the site-wide rule.

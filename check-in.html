@@ -184,7 +184,7 @@
       <p class="note-dim" style="margin-block-end:22px;">
         Enter the email or phone number Omar has on file for you.
       </p>
-      <div class="note-error" id="verifyError" hidden></div>
+      <div class="note-error" id="verifyError" aria-live="polite" hidden></div>
       <form id="verifyForm" novalidate>
         <div class="field">
           <label for="verifyEmail">Email</label>
@@ -204,7 +204,7 @@
     <!-- STEP 2 ── pick -->
     <section class="panel" id="stepPick" hidden>
       <h2 id="greeting">Pick a time</h2>
-      <div class="note-error" id="pickerError" hidden></div>
+      <div class="note-error" id="pickerError" aria-live="polite" hidden></div>
 
       <div class="day-row">
         <button type="button" class="arrow-btn" id="dayPrev" aria-label="Earlier days">‹</button>
@@ -253,6 +253,7 @@
       dayKeys: [],
       selectedDay: '',
       selectedStart: '', // the absolute ISO instant of the chosen slot
+      rangeStart: '',    // 'YYYY-MM-DD' the current availability fetch started from
       submitting: false,
     };
 
@@ -351,6 +352,13 @@
 
       if (res.status === 503) {
         showVerifyError('Check-in booking is not set up yet. Message Omar directly.');
+        return;
+      }
+      // 502 means the roster or rate-limit store could not be read -- an infra
+      // failure, not a non-match. Distinct from the generic message below so a
+      // real client mid-outage isn't told they look like a stranger.
+      if (res.status === 502) {
+        showVerifyError('Something went wrong checking that -- try again in a moment, or message Omar directly.');
         return;
       }
       // 429 is its own message, not the generic one: unlike a wrong email/phone,
@@ -468,6 +476,7 @@
         hide('pickerLoading');
         $('pickerError').textContent = 'Could not load times -- try again.';
         show('pickerError');
+        updateArrows();
         return;
       }
       hide('pickerLoading');
@@ -477,6 +486,7 @@
           ? 'Booking is temporarily unavailable. Message Omar directly.'
           : 'Could not load times -- try again.';
         show('pickerError');
+        updateArrows();
         return;
       }
 
