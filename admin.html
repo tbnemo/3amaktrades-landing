@@ -229,17 +229,17 @@
     .clients-table th{
       text-align:start; font-size:11px; font-weight:600; letter-spacing:.08em;
       text-transform:uppercase; color:var(--dim);
-      padding-block:8px; border-block-end:1px solid var(--gold-lo);
+      padding-block:8px; padding-inline-end:16px; border-block-end:1px solid var(--gold-lo);
     }
     .clients-table td{
-      padding-block:11px; border-block-end:1px solid #241D08;
+      padding-block:11px; padding-inline-end:16px; border-block-end:1px solid #241D08;
       color:var(--bone); word-break:break-word;
     }
     .clients-table tr:last-child td{border-block-end:none;}
-    .clients-table td.client-actions{text-align:end; white-space:nowrap;}
+    .clients-table td.client-actions{text-align:end; white-space:nowrap; padding-inline-end:0;}
     .client-remove{
       background:transparent; color:var(--dim);
-      font-size:12px; letter-spacing:.06em; padding:4px 0;
+      font-size:12px; letter-spacing:.06em; padding:6px 8px;
     }
     .client-remove:hover{color:var(--gold);}
     .client-remove:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
