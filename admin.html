@@ -199,6 +199,48 @@
     #gateForm .field{max-width:none;margin-block-end:18px;}
     #gateError{color:var(--gold);font-size:13px;margin-block-end:14px;}
 
+    /* ══ tab bar ══ */
+    .tab-bar{
+      display:flex; gap:0; margin-block-end:28px;
+      border-block-end:1px solid var(--gold-lo);
+    }
+    .tab-btn{
+      background:transparent; color:var(--dim);
+      padding:12px 22px; font-size:15px;
+      border-block-end:2px solid transparent;
+      margin-block-end:-1px;
+    }
+    .tab-btn:hover{color:var(--bone);}
+    .tab-btn[aria-selected="true"]{
+      color:var(--gold); border-block-end-color:var(--gold);
+    }
+    .tab-btn:focus-visible{outline:2px solid var(--gold);outline-offset:-2px;}
+
+    /* ══ client list ══ */
+    .clients-table{
+      width:100%; border-collapse:collapse; margin-block-end:24px; font-size:14px;
+    }
+    .clients-table th{
+      text-align:start; font-size:11px; font-weight:600; letter-spacing:.08em;
+      text-transform:uppercase; color:var(--dim);
+      padding-block:8px; border-block-end:1px solid var(--gold-lo);
+    }
+    .clients-table td{
+      padding-block:11px; border-block-end:1px solid #241D08;
+      color:var(--bone); word-break:break-word;
+    }
+    .clients-table tr:last-child td{border-block-end:none;}
+    .clients-table td.client-actions{text-align:end; white-space:nowrap;}
+    .client-remove{
+      background:transparent; color:var(--dim);
+      font-size:12px; letter-spacing:.06em; padding:4px 0;
+    }
+    .client-remove:hover{color:var(--gold);}
+    .client-remove:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+    #clientsEmpty{color:var(--dim);font-size:14px;margin:0 0 24px;}
+    .clients-add-row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;}
+    .clients-add-row .field{flex:1 1 180px;margin-block-end:0;}
+
     [hidden]{display:none !important;}
   </style>
 </head>
@@ -223,9 +265,14 @@
     <div class="wrap">
       <header class="page-head">
         <h1>Booking Admin</h1>
-        <p>Connect the calendar and set the hours strangers are allowed to book.</p>
+        <p>Connect the calendar and set the hours that can be booked.</p>
       </header>
 
+      <!--
+        Readiness and Connect Calendar deliberately sit ABOVE the tab bar: there
+        is one Blob store, one OAuth connection and one Resend key for the whole
+        system, so scoping them inside an audience tab would misrepresent them.
+      -->
       <section class="panel" id="readinessPanel">
         <h2>Readiness</h2>
         <dl class="status-grid">
@@ -246,49 +293,154 @@
         <a id="connectBtn" class="btn-primary" href="/api/calendar-oauth-start">Connect Google Calendar</a>
       </section>
 
-      <section class="panel" id="availabilityPanel">
-        <h2>Weekly Availability</h2>
-        <div id="storageMissingNote" class="note-error" hidden>
-          The Vercel Blob store does not exist yet, so this form shows the default
-          hours only -- saving will fail until the store is created (Storage → Create
-          Database → Blob) and the deployment is redeployed.
-        </div>
+      <div class="tab-bar" id="tabBar" role="tablist" aria-label="Booking audience">
+        <button type="button" class="tab-btn" id="tabApplicants" role="tab"
+                aria-selected="true" aria-controls="panelApplicants">New Applicants</button>
+        <button type="button" class="tab-btn" id="tabCheckins" role="tab"
+                aria-selected="false" aria-controls="panelCheckins">Check-Ins</button>
+      </div>
 
-        <form id="availabilityForm">
-          <div id="daysRows"></div>
-
-          <div class="field-row" style="margin-block-start:24px;">
-            <div class="field">
-              <label for="slotMinutes">Slot length</label>
-              <select class="input" id="slotMinutes"></select>
-            </div>
-            <div class="field">
-              <label for="bufferMinutes">Buffer (minutes)</label>
-              <input class="input" type="number" id="bufferMinutes" min="0" max="240" step="1" />
-            </div>
-            <div class="field">
-              <label for="minNoticeHours">Minimum notice (hours)</label>
-              <input class="input" type="number" id="minNoticeHours" min="0" max="720" step="1" />
-            </div>
+      <div id="panelApplicants" role="tabpanel" aria-labelledby="tabApplicants">
+        <section class="panel" id="availabilityPanel">
+          <h2>Weekly Availability</h2>
+          <div id="storageMissingNote" class="note-error" hidden>
+            The Vercel Blob store does not exist yet, so this form shows the default
+            hours only -- saving will fail until the store is created (Storage → Create
+            Database → Blob) and the deployment is redeployed.
           </div>
 
-          <div class="tz-row">
-            <div class="field">
-              <label for="timezoneInput">Time zone</label>
-              <input class="input" type="text" id="timezoneInput" list="tzList" placeholder="America/Toronto" autocomplete="off" />
-              <datalist id="tzList"></datalist>
+          <form id="availabilityForm">
+            <div id="daysRows"></div>
+
+            <div class="field-row" style="margin-block-start:24px;">
+              <div class="field">
+                <label for="slotMinutes">Slot length</label>
+                <select class="input" id="slotMinutes"></select>
+              </div>
+              <div class="field">
+                <label for="bufferMinutes">Buffer (minutes)</label>
+                <input class="input" type="number" id="bufferMinutes" min="0" max="240" step="1" />
+              </div>
+              <div class="field">
+                <label for="minNoticeHours">Minimum notice (hours)</label>
+                <input class="input" type="number" id="minNoticeHours" min="0" max="720" step="1" />
+              </div>
             </div>
-            <span id="tzNow"></span>
+
+            <div class="tz-row">
+              <div class="field">
+                <label for="timezoneInput">Time zone</label>
+                <input class="input" type="text" id="timezoneInput" list="tzList" placeholder="America/Toronto" autocomplete="off" />
+                <datalist id="tzList"></datalist>
+              </div>
+              <span id="tzNow"></span>
+            </div>
+
+            <ul class="error-list" id="formErrors" hidden></ul>
+            <div class="note-success" id="formSuccess" hidden>Saved.</div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Save Hours</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <div id="panelCheckins" role="tabpanel" aria-labelledby="tabCheckins" hidden>
+        <section class="panel" id="chk-availabilityPanel">
+          <h2>Check-In Availability</h2>
+          <p style="color:var(--dim);font-size:13px;margin:0 0 18px;">
+            Set separately from the new-applicant hours above -- slot length, buffer,
+            minimum notice and time zone are all independent.
+          </p>
+          <div id="chk-storageMissingNote" class="note-error" hidden>
+            The Vercel Blob store does not exist yet, so this form shows the default
+            hours only -- saving will fail until the store is created (Storage → Create
+            Database → Blob) and the deployment is redeployed.
           </div>
 
-          <ul class="error-list" id="formErrors" hidden></ul>
-          <div class="note-success" id="formSuccess" hidden>Saved.</div>
+          <form id="chk-availabilityForm">
+            <div id="chk-daysRows"></div>
 
-          <div class="form-actions">
-            <button type="submit" class="btn-primary">Save Hours</button>
+            <div class="field-row" style="margin-block-start:24px;">
+              <div class="field">
+                <label for="chk-slotMinutes">Slot length</label>
+                <select class="input" id="chk-slotMinutes"></select>
+              </div>
+              <div class="field">
+                <label for="chk-bufferMinutes">Buffer (minutes)</label>
+                <input class="input" type="number" id="chk-bufferMinutes" min="0" max="240" step="1" />
+              </div>
+              <div class="field">
+                <label for="chk-minNoticeHours">Minimum notice (hours)</label>
+                <input class="input" type="number" id="chk-minNoticeHours" min="0" max="720" step="1" />
+              </div>
+            </div>
+
+            <div class="tz-row">
+              <div class="field">
+                <label for="chk-timezoneInput">Time zone</label>
+                <input class="input" type="text" id="chk-timezoneInput" list="chk-tzList" placeholder="America/Toronto" autocomplete="off" />
+                <datalist id="chk-tzList"></datalist>
+              </div>
+              <span id="chk-tzNow"></span>
+            </div>
+
+            <ul class="error-list" id="chk-formErrors" hidden></ul>
+            <div class="note-success" id="chk-formSuccess" hidden>Saved.</div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Save Check-In Hours</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel" id="clientsPanel">
+          <h2>Check-In Clients</h2>
+          <p style="color:var(--dim);font-size:13px;margin:0 0 18px;">
+            Only people on this list can book a check-in call. Email is required --
+            it is the only channel confirmations and cancellations go through.
+            Phone is optional, and just gives them a second way to identify
+            themselves. Adding an email that is already listed updates that entry.
+          </p>
+          <div id="clientsStorageMissingNote" class="note-error" hidden>
+            The Vercel Blob store does not exist yet, so the client list cannot be
+            saved. Create it (Storage → Create Database → Blob) and redeploy.
           </div>
-        </form>
-      </section>
+
+          <table class="clients-table">
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Phone</th><th></th></tr>
+            </thead>
+            <tbody id="clientsTableBody"></tbody>
+          </table>
+          <p id="clientsEmpty" hidden>No clients yet. Add the first one below.</p>
+
+          <form id="clientAddForm">
+            <div class="clients-add-row">
+              <div class="field">
+                <label for="clientName">Name</label>
+                <input class="input" type="text" id="clientName" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="clientEmail">Email (required)</label>
+                <input class="input" type="email" id="clientEmail" autocomplete="off" required />
+              </div>
+              <div class="field">
+                <label for="clientPhone">Phone (optional)</label>
+                <input class="input" type="tel" id="clientPhone" autocomplete="off" />
+              </div>
+            </div>
+
+            <ul class="error-list" id="clientErrors" hidden></ul>
+            <div class="note-success" id="clientSuccess" hidden>Saved.</div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Add Client</button>
+            </div>
+          </form>
+        </section>
+      </div>
     </div>
   </div>
 
@@ -313,8 +465,13 @@
 
     function $(id) { return document.getElementById(id); }
 
-    function buildDayRows() {
-      const wrap = $('daysRows');
+    // Every field is addressed as prefix + baseId. The applicant prefix is the
+    // empty string, so its ids are unchanged; the check-in prefix is 'chk-'.
+    const PREFIX_APPLICANTS = '';
+    const PREFIX_CHECKINS = 'chk-';
+
+    function buildDayRows(prefix) {
+      const wrap = $(`${prefix}daysRows`);
       wrap.innerHTML = '';
       for (const key of DAY_KEYS) {
         const row = document.createElement('div');
@@ -322,19 +479,19 @@
         row.dataset.day = key;
         row.innerHTML = `
           <label class="day-toggle">
-            <input type="checkbox" id="day-${key}-enabled" />
+            <input type="checkbox" id="${prefix}day-${key}-enabled" />
             <span>${DAY_LABELS[key]}</span>
           </label>
-          <input class="input hhmm" type="text" id="day-${key}-start" placeholder="09:00" maxlength="5" inputmode="numeric" />
+          <input class="input hhmm" type="text" id="${prefix}day-${key}-start" placeholder="09:00" maxlength="5" inputmode="numeric" />
           <span class="day-to">to</span>
-          <input class="input hhmm" type="text" id="day-${key}-end" placeholder="17:00" maxlength="5" inputmode="numeric" />
+          <input class="input hhmm" type="text" id="${prefix}day-${key}-end" placeholder="17:00" maxlength="5" inputmode="numeric" />
         `;
         wrap.appendChild(row);
       }
     }
 
-    function buildSlotOptions() {
-      const sel = $('slotMinutes');
+    function buildSlotOptions(prefix) {
+      const sel = $(`${prefix}slotMinutes`);
       sel.innerHTML = '';
       for (const m of SLOT_MINUTE_OPTIONS) {
         const opt = document.createElement('option');
@@ -344,8 +501,8 @@
       }
     }
 
-    function buildTimezoneList() {
-      const list = $('tzList');
+    function buildTimezoneList(prefix) {
+      const list = $(`${prefix}tzList`);
       list.innerHTML = '';
       let zones = null;
       try {
@@ -365,9 +522,9 @@
 
     // Recomputed whenever the field changes, so picking the wrong zone is
     // obvious immediately instead of silently shifting every future booking.
-    function updateTzNow() {
-      const tzValue = $('timezoneInput').value.trim();
-      const out = $('tzNow');
+    function updateTzNow(prefix) {
+      const tzValue = $(`${prefix}timezoneInput`).value.trim();
+      const out = $(`${prefix}tzNow`);
       if (!tzValue) { out.textContent = ''; out.classList.remove('error-text'); return; }
       try {
         const fmt = new Intl.DateTimeFormat('en-US', {
@@ -382,36 +539,36 @@
       }
     }
 
-    function populateForm(template) {
+    function populateForm(prefix, template) {
       const days = template.days || {};
       for (const key of DAY_KEYS) {
         const d = days[key] || { enabled: false, start: '09:00', end: '17:00' };
-        $(`day-${key}-enabled`).checked = d.enabled === true;
-        $(`day-${key}-start`).value = d.start || '09:00';
-        $(`day-${key}-end`).value = d.end || '17:00';
+        $(`${prefix}day-${key}-enabled`).checked = d.enabled === true;
+        $(`${prefix}day-${key}-start`).value = d.start || '09:00';
+        $(`${prefix}day-${key}-end`).value = d.end || '17:00';
       }
-      $('slotMinutes').value = String(template.slotMinutes);
-      $('bufferMinutes').value = template.bufferMinutes;
-      $('minNoticeHours').value = template.minNoticeHours;
-      $('timezoneInput').value = template.timezone || '';
-      updateTzNow();
+      $(`${prefix}slotMinutes`).value = String(template.slotMinutes);
+      $(`${prefix}bufferMinutes`).value = template.bufferMinutes;
+      $(`${prefix}minNoticeHours`).value = template.minNoticeHours;
+      $(`${prefix}timezoneInput`).value = template.timezone || '';
+      updateTzNow(prefix);
     }
 
-    function collectTemplate() {
+    function collectTemplate(prefix) {
       const days = {};
       for (const key of DAY_KEYS) {
         days[key] = {
-          enabled: $(`day-${key}-enabled`).checked,
-          start: $(`day-${key}-start`).value.trim(),
-          end: $(`day-${key}-end`).value.trim(),
+          enabled: $(`${prefix}day-${key}-enabled`).checked,
+          start: $(`${prefix}day-${key}-start`).value.trim(),
+          end: $(`${prefix}day-${key}-end`).value.trim(),
         };
       }
       return {
-        timezone: $('timezoneInput').value.trim(),
+        timezone: $(`${prefix}timezoneInput`).value.trim(),
         days,
-        slotMinutes: Number($('slotMinutes').value),
-        bufferMinutes: Number($('bufferMinutes').value),
-        minNoticeHours: Number($('minNoticeHours').value),
+        slotMinutes: Number($(`${prefix}slotMinutes`).value),
+        bufferMinutes: Number($(`${prefix}bufferMinutes`).value),
+        minNoticeHours: Number($(`${prefix}minNoticeHours`).value),
       };
     }
 
@@ -464,35 +621,257 @@
       return true;
     }
 
-    async function loadAvailability() {
+    // One loader and one submit handler for BOTH hours forms. A second copy is
+    // how the two would drift -- and a drifted copy on an admin page is how
+    // hours get saved to the wrong audience.
+    async function loadAvailabilityInto(prefix, endpoint, noteId) {
       let res;
       try {
-        res = await fetch('/api/admin/availability');
+        res = await fetch(endpoint);
       } catch (e) {
         return;
       }
       if (res.status === 401) { showGate(); return; }
       const data = await res.json().catch(() => ({}));
       if (data && data.template) {
-        populateForm(data.template);
-        $('storageMissingNote').hidden = !data.storageMissing;
+        populateForm(prefix, data.template);
+        $(noteId).hidden = !data.storageMissing;
       }
     }
 
+    function wireAvailabilityForm(prefix, endpoint, noteId) {
+      const errorsEl = $(`${prefix}formErrors`);
+      const successEl = $(`${prefix}formSuccess`);
+      $(`${prefix}availabilityForm`).addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorsEl.hidden = true;
+        errorsEl.innerHTML = '';
+        successEl.hidden = true;
+
+        const template = collectTemplate(prefix);
+        let res, data;
+        try {
+          res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ template }),
+          });
+          data = await res.json().catch(() => ({}));
+        } catch (err) {
+          errorsEl.innerHTML = '<li>Network error -- try again.</li>';
+          errorsEl.hidden = false;
+          return;
+        }
+
+        if (res.status === 401) { showGate(); return; }
+
+        if (res.status === 200 && data.ok) {
+          successEl.hidden = false;
+          populateForm(prefix, data.template);
+          $(noteId).hidden = true;
+          return;
+        }
+
+        const errs = Array.isArray(data.errors) && data.errors.length > 0
+          ? data.errors
+          : [`Save failed (status ${res.status})`];
+        for (const msg of errs) {
+          const li = document.createElement('li');
+          li.textContent = msg;
+          errorsEl.appendChild(li);
+        }
+        errorsEl.hidden = false;
+      });
+    }
+
+    // ── tabs ────────────────────────────────────────────────────────────────
+    function selectTab(which) {
+      const applicants = which === 'applicants';
+      $('tabApplicants').setAttribute('aria-selected', applicants ? 'true' : 'false');
+      $('tabCheckins').setAttribute('aria-selected', applicants ? 'false' : 'true');
+      $('panelApplicants').hidden = !applicants;
+      $('panelCheckins').hidden = applicants;
+    }
+
+    // ── client manager ──────────────────────────────────────────────────────
+    function renderClients(clients) {
+      const body = $('clientsTableBody');
+      body.innerHTML = '';
+      const list = Array.isArray(clients) ? clients : [];
+      $('clientsEmpty').hidden = list.length > 0;
+
+      for (const c of list) {
+        const tr = document.createElement('tr');
+
+        // textContent, never innerHTML: a client's own name is data, and this
+        // page renders it straight back.
+        const nameTd = document.createElement('td');
+        nameTd.textContent = c.name || '—';
+        const emailTd = document.createElement('td');
+        emailTd.textContent = c.email;
+        const phoneTd = document.createElement('td');
+        phoneTd.textContent = c.phone || '—';
+
+        const actionsTd = document.createElement('td');
+        actionsTd.className = 'client-actions';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'client-remove';
+        btn.textContent = 'Remove';
+        // The email is the record key, so it is what the DELETE carries.
+        btn.dataset.email = c.email;
+        actionsTd.appendChild(btn);
+
+        tr.append(nameTd, emailTd, phoneTd, actionsTd);
+        body.appendChild(tr);
+      }
+    }
+
+    function showClientErrors(messages) {
+      const el = $('clientErrors');
+      el.innerHTML = '';
+      for (const msg of messages) {
+        const li = document.createElement('li');
+        li.textContent = msg;
+        el.appendChild(li);
+      }
+      el.hidden = false;
+    }
+
+    async function loadClients() {
+      let res;
+      try {
+        res = await fetch('/api/admin/checkin-clients');
+      } catch (e) {
+        return;
+      }
+      if (res.status === 401) { showGate(); return; }
+      const data = await res.json().catch(() => ({}));
+      if (data && data.ok) {
+        renderClients(data.clients);
+        $('clientsStorageMissingNote').hidden = !data.storageMissing;
+      }
+    }
+
+    function wireClientManager() {
+      $('clientAddForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        $('clientErrors').hidden = true;
+        $('clientSuccess').hidden = true;
+
+        const client = {
+          name: $('clientName').value.trim(),
+          email: $('clientEmail').value.trim(),
+          phone: $('clientPhone').value.trim(),
+        };
+        // The server validates too -- this is only so the obvious case does not
+        // need a round trip.
+        if (!client.email) {
+          showClientErrors(['Email is required.']);
+          return;
+        }
+
+        let res, data;
+        try {
+          res = await fetch('/api/admin/checkin-clients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client }),
+          });
+          data = await res.json().catch(() => ({}));
+        } catch (err) {
+          showClientErrors(['Network error -- try again.']);
+          return;
+        }
+
+        if (res.status === 401) { showGate(); return; }
+
+        if (res.status === 200 && data.ok) {
+          renderClients(data.clients);
+          $('clientsStorageMissingNote').hidden = true;
+          $('clientSuccess').hidden = false;
+          $('clientName').value = '';
+          $('clientEmail').value = '';
+          $('clientPhone').value = '';
+          return;
+        }
+        showClientErrors(Array.isArray(data.errors) && data.errors.length > 0
+          ? data.errors
+          : [`Save failed (status ${res.status})`]);
+      });
+
+      // Delegated, because the rows are re-rendered after every change and a
+      // per-row listener would be re-attached (and leak) each time.
+      $('clientsTableBody').addEventListener('click', async (e) => {
+        const btn = e.target.closest('.client-remove');
+        if (!btn) return;
+        const email = btn.dataset.email;
+        if (!email) return;
+        if (!window.confirm(`Remove ${email} from the check-in client list?`)) return;
+
+        $('clientErrors').hidden = true;
+        $('clientSuccess').hidden = true;
+        btn.disabled = true;
+
+        let res, data;
+        try {
+          res = await fetch('/api/admin/checkin-clients', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+          data = await res.json().catch(() => ({}));
+        } catch (err) {
+          btn.disabled = false;
+          showClientErrors(['Network error -- try again.']);
+          return;
+        }
+
+        if (res.status === 401) { showGate(); return; }
+
+        if (res.status === 200 && data.ok) {
+          renderClients(data.clients);
+          return;
+        }
+        btn.disabled = false;
+        showClientErrors(Array.isArray(data.errors) && data.errors.length > 0
+          ? data.errors
+          : [`Remove failed (status ${res.status})`]);
+      });
+    }
+
+    async function loadAllPanels() {
+      await loadAvailabilityInto(PREFIX_APPLICANTS, '/api/admin/availability', 'storageMissingNote');
+      await loadAvailabilityInto(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');
+      await loadClients();
+    }
+
     async function init() {
-      buildDayRows();
-      buildSlotOptions();
-      buildTimezoneList();
+      for (const prefix of [PREFIX_APPLICANTS, PREFIX_CHECKINS]) {
+        buildDayRows(prefix);
+        buildSlotOptions(prefix);
+        buildTimezoneList(prefix);
+      }
 
       if (new URLSearchParams(location.search).get('connected') === '1') {
         $('connectSuccess').hidden = false;
       }
 
-      const authed = await loadStatus();
-      if (authed) await loadAvailability();
+      selectTab('applicants');
+      $('tabApplicants').addEventListener('click', () => selectTab('applicants'));
+      $('tabCheckins').addEventListener('click', () => selectTab('checkins'));
 
-      $('timezoneInput').addEventListener('input', updateTzNow);
-      $('timezoneInput').addEventListener('change', updateTzNow);
+      wireAvailabilityForm(PREFIX_APPLICANTS, '/api/admin/availability', 'storageMissingNote');
+      wireAvailabilityForm(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');
+      wireClientManager();
+
+      const authed = await loadStatus();
+      if (authed) await loadAllPanels();
+
+      for (const prefix of [PREFIX_APPLICANTS, PREFIX_CHECKINS]) {
+        $(`${prefix}timezoneInput`).addEventListener('input', () => updateTzNow(prefix));
+        $(`${prefix}timezoneInput`).addEventListener('change', () => updateTzNow(prefix));
+      }
     }
 
     $('gateForm').addEventListener('submit', async (e) => {
@@ -510,7 +889,7 @@
         $('passcodeInput').value = '';
         if (res.status === 200) {
           const authed = await loadStatus();
-          if (authed) await loadAvailability();
+          if (authed) await loadAllPanels();
           return;
         }
         const data = await res.json().catch(() => ({}));
@@ -520,47 +899,6 @@
         $('gateError').textContent = 'Network error -- try again.';
         $('gateError').hidden = false;
       }
-    });
-
-    $('availabilityForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      $('formErrors').hidden = true;
-      $('formErrors').innerHTML = '';
-      $('formSuccess').hidden = true;
-
-      const template = collectTemplate();
-      let res, data;
-      try {
-        res = await fetch('/api/admin/availability', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ template }),
-        });
-        data = await res.json().catch(() => ({}));
-      } catch (err) {
-        $('formErrors').innerHTML = '<li>Network error -- try again.</li>';
-        $('formErrors').hidden = false;
-        return;
-      }
-
-      if (res.status === 401) { showGate(); return; }
-
-      if (res.status === 200 && data.ok) {
-        $('formSuccess').hidden = false;
-        populateForm(data.template);
-        $('storageMissingNote').hidden = true;
-        return;
-      }
-
-      const errs = Array.isArray(data.errors) && data.errors.length > 0
-        ? data.errors
-        : [`Save failed (status ${res.status})`];
-      for (const msg of errs) {
-        const li = document.createElement('li');
-        li.textContent = msg;
-        $('formErrors').appendChild(li);
-      }
-      $('formErrors').hidden = false;
     });
 
     init();
