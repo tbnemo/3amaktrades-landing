@@ -13,6 +13,14 @@ const LOCKOUT_MS = 15 * 60 * 1000;
 // counts toward a lock anyway (see the `stale` check below) -- pruning here
 // just keeps a low-traffic blob from growing forever.
 const PRUNE_AFTER_MS = LOCKOUT_MS;
+// A hard ceiling on top of the age-based prune. Age alone caps growth only
+// across time; within one lockout window, an attacker rotating through many
+// different submitted identifiers can still grow the table arbitrarily,
+// and every failed attempt does a full read-modify-write of the whole
+// table -- a cost/latency amplification, not a bypass (per-identifier
+// lockouts still work correctly either way). Oldest-by-lastFailureMs is
+// dropped first once the table exceeds this.
+const MAX_ENTRIES = 500;
 
 function keyFor(identifier) {
   return crypto.createHash('sha256')
@@ -38,6 +46,21 @@ function pruneStale(table, nowMs) {
     const recentFailure = (nowMs - entry.lastFailureMs) < PRUNE_AFTER_MS;
     if (stillLocked || recentFailure) out[k] = entry;
   }
+  return capEntries(out);
+}
+
+// Drops the OLDEST entries (by lastFailureMs) once the table exceeds
+// MAX_ENTRIES, after age-based pruning has already run. A still-locked entry
+// can still be dropped here -- the cap is a hard ceiling, not a second
+// lockout check -- but that only matters once traffic is already far outside
+// anything this endpoint sees in practice.
+function capEntries(table) {
+  const keys = Object.keys(table);
+  if (keys.length <= MAX_ENTRIES) return table;
+  keys.sort((a, b) => table[a].lastFailureMs - table[b].lastFailureMs);
+  const drop = keys.length - MAX_ENTRIES;
+  const out = {};
+  for (let i = drop; i < keys.length; i++) out[keys[i]] = table[keys[i]];
   return out;
 }
 

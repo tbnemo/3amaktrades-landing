@@ -122,3 +122,41 @@ test('recordFailure() reports locked when the store cannot be read, matching the
   const result = await rl.recordFailure('anyone@example.com');
   assert.equal(result.locked, true);
 });
+
+// A cost/latency amplification, not a security bypass (per-identifier
+// lockouts still work correctly regardless of table size): an attacker
+// rotating through many different submitted identifiers within one 15-minute
+// window must not be able to grow the table without bound, since every
+// failed attempt does a full read-modify-write of the whole table.
+test('the table is capped at 500 entries: once over, the OLDEST-by-lastFailureMs entries are dropped first', async () => {
+  envSetup();
+  store.__setClientForTests(fakeBlobClient());
+  const now = Date.now();
+
+  // Seed 502 distinct, unlocked, non-stale entries directly -- two over the
+  // cap -- each with a strictly increasing lastFailureMs so "oldest" is
+  // unambiguous. None of these are stale (all within PRUNE_AFTER_MS of now),
+  // so only the cap, not the age-based prune, can be responsible for any drop.
+  const seeded = {};
+  for (let i = 0; i < 502; i++) {
+    seeded[`seed-${i}`] = { failures: 1, lastFailureMs: now - (502 - i), lockedUntilMs: 0 };
+  }
+  await store.writeJson(store.CHECKIN_VERIFY_ATTEMPTS_BLOB, seeded);
+
+  // clear() runs the seeded table through pruneStale (and therefore the cap)
+  // on an identifier that isn't even in the table, so the only effect on the
+  // stored table is whatever pruneStale itself does.
+  await rl.clear('not-in-the-table@example.com', now);
+
+  const read = await store.readJson(store.CHECKIN_VERIFY_ATTEMPTS_BLOB);
+  const keys = Object.keys(read.data);
+  assert.equal(keys.length, 500, 'the table must be capped at 500 entries');
+
+  // The two OLDEST seeded entries (seed-0, seed-1) must be the ones dropped;
+  // every entry within the cap must survive untouched.
+  assert.equal('seed-0' in read.data, false, 'the oldest entry must be dropped first');
+  assert.equal('seed-1' in read.data, false, 'the second-oldest entry must be dropped first');
+  for (let i = 2; i < 502; i++) {
+    assert.ok(`seed-${i}` in read.data, `seed-${i} is within the cap and must not be lost`);
+  }
+});
