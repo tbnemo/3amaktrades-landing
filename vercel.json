@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "cleanUrls": true,
   "crons": [
     { "path": "/api/calendar-reminders", "schedule": "0 0 * * *" }
   ]
