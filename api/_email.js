@@ -132,4 +132,9 @@ async function sendReminder(b) {
 module.exports = {
   sendBookingConfirmation, sendRescheduleNotice, sendCancellationNotice,
   sendReminder, formatWhen, escapeHtml,
+  // Exported for api/_checkin-email.js. The Resend POST and the timezone
+  // formatting are transport-layer plumbing, not audience-facing copy, so the
+  // check-in templates share them rather than growing a second HTTP path that
+  // would later need the same retry/env handling fixed twice.
+  send,
 };

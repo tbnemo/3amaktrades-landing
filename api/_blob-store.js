@@ -17,6 +17,18 @@ const OAUTH_BLOB = 'oauth-refresh-token.json';
 // someone is guessing.
 const LOGIN_ATTEMPTS_BLOB = 'login-attempts.json';
 
+// The check-in audience's documents. Same shape discipline as the pair
+// above -- both private, both read with useCache:false. The availability
+// template is an INDEPENDENT document from AVAILABILITY_BLOB, not a section of
+// it: check-in slot length, buffer, notice and timezone are set separately.
+const CHECKIN_AVAILABILITY_BLOB = 'checkin-availability-template.json';
+// { clients: [{ name, email, phone }] }. `email` is the record key and is always
+// present; `phone` is optional.
+const CHECKIN_CLIENTS_BLOB = 'checkin-clients.json';
+// Rate-limit state for /api/checkin-verify (Task 6) -- keyed per submitted
+// identifier, not a single global counter (see Global Constraints for why).
+const CHECKIN_VERIFY_ATTEMPTS_BLOB = 'checkin-verify-attempts.json';
+
 let client = { get: vercelBlob.get, put: vercelBlob.put };
 
 // Tests inject a fake so the suite never needs a real Blob store.
@@ -61,4 +73,5 @@ async function writeJson(pathname, data) {
 module.exports = {
   readJson, writeJson, isConfigured, __setClientForTests,
   BLOB_NOT_CONFIGURED, AVAILABILITY_BLOB, OAUTH_BLOB, LOGIN_ATTEMPTS_BLOB,
+  CHECKIN_AVAILABILITY_BLOB, CHECKIN_CLIENTS_BLOB, CHECKIN_VERIFY_ATTEMPTS_BLOB,
 };

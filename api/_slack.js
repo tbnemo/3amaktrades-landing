@@ -8,6 +8,14 @@ const CHANNEL_RESCHEDULED_CALLS = 'C0C5CRRRJP4'; // #5-rescheduled-calls
 const CHANNEL_CANCELLED_CALLS = 'C0C5EU6RPLZ'; // #6-cancelled-calls
 const CHANNEL_SYSTEM_ALERTS = 'C0C56PC8BPV'; // #7-system-alerts
 
+// The check-in audience's own three channels, mirroring #4/#5/#6 exactly.
+// Backend FAILURES from the check-in endpoints do NOT get a channel here --
+// they reuse postSystemAlert/#7-system-alerts, which is infra-level and
+// audience-agnostic; a duplicate would split one signal across two places.
+const CHANNEL_CHECKIN_BOOKED = 'C0C5FTTA081';      // #8-checkin-booked
+const CHANNEL_CHECKIN_RESCHEDULED = 'C0C5FTTP1J5'; // #9-checkin-rescheduled
+const CHANNEL_CHECKIN_CANCELLED = 'C0C5C1U12DC';   // #10-checkin-cancelled
+
 // Gets a shareable link to a specific message, so a ping in another channel
 // can point back to the full application instead of repeating its contents.
 async function getPermalink(channelId, messageTs) {
@@ -104,4 +112,5 @@ module.exports = {
   postToSlack, getPermalink, isRepeatSubmission, postSystemAlert,
   CHANNEL_NEW_APPLICATIONS, CHANNEL_INCOMPLETE_LEADS, CHANNEL_WARM_LEADS,
   CHANNEL_NEW_CALLS_BOOKED, CHANNEL_RESCHEDULED_CALLS, CHANNEL_CANCELLED_CALLS, CHANNEL_SYSTEM_ALERTS,
+  CHANNEL_CHECKIN_BOOKED, CHANNEL_CHECKIN_RESCHEDULED, CHANNEL_CHECKIN_CANCELLED,
 };
