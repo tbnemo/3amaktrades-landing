@@ -3,6 +3,7 @@
 const gcal = require('./_google-calendar');
 const email = require('./_email');
 const bslack = require('./_booking-slack');
+const { postSystemAlert } = require('./_slack');
 const { loadTemplate } = require('./_load-template');
 const { loadBooking } = require('./_load-booking');
 
@@ -38,7 +39,10 @@ module.exports = async function handler(req, res) {
   try { await bslack.postBookingChanged(booking, 'cancelled', meta.slackTs || null); }
   catch (e) { console.error('cancel slack failed:', e.message); }
   try { await email.sendCancellationNotice(booking); }
-  catch (e) { console.error('cancel email failed:', e.message); }
+  catch (e) {
+    console.error('cancel email failed:', e.message);
+    await postSystemAlert(`*Cancellation email failed* for \`${event.id}\` (${meta.visitorEmail}): ${e.message}`);
+  }
 
   return res.status(200).json({ ok: true });
 };

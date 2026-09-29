@@ -7,6 +7,7 @@ const store = require('./_blob-store');
 const guard = require('./_booking-guard');
 const email = require('./_email');
 const bslack = require('./_booking-slack');
+const { postSystemAlert } = require('./_slack');
 const { makeBookingToken } = require('./_booking-token');
 const { loadTemplate } = require('./_load-template');
 
@@ -107,6 +108,8 @@ module.exports = async function handler(req, res) {
     // skipped check must never be silent.
     console.error('double-booking guard SKIPPED for event', eventId,
       '-- listEvents failed:', after.reason);
+    await postSystemAlert(`*Double-booking guard skipped* for event \`${eventId}\` -- `
+      + `listEvents failed: ${after.reason}. The booking still stands; verify manually there's no clash.`);
   }
   // -------------------------------------------------------------------------
 
@@ -128,7 +131,8 @@ module.exports = async function handler(req, res) {
   } catch (e) { console.error('booking slack failed:', e.message); }
 
   if (slackTs) {
-    // Stored so a later reschedule/cancel can thread onto this same message.
+    // Stored so a later reschedule/cancel can link back to this message
+    // (posted to a different channel, so a permalink now, not a real thread).
     await gcal.patchEvent(eventId, {
       extendedProperties: { private: { slackTs } },
     });
@@ -136,8 +140,14 @@ module.exports = async function handler(req, res) {
 
   try {
     const sent = await email.sendBookingConfirmation(booking);
-    if (!sent.ok) console.error('confirmation email failed:', sent.reason);
-  } catch (e) { console.error('confirmation email threw:', e.message); }
+    if (!sent.ok) {
+      console.error('confirmation email failed:', sent.reason);
+      await postSystemAlert(`*Booking confirmation email failed* for \`${eventId}\` (${addr}): ${sent.reason}`);
+    }
+  } catch (e) {
+    console.error('confirmation email threw:', e.message);
+    await postSystemAlert(`*Booking confirmation email threw* for \`${eventId}\` (${addr}): ${e.message}`);
+  }
 
   return res.status(200).json({
     ok: true, eventId, manageToken: token,

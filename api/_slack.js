@@ -3,6 +3,10 @@ const fetch = require('node-fetch');
 const CHANNEL_NEW_APPLICATIONS = 'C0B3EAGNATT'; // #1-new-applications
 const CHANNEL_INCOMPLETE_LEADS = 'C0BRK4HDFFH'; // #2-incomplete-leads
 const CHANNEL_WARM_LEADS = 'C0BRXBD8QAZ'; // #3-warm-leads
+const CHANNEL_NEW_CALLS_BOOKED = 'C0C5EU42DDF'; // #4-new-calls-booked
+const CHANNEL_RESCHEDULED_CALLS = 'C0C5CRRRJP4'; // #5-rescheduled-calls
+const CHANNEL_CANCELLED_CALLS = 'C0C5EU6RPLZ'; // #6-cancelled-calls
+const CHANNEL_SYSTEM_ALERTS = 'C0C56PC8BPV'; // #7-system-alerts
 
 // Gets a shareable link to a specific message, so a ping in another channel
 // can point back to the full application instead of repeating its contents.
@@ -74,4 +78,30 @@ async function postToSlack(channelId, message) {
   return { ts: null }; // incoming webhooks don't return a message ts, no threading possible
 }
 
-module.exports = { postToSlack, getPermalink, isRepeatSubmission, CHANNEL_NEW_APPLICATIONS, CHANNEL_INCOMPLETE_LEADS, CHANNEL_WARM_LEADS };
+// Best-effort, self-swallowing: a backend failure (calendar unreachable, an
+// email that wouldn't send, an OAuth exchange that failed) should still get
+// SOME visibility instead of only hitting console.error where nobody's
+// watching a serverless function's logs -- but a failure to post the alert
+// itself must never mask or crash whatever actually broke, so every error
+// here is caught and swallowed, never rethrown.
+async function postSystemAlert(text) {
+  try {
+    await postToSlack(CHANNEL_SYSTEM_ALERTS, {
+      username: '3AMAK Bot',
+      icon_emoji: ':rotating_light:',
+      blocks: [
+        { type: 'section', text: { type: 'mrkdwn', text: `:rotating_light: ${text}` } },
+        { type: 'context', elements: [{ type: 'mrkdwn',
+            text: `Sent by <https://3amaktrades.com|3AMAK Bot> · ${new Date().toUTCString()}` }] },
+      ],
+    });
+  } catch (e) {
+    console.error('postSystemAlert threw (alert itself failed to send):', e.message);
+  }
+}
+
+module.exports = {
+  postToSlack, getPermalink, isRepeatSubmission, postSystemAlert,
+  CHANNEL_NEW_APPLICATIONS, CHANNEL_INCOMPLETE_LEADS, CHANNEL_WARM_LEADS,
+  CHANNEL_NEW_CALLS_BOOKED, CHANNEL_RESCHEDULED_CALLS, CHANNEL_CANCELLED_CALLS, CHANNEL_SYSTEM_ALERTS,
+};

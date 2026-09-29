@@ -11,6 +11,7 @@ const email = require('./_email');
 const { loadTemplate } = require('./_load-template');
 const { makeBookingToken } = require('./_booking-token');
 const { safeEqual } = require('./_admin-auth');
+const { postSystemAlert } = require('./_slack');
 
 // Read per call rather than captured once at module load. This single number, the
 // cron period, and the template's minNoticeHours are the three things the whole
@@ -110,14 +111,21 @@ async function handler(req, res) {
         });
         sent++;
       } else {
-        // Leave the flag unset so the next run retries.
+        // Leave the flag unset so the next run retries -- though with the current
+        // cron/window settings there's exactly one eligible tick per booking, so
+        // in practice this visitor gets no reminder at all. That's exactly why
+        // this alert matters: it's the only signal anyone gets that it happened.
         console.error('reminder failed for', event.id, result.reason);
+        await postSystemAlert(`*Reminder send failed* for \`${event.id}\` (${meta.visitorEmail || 'unknown'}): `
+          + `${result.reason}. With the current settings this booking likely gets no reminder at all.`);
         skipped++;
       }
     } catch (e) {
       // Per-item isolation: one bad event must not sink the whole batch, and it
       // must NOT be marked reminded -- the next run should retry it.
       console.error('reminder threw for', event.id, e.message);
+      await postSystemAlert(`*Reminder send threw* for \`${event.id}\` (${meta.visitorEmail || 'unknown'}): `
+        + `${e.message}. With the current settings this booking likely gets no reminder at all.`);
       skipped++;
     }
   }

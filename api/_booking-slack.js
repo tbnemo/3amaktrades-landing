@@ -1,7 +1,10 @@
-// R4: bookings go to #3-warm-leads -- a booked call is warmer than a raw
-// application, and that channel already receives warm signals from wa-click.js.
-// Reuses postToSlack rather than adding a second notification path.
-const { postToSlack, CHANNEL_WARM_LEADS } = require('./_slack');
+// Bookings get their own dedicated channels (#4/#5/#6), separate from
+// #3-warm-leads -- a booked call is a structurally different, later-funnel
+// event than a WhatsApp-click ping, and mixing them buried booking activity
+// in general warm-lead noise. Reuses postToSlack rather than adding a
+// second notification path.
+const { postToSlack, getPermalink,
+  CHANNEL_NEW_CALLS_BOOKED, CHANNEL_RESCHEDULED_CALLS, CHANNEL_CANCELLED_CALLS } = require('./_slack');
 const { formatWhen } = require('./_email');
 
 function footer() {
@@ -16,7 +19,7 @@ function whenLine(b) {
 }
 
 async function postBookingCreated(b) {
-  return postToSlack(CHANNEL_WARM_LEADS, {
+  return postToSlack(CHANNEL_NEW_CALLS_BOOKED, {
     username: '3AMAK Bot',
     icon_emoji: ':calendar:',
     blocks: [
@@ -30,23 +33,25 @@ async function postBookingCreated(b) {
   });
 }
 
-// `kind` is 'rescheduled' or 'cancelled'. threadTs comes from the event's stored
-// slackTs, so a change lands under the original booking rather than as noise.
-async function postBookingChanged(b, kind, threadTs) {
+// `kind` is 'rescheduled' or 'cancelled'. Each now posts to its own channel
+// (#5/#6), separate from where the original booking lives (#4) -- Slack
+// can't thread across channels, so `originalTs` (the event's stored
+// slackTs) is used to fetch a permalink back to the original message
+// instead, kept as a link rather than lost context.
+async function postBookingChanged(b, kind, originalTs) {
   const icon = kind === 'cancelled' ? '❌' : '🔁';
-  const message = {
+  const channel = kind === 'cancelled' ? CHANNEL_CANCELLED_CALLS : CHANNEL_RESCHEDULED_CALLS;
+  const permalink = originalTs ? await getPermalink(CHANNEL_NEW_CALLS_BOOKED, originalTs) : null;
+  const text = `${icon} *Call ${kind}* — ${b.name} (${b.email})\n${whenLine(b)}`
+    + (permalink ? `\n<${permalink}|Original booking>` : '');
+  return postToSlack(channel, {
     username: '3AMAK Bot',
     icon_emoji: ':calendar:',
     blocks: [
-      { type: 'section', text: { type: 'mrkdwn', text:
-          `${icon} *Call ${kind}* — ${b.name} (${b.email})\n${whenLine(b)}` } },
+      { type: 'section', text: { type: 'mrkdwn', text } },
       { type: 'context', elements: [{ type: 'mrkdwn', text: footer() }] },
     ],
-  };
-  // Threading needs SLACK_BOT_TOKEN; the webhook fallback returns no ts, in
-  // which case this posts as a normal top-level message.
-  if (threadTs) message.thread_ts = threadTs;
-  return postToSlack(CHANNEL_WARM_LEADS, message);
+  });
 }
 
 module.exports = { postBookingCreated, postBookingChanged };

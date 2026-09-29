@@ -7,6 +7,7 @@ const store = require('./_blob-store');
 const guard = require('./_booking-guard');
 const email = require('./_email');
 const bslack = require('./_booking-slack');
+const { postSystemAlert } = require('./_slack');
 const { makeBookingToken } = require('./_booking-token');
 const { loadTemplate } = require('./_load-template');
 const { loadBooking } = require('./_load-booking');
@@ -95,6 +96,9 @@ module.exports = async function handler(req, res) {
         console.error('reschedule rollback could NOT restore the original time for event',
           event.id, '-- start/end carried no dateTime (all-day or malformed);',
           'the event is left at the new time and needs manual attention');
+        await postSystemAlert(`:warning: *Reschedule rollback FAILED* for event \`${event.id}\` -- `
+          + `could not restore the original time (no valid start/end dateTime). The event is left `
+          + `at the new, clashing time. Needs manual attention.`);
       }
       return res.status(409).json({ ok: false, error: 'SLOT_TAKEN',
         message: 'Someone took that time a moment before you.' });
@@ -104,6 +108,8 @@ module.exports = async function handler(req, res) {
     // only double-booking protection on the reschedule path, so log it.
     console.error('double-booking guard SKIPPED for event', event.id,
       '-- listEvents failed:', after.reason);
+    await postSystemAlert(`*Double-booking guard skipped* on reschedule for event \`${event.id}\` -- `
+      + `listEvents failed: ${after.reason}. Verify manually there's no clash.`);
   }
 
   const visitorTimeZone = tz.isValidTimeZone(body.visitorTimeZone)
@@ -121,7 +127,10 @@ module.exports = async function handler(req, res) {
   try { await bslack.postBookingChanged(booking, 'rescheduled', meta.slackTs || null); }
   catch (e) { console.error('reschedule slack failed:', e.message); }
   try { await email.sendRescheduleNotice(booking); }
-  catch (e) { console.error('reschedule email failed:', e.message); }
+  catch (e) {
+    console.error('reschedule email failed:', e.message);
+    await postSystemAlert(`*Reschedule email failed* for \`${event.id}\` (${meta.visitorEmail}): ${e.message}`);
+  }
 
   return res.status(200).json({ ok: true, eventId: event.id,
     start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString() });
