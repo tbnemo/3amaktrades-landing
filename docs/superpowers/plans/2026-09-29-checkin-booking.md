@@ -15,7 +15,8 @@
 - **Do not modify `api/_booking-guard.js`.** `EVENT_MARKER` (`'3amak-booking'`) stays a single shared constant written by both audiences. The guard is audience-blind by design.
 - **Do not modify the existing new-applicant flow**: `api/calendar-book.js`, `api/calendar-reschedule.js`, `api/calendar-cancel.js`, `api/_booking-slack.js`, `api/_booking-token.js`, `api/_load-booking.js`, `api/admin/availability.js`, `api/_availability.js`, `api/_load-template.js`. The only existing files this plan edits are `api/_blob-store.js`, `api/_slack.js`, `api/_email.js` (additive exports/constants only), `api/calendar-reminders.js` (one audience branch), and `admin.html`.
 - **Do not touch `index.html` or `booking-widget.js`.** `/check-in` is fully independent and shares no code with the applicant booking widget.
-- **Blob names, verbatim:** `checkin-availability-template.json` and `checkin-clients.json`. Both PRIVATE, both read with `useCache:false`, via the existing `api/_blob-store.js` helpers.
+- **Blob names, verbatim:** `checkin-availability-template.json`, `checkin-clients.json`, and `checkin-verify-attempts.json` (rate-limit state for `/api/checkin-verify` — see Task 6). All PRIVATE, all read with `useCache:false`, via the existing `api/_blob-store.js` helpers.
+- **`/api/checkin-verify` is rate-limited PER SUBMITTED IDENTIFIER, not globally.** Unlike the admin passcode gate (one counter for one user), this endpoint serves the whole client roster — a single global counter would let one stranger's bad guess lock out every real client. Failures are counted against a SHA-256 hash of the normalized email/phone being tested: 5 failures in 15 minutes locks that one identifier for 15 minutes, mirroring `api/_login-rate-limit.js`'s thresholds but keyed per-identifier instead of globally. A successful match clears that identifier's history.
 - **Slack channel constant names, verbatim:** `CHANNEL_CHECKIN_BOOKED` (`#8-checkin-booked`), `CHANNEL_CHECKIN_RESCHEDULED` (`#9-checkin-rescheduled`), `CHANNEL_CHECKIN_CANCELLED` (`#10-checkin-cancelled`). Backend-failure alerts reuse the existing `postSystemAlert` / `CHANNEL_SYSTEM_ALERTS` (`#7-system-alerts`) — no new alert channel.
 - **Audience tag, verbatim:** `extendedProperties.private.audience === 'checkin'`. The applicant flow never sets this field; its absence means "applicant".
 - **Verify token format, verbatim:** `<base64url signature>.<expiryEpochMs>`, signing `checkin-verify-v1|<normalizedEmail>|<expiryEpochMs>` with `sessionSecret()`. Expiry is checked (`Date.now() < expiryEpochMs`) **before** the HMAC comparison, and the HMAC comparison is constant-time. TTL is 10 minutes.
@@ -38,6 +39,7 @@
 | `api/_checkin-audience.js` | The `audience` tag constant + `isCheckinEvent(meta)` predicate. One constant, three readers. |
 | `api/_checkin-token.js` | The short-lived verify-token primitive: mint, verify, and resolve-back-to-a-client. |
 | `api/_checkin-clients.js` | Load/save `checkin-clients.json` plus the pure matching and mutation helpers. |
+| `api/_checkin-verify-rate-limit.js` | Per-identifier rate limiting for `/api/checkin-verify` — mirrors `api/_login-rate-limit.js`'s thresholds, keyed per-identifier instead of globally. |
 | `api/_load-checkin-template.js` | `loadCheckinTemplate()` — the blob-store + availability-defaults wrapper for the check-in hours. |
 | `api/_checkin-slack.js` | The three check-in Slack posts. Mirrors `api/_booking-slack.js`. |
 | `api/_checkin-email.js` | The four check-in email senders. Placeholder copy; reuses `send`/`formatWhen` from `api/_email.js`. |
@@ -59,13 +61,13 @@
 
 | File | Change |
 | --- | --- |
-| `api/_blob-store.js` | `+ CHECKIN_AVAILABILITY_BLOB`, `+ CHECKIN_CLIENTS_BLOB` |
+| `api/_blob-store.js` | `+ CHECKIN_AVAILABILITY_BLOB`, `+ CHECKIN_CLIENTS_BLOB`, `+ CHECKIN_VERIFY_ATTEMPTS_BLOB` |
 | `api/_slack.js` | `+ CHANNEL_CHECKIN_BOOKED`, `+ CHANNEL_CHECKIN_RESCHEDULED`, `+ CHANNEL_CHECKIN_CANCELLED` |
 | `api/_email.js` | export the existing private `send` so `_checkin-email.js` can reuse the Resend transport |
 | `api/calendar-reminders.js` | branch on `meta.audience` to pick applicant vs. check-in reminder sender + template zone |
 | `admin.html` | tab bar, check-in hours form, client-list manager |
 
-**New test files:** `test/checkin-constants.test.js`, `test/checkin-token.test.js`, `test/checkin-clients.test.js`, `test/admin-checkin-clients.test.js`, `test/admin-checkin-availability.test.js`, `test/checkin-verify.test.js`, `test/calendar-checkin-availability.test.js`, `test/checkin-slack.test.js`, `test/checkin-email.test.js`, `test/calendar-checkin-book.test.js`, `test/calendar-checkin-reschedule.test.js`, `test/calendar-checkin-cancel.test.js`, `test/admin-page-structure.test.js`, `test/checkin-page-structure.test.js`. Plus additions to `test/calendar-reminders.test.js`.
+**New test files:** `test/checkin-constants.test.js`, `test/checkin-token.test.js`, `test/checkin-clients.test.js`, `test/admin-checkin-clients.test.js`, `test/admin-checkin-availability.test.js`, `test/checkin-verify-rate-limit.test.js`, `test/checkin-verify.test.js`, `test/calendar-checkin-availability.test.js`, `test/checkin-slack.test.js`, `test/checkin-email.test.js`, `test/calendar-checkin-book.test.js`, `test/calendar-checkin-reschedule.test.js`, `test/calendar-checkin-cancel.test.js`, `test/admin-page-structure.test.js`, `test/checkin-page-structure.test.js`. Plus additions to `test/calendar-reminders.test.js`.
 
 **Task ordering rationale (not arbitrary):** Tasks 1–3 are pure data/crypto primitives with no consumers, so they can be tested in complete isolation. Tasks 4–5 (admin CRUD + the template loader) come next because they are what *writes* the two blobs every later task reads. Tasks 8–9 (the Slack and email sender modules) deliberately land **before** the endpoints that call them (10–13): this repo's tests stub collaborators with `withStubs`, which monkey-patches an existing property on an already-required module — a stub for a module that does not exist yet cannot be installed, so every endpoint task after 9 has a runnable test suite the moment it is written. Task 13 (the reminders edit) lands after Task 9 for exactly that reason and after Task 10 so a real check-in-tagged event fixture is already an established shape. The two frontend tasks land last because each one exercises endpoints that must already exist.
 
@@ -85,6 +87,7 @@
 - Produces:
   - `store.CHECKIN_AVAILABILITY_BLOB === 'checkin-availability-template.json'` (string)
   - `store.CHECKIN_CLIENTS_BLOB === 'checkin-clients.json'` (string)
+  - `store.CHECKIN_VERIFY_ATTEMPTS_BLOB === 'checkin-verify-attempts.json'` (string, consumed only by Task 6's rate limiter)
   - `slack.CHANNEL_CHECKIN_BOOKED`, `slack.CHANNEL_CHECKIN_RESCHEDULED`, `slack.CHANNEL_CHECKIN_CANCELLED` (Slack channel-ID strings)
   - `email.send({ to, subject, html }) -> Promise<{ok:true} | {ok:false, reason:string}>` (newly exported, implementation unchanged)
   - `require('./_checkin-audience')` → `{ AUDIENCE_CHECKIN: 'checkin', isCheckinEvent(meta) -> boolean }`
@@ -111,15 +114,16 @@ const slack = require('../api/_slack');
 const email = require('../api/_email');
 const audience = require('../api/_checkin-audience');
 
-test('the two check-in blob names are exported with their exact spec values', () => {
+test('the check-in blob names are exported with their exact spec values', () => {
   assert.equal(store.CHECKIN_AVAILABILITY_BLOB, 'checkin-availability-template.json');
   assert.equal(store.CHECKIN_CLIENTS_BLOB, 'checkin-clients.json');
+  assert.equal(store.CHECKIN_VERIFY_ATTEMPTS_BLOB, 'checkin-verify-attempts.json');
 });
 
 test('the check-in blob names do not collide with the existing three', () => {
   const all = [
     store.AVAILABILITY_BLOB, store.OAUTH_BLOB, store.LOGIN_ATTEMPTS_BLOB,
-    store.CHECKIN_AVAILABILITY_BLOB, store.CHECKIN_CLIENTS_BLOB,
+    store.CHECKIN_AVAILABILITY_BLOB, store.CHECKIN_CLIENTS_BLOB, store.CHECKIN_VERIFY_ATTEMPTS_BLOB,
   ];
   assert.equal(new Set(all).size, all.length, `blob names must be unique: ${all.join(', ')}`);
 });
@@ -213,12 +217,12 @@ function isCheckinEvent(meta) {
 module.exports = { AUDIENCE_CHECKIN, isCheckinEvent };
 ```
 
-- [ ] **Step 4: Add the two blob-name constants**
+- [ ] **Step 4: Add the three blob-name constants**
 
 In `api/_blob-store.js`, immediately after the `LOGIN_ATTEMPTS_BLOB` declaration (line 18), add:
 
 ```js
-// The check-in audience's two documents. Same shape discipline as the pair
+// The check-in audience's documents. Same shape discipline as the pair
 // above -- both private, both read with useCache:false. The availability
 // template is an INDEPENDENT document from AVAILABILITY_BLOB, not a section of
 // it: check-in slot length, buffer, notice and timezone are set separately.
@@ -226,6 +230,9 @@ const CHECKIN_AVAILABILITY_BLOB = 'checkin-availability-template.json';
 // { clients: [{ name, email, phone }] }. `email` is the record key and is always
 // present; `phone` is optional.
 const CHECKIN_CLIENTS_BLOB = 'checkin-clients.json';
+// Rate-limit state for /api/checkin-verify (Task 6) -- keyed per submitted
+// identifier, not a single global counter (see Global Constraints for why).
+const CHECKIN_VERIFY_ATTEMPTS_BLOB = 'checkin-verify-attempts.json';
 ```
 
 Then replace the export block at the bottom of the file:
@@ -234,7 +241,7 @@ Then replace the export block at the bottom of the file:
 module.exports = {
   readJson, writeJson, isConfigured, __setClientForTests,
   BLOB_NOT_CONFIGURED, AVAILABILITY_BLOB, OAUTH_BLOB, LOGIN_ATTEMPTS_BLOB,
-  CHECKIN_AVAILABILITY_BLOB, CHECKIN_CLIENTS_BLOB,
+  CHECKIN_AVAILABILITY_BLOB, CHECKIN_CLIENTS_BLOB, CHECKIN_VERIFY_ATTEMPTS_BLOB,
 };
 ```
 
@@ -1826,24 +1833,282 @@ git commit -m "feat: add check-in hours template loader and admin endpoint"
 ### Task 6: The verification endpoint
 
 **Files:**
+- Create: `api/_checkin-verify-rate-limit.js`
 - Create: `api/checkin-verify.js`
+- Test: `test/checkin-verify-rate-limit.test.js`
 - Test: `test/checkin-verify.test.js`
 
 **Interfaces:**
-- Consumes: `loadClients`, `findClient`, `normalizeEmail`, `normalizePhone` from Task 3; `makeVerifyToken` from Task 2; `store.BLOB_NOT_CONFIGURED` from Task 1.
-- Produces the HTTP contract `check-in.html` (Task 15) consumes:
-  - `POST /api/checkin-verify` with body `{ email?, phone? }`
-  - match → `200 { ok:true, name: string, verifyToken: string }`
-  - no match → `200 { ok:false }` — **exactly that, nothing more**
-  - neither field supplied → `400 { ok:false, error:'BAD_REQUEST', message:'Enter an email or a phone number.' }`
-  - storage missing → `503 { ok:false, error:'BLOB_NOT_CONFIGURED', message:'Check-in booking is not set up yet.' }`
-  - non-POST → `405`
+- Consumes: `loadClients`, `findClient`, `normalizeEmail`, `normalizePhone` from Task 3; `makeVerifyToken` from Task 2; `store.BLOB_NOT_CONFIGURED`, `store.readJson`, `store.writeJson`, `store.CHECKIN_VERIFY_ATTEMPTS_BLOB` from Task 1.
+- Produces:
+  - `api/_checkin-verify-rate-limit.js`: `check(identifier, nowMs?) -> Promise<{allowed:true} | {allowed:false, locked:true, retryAfterSec:number} | {allowed:false, unavailable:true, reason:string}>`, `recordFailure(identifier, nowMs?) -> Promise<{locked:true, retryAfterSec:number} | {locked:false, remaining:number}>`, `clear(identifier, nowMs?) -> Promise<void>`, `MAX_FAILURES === 5`, `LOCKOUT_MS === 900000`. Consumed only by `api/checkin-verify.js` in this task.
+  - The HTTP contract `check-in.html` (Task 15) consumes:
+    - `POST /api/checkin-verify` with body `{ email?, phone? }`
+    - match → `200 { ok:true, name: string, verifyToken: string }`
+    - no match → `200 { ok:false }` — **exactly that, nothing more**
+    - neither field supplied → `400 { ok:false, error:'BAD_REQUEST', message:'Enter an email or a phone number.' }`
+    - too many recent failures for the submitted identifier → `429 { ok:false, error:'RATE_LIMITED', message:'Too many attempts. Try again in a few minutes.', retryAfterSec: number }`
+    - storage missing → `503 { ok:false, error:'BLOB_NOT_CONFIGURED', message:'Check-in booking is not set up yet.' }`
+    - any other storage read failure (including the rate-limit store being unreadable) → `502 { ok:false, error:'UPSTREAM', message:'Could not check that right now.' }`
+    - non-POST → `405`
 
-**On the response shape:** a match and a non-match both return HTTP **200**. Using 401/403 for a non-match would make the status line itself an oracle — the spec's "no distinction shown between 'not on the list' and any other failure" has to hold at the transport level too, not just in the copy. The *client* renders the generic failure message; the server never sends a reason.
+**On the response shape:** a match and a non-match both return HTTP **200**. Using 401/403 for a non-match would make the status line itself an oracle — the spec's "no distinction shown between 'not on the list' and any other failure" has to hold at the transport level too, not just in the copy. The *client* renders the generic failure message; the server never sends a reason. The new `429` is not an oracle either: it fires identically whether the guessed identifier happens to be a real client's mistyped address or a stranger's, since it is keyed on the submitted identifier, not on roster membership.
 
 **The response deliberately does not include the matched email.** The page never needs it: `calendar-checkin-book.js` recovers the client from the token itself (`resolveVerifyToken`). Keeping the email server-side means a visitor who verified by phone never receives another person's — or even their own — address back over the wire.
 
-- [ ] **Step 1: Write the failing test**
+**Why rate limiting is per-identifier, not global (unlike `api/_login-rate-limit.js`):** the admin passcode gate protects ONE person's login, so a single shared counter is sound — the whole point of Omar's password is that only he needs to pass it. `/api/checkin-verify` protects a many-client roster; a single global counter would mean one stranger's bad guess (or one legitimate client fat-fingering their own email) locks out every other real client for 15 minutes, and repeating that failure every 15 minutes forever is a trivial, permanent denial-of-service against check-in booking for everyone. So failures are counted against a **SHA-256 hash of the normalized submitted identifier** (the email or phone being tested) instead: guessing repeatedly at ONE address gets throttled exactly like the admin gate throttles wrong passcodes (5 failures → 15-minute lock, same constants), while a different client verifying with their own, different, correct identifier is never affected by someone else's failed guesses. Hashing before storage means the blob never becomes a plaintext list of every address anyone has typed at the endpoint, matched or not.
+
+- [ ] **Step 1: Write the failing test for the rate limiter**
+
+Create `test/checkin-verify-rate-limit.test.js`:
+
+```js
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const store = require('../api/_blob-store');
+const rl = require('../api/_checkin-verify-rate-limit');
+
+function envSetup() {
+  process.env.BLOB_READ_WRITE_TOKEN = 'test-token';
+}
+
+// A tiny in-memory fake standing in for the real Blob store, keyed by pathname
+// -- exactly like the pattern used for admin-login-rate-limit's own tests.
+function fakeBlobClient() {
+  const docs = new Map();
+  return {
+    get: async (pathname) => {
+      if (!docs.has(pathname)) return null;
+      const text = docs.get(pathname);
+      return { stream: new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(text)); c.close(); } }) };
+    },
+    put: async (pathname, body) => { docs.set(pathname, body); return {}; },
+  };
+}
+
+test('a fresh identifier is always allowed', async () => {
+  envSetup();
+  store.__setClientForTests(fakeBlobClient());
+  const result = await rl.check('nobody@example.com');
+  assert.deepEqual(result, { allowed: true });
+});
+
+test('MAX_FAILURES=5 and LOCKOUT_MS=15 minutes, matching the admin gate', () => {
+  assert.equal(rl.MAX_FAILURES, 5);
+  assert.equal(rl.LOCKOUT_MS, 15 * 60 * 1000);
+});
+
+test('after 5 failures for ONE identifier, that identifier is locked and check() reports it', async () => {
+  envSetup();
+  store.__setClientForTests(fakeBlobClient());
+  const now = Date.now();
+  let last;
+  for (let i = 0; i < 5; i++) last = await rl.recordFailure('target@example.com', now + i);
+
+  assert.equal(last.locked, true);
+  assert.ok(last.retryAfterSec > 0);
+
+  const blocked = await rl.check('target@example.com', now + 5);
+  assert.equal(blocked.allowed, false);
+  assert.equal(blocked.locked, true);
+  assert.ok(blocked.retryAfterSec > 0 && blocked.retryAfterSec <= 900);
+});
+
+test('failures against one identifier do NOT lock a different identifier', async () => {
+  envSetup();
+  store.__setClientForTests(fakeBlobClient());
+  const now = Date.now();
+  for (let i = 0; i < 5; i++) await rl.recordFailure('victim-target@example.com', now + i);
+
+  const other = await rl.check('someone-else@example.com', now + 5);
+  assert.deepEqual(other, { allowed: true },
+    'one identifier being locked must never affect a different identifier');
+});
+
+test('identifiers are compared case- and whitespace-insensitively, like email matching elsewhere', async () => {
+  envSetup();
+  store.__setClientForTests(fakeBlobClient());
+  const now = Date.now();
+  for (let i = 0; i < 5; i++) await rl.recordFailure('  Target@Example.COM  ', now + i);
+
+  const blocked = await rl.check('target@example.com', now + 5);
+  assert.equal(blocked.allowed, false);
+});
+
+test('a lock expires on its own after LOCKOUT_MS', async () => {
+  envSetup();
+  store.__setClientForTests(fakeBlobClient());
+  const now = Date.now();
+  for (let i = 0; i < 5; i++) await rl.recordFailure('expiring@example.com', now + i);
+
+  const stillLocked = await rl.check('expiring@example.com', now + rl.LOCKOUT_MS - 1000);
+  assert.equal(stillLocked.allowed, false);
+
+  const clearedByTime = await rl.check('expiring@example.com', now + rl.LOCKOUT_MS + 1000);
+  assert.deepEqual(clearedByTime, { allowed: true });
+});
+
+test('failures older than LOCKOUT_MS do not accumulate toward a new lock', async () => {
+  envSetup();
+  store.__setClientForTests(fakeBlobClient());
+  const now = Date.now();
+  await rl.recordFailure('decays@example.com', now);
+  await rl.recordFailure('decays@example.com', now + 1000);
+  // A failure long after the first two -- they must not still be counted.
+  const third = await rl.recordFailure('decays@example.com', now + rl.LOCKOUT_MS + 5000);
+  assert.equal(third.locked, false);
+  assert.equal(third.remaining, rl.MAX_FAILURES - 1, 'the stale pair must not still be counted');
+});
+
+test('clear() wipes an identifier\'s history so a later failure starts fresh', async () => {
+  envSetup();
+  store.__setClientForTests(fakeBlobClient());
+  const now = Date.now();
+  await rl.recordFailure('recovers@example.com', now);
+  await rl.recordFailure('recovers@example.com', now + 1000);
+  await rl.clear('recovers@example.com', now + 2000);
+
+  const after = await rl.recordFailure('recovers@example.com', now + 3000);
+  assert.equal(after.locked, false);
+  assert.equal(after.remaining, rl.MAX_FAILURES - 1, 'clear() must reset the count, not just unlock it');
+});
+
+test('check() fails CLOSED when the store cannot be read', async () => {
+  envSetup();
+  store.__setClientForTests({ get: async () => { throw new Error('blob get 500'); }, put: async () => ({}) });
+  const result = await rl.check('anyone@example.com');
+  assert.equal(result.allowed, false);
+  assert.equal(result.unavailable, true);
+});
+
+test('recordFailure() reports locked when the store cannot be read, matching the admin gate\'s fail-closed shape', async () => {
+  envSetup();
+  store.__setClientForTests({ get: async () => { throw new Error('blob get 500'); }, put: async () => ({}) });
+  const result = await rl.recordFailure('anyone@example.com');
+  assert.equal(result.locked, true);
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `node --test test/checkin-verify-rate-limit.test.js`
+Expected: FAIL — `Cannot find module '../api/_checkin-verify-rate-limit'`.
+
+- [ ] **Step 3: Write `api/_checkin-verify-rate-limit.js`**
+
+```js
+// Per-identifier rate limiting for /api/checkin-verify -- see Task 6's
+// "Why rate limiting is per-identifier, not global" note for the full
+// reasoning. Mirrors api/_login-rate-limit.js's constants and fail-closed
+// discipline exactly, but keys state on a hash of the SUBMITTED IDENTIFIER
+// (the email or phone being tested) rather than on one global counter, since
+// this endpoint serves a whole client roster rather than one admin.
+const crypto = require('crypto');
+const store = require('./_blob-store');
+
+const MAX_FAILURES = 5;
+const LOCKOUT_MS = 15 * 60 * 1000;
+// Entries this stale are dropped on write. A failure this old no longer
+// counts toward a lock anyway (see the `stale` check below) -- pruning here
+// just keeps a low-traffic blob from growing forever.
+const PRUNE_AFTER_MS = LOCKOUT_MS;
+
+function keyFor(identifier) {
+  return crypto.createHash('sha256')
+    .update(String(identifier || '').trim().toLowerCase())
+    .digest('hex');
+}
+
+function coerceEntry(raw) {
+  const src = (raw && typeof raw === 'object') ? raw : {};
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  return {
+    failures: Math.max(0, num(src.failures)),
+    lastFailureMs: Math.max(0, num(src.lastFailureMs)),
+    lockedUntilMs: Math.max(0, num(src.lockedUntilMs)),
+  };
+}
+
+function pruneStale(table, nowMs) {
+  const out = {};
+  for (const [k, v] of Object.entries(table || {})) {
+    const entry = coerceEntry(v);
+    const stillLocked = entry.lockedUntilMs > nowMs;
+    const recentFailure = (nowMs - entry.lastFailureMs) < PRUNE_AFTER_MS;
+    if (stillLocked || recentFailure) out[k] = entry;
+  }
+  return out;
+}
+
+function secondsUntil(untilMs, nowMs) {
+  return Math.max(1, Math.ceil((untilMs - nowMs) / 1000));
+}
+
+// Called BEFORE looking the submitted identifier up against the roster.
+// Same three-shape contract as _login-rate-limit.js's check(). Fails CLOSED
+// on an unreadable store for the same reason as the admin gate: letting
+// lookups through when the counter can't be read hands back unlimited
+// guessing just by making the Blob store flaky.
+async function check(identifier, nowMs = Date.now()) {
+  const read = await store.readJson(store.CHECKIN_VERIFY_ATTEMPTS_BLOB);
+  if (!read.ok) return { allowed: false, unavailable: true, reason: read.reason };
+
+  const table = (read.data && typeof read.data === 'object') ? read.data : {};
+  const entry = coerceEntry(table[keyFor(identifier)]);
+  if (entry.lockedUntilMs > nowMs) {
+    return { allowed: false, locked: true, retryAfterSec: secondsUntil(entry.lockedUntilMs, nowMs) };
+  }
+  return { allowed: true };
+}
+
+// Called after a failed lookup (the identifier matched nobody on the roster).
+async function recordFailure(identifier, nowMs = Date.now()) {
+  const read = await store.readJson(store.CHECKIN_VERIFY_ATTEMPTS_BLOB);
+  // Unreadable: check() already refused this request, so there is nothing new
+  // to count. Report locked anyway rather than implying the attempt was free.
+  if (!read.ok) return { locked: true, retryAfterSec: Math.ceil(LOCKOUT_MS / 1000) };
+
+  const table = pruneStale((read.data && typeof read.data === 'object') ? read.data : {}, nowMs);
+  const key = keyFor(identifier);
+  const prev = coerceEntry(table[key]);
+  // Failures decay: one 15 minutes after the last starts a fresh run rather
+  // than stacking onto an old one forever.
+  const stale = prev.lastFailureMs === 0 || (nowMs - prev.lastFailureMs) >= LOCKOUT_MS;
+  const failures = (stale ? 0 : prev.failures) + 1;
+  const locked = failures >= MAX_FAILURES;
+
+  table[key] = {
+    failures: locked ? 0 : failures,
+    lastFailureMs: nowMs,
+    lockedUntilMs: locked ? nowMs + LOCKOUT_MS : 0,
+  };
+  await store.writeJson(store.CHECKIN_VERIFY_ATTEMPTS_BLOB, table);
+
+  return locked
+    ? { locked: true, retryAfterSec: Math.ceil(LOCKOUT_MS / 1000) }
+    : { locked: false, remaining: MAX_FAILURES - failures };
+}
+
+// Called after a SUCCESSFUL match, so a correct guess wipes that identifier's
+// own history -- a client who mistyped their email a couple of times isn't
+// left one bad guess away from a lockout for the rest of the window.
+async function clear(identifier, nowMs = Date.now()) {
+  const read = await store.readJson(store.CHECKIN_VERIFY_ATTEMPTS_BLOB);
+  if (!read.ok) return; // best-effort; nothing to clear if the store can't be read
+  const table = pruneStale((read.data && typeof read.data === 'object') ? read.data : {}, nowMs);
+  delete table[keyFor(identifier)];
+  await store.writeJson(store.CHECKIN_VERIFY_ATTEMPTS_BLOB, table);
+}
+
+module.exports = { check, recordFailure, clear, MAX_FAILURES, LOCKOUT_MS };
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `node --test test/checkin-verify-rate-limit.test.js`
+Expected: PASS (10 tests).
+
+- [ ] **Step 5: Write the failing test for the verify endpoint**
 
 Create `test/checkin-verify.test.js`:
 
@@ -1853,6 +2118,7 @@ const assert = require('node:assert/strict');
 const store = require('../api/_blob-store');
 const cc = require('../api/_checkin-clients');
 const ct = require('../api/_checkin-token');
+const rl = require('../api/_checkin-verify-rate-limit');
 const handler = require('../api/checkin-verify');
 
 function makeRes() {
@@ -2075,14 +2341,94 @@ test('a verified client whose name is blank still verifies, with an empty name',
     assert.equal(ct.verifyVerifyToken('nameless@example.com', res._json.verifyToken), true);
   });
 });
+
+// --- Rate limiting -----------------------------------------------------
+
+test('after 5 failed guesses at the SAME identifier, the 6th returns 429 RATE_LIMITED', async () => {
+  envSetup();
+  await withRoster(ROSTER, async () => {
+    for (let i = 0; i < 5; i++) {
+      const res = makeRes();
+      await handler({ method: 'POST', body: { email: 'guessed-wrong@example.com' } }, res);
+      assert.equal(res._status, 200, `attempt ${i + 1} should still be a normal 200 {ok:false}`);
+    }
+    const sixth = makeRes();
+    await handler({ method: 'POST', body: { email: 'guessed-wrong@example.com' } }, sixth);
+    assert.equal(sixth._status, 429);
+    assert.equal(sixth._json.error, 'RATE_LIMITED');
+    assert.ok(sixth._json.retryAfterSec > 0);
+  });
+});
+
+test('a lockout on one identifier does not block a different visitor verifying correctly', async () => {
+  envSetup();
+  await withRoster(ROSTER, async () => {
+    for (let i = 0; i < 5; i++) {
+      await handler({ method: 'POST', body: { email: 'attacker-target@example.com' } }, makeRes());
+    }
+    const res = makeRes();
+    await handler({ method: 'POST', body: { email: 'alice@example.com' } }, res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.ok, true, 'a different identifier must be unaffected by someone else\'s lockout');
+  });
+});
+
+test('a SUCCESSFUL verification clears that identifier\'s failure history', async () => {
+  envSetup();
+  await withRoster(ROSTER, async () => {
+    // Three wrong guesses, then the correct one -- a real client fat-fingering
+    // their own email a few times before getting it right.
+    for (let i = 0; i < 3; i++) {
+      await handler({ method: 'POST', body: { email: 'alice@exampl.com' } }, makeRes());
+    }
+    const good = makeRes();
+    await handler({ method: 'POST', body: { email: 'alice@example.com' } }, good);
+    assert.equal(good._json.ok, true);
+
+    // Confirm the clear was scoped to 'alice@example.com', not 'alice@exampl.com'
+    // (the wrong one from above): two more wrong guesses at the typo'd address
+    // must not yet trip the limiter, since clear() never touched its count.
+    for (let i = 0; i < 2; i++) {
+      const res = makeRes();
+      await handler({ method: 'POST', body: { email: 'alice@exampl.com' } }, res);
+      assert.equal(res._status, 200, 'still under the limit for the typo\'d address');
+    }
+  });
+});
+
+test('the rate limiter is keyed on the SUBMITTED identifier, so email and phone guesses for the same person are tracked separately', async () => {
+  envSetup();
+  await withRoster(ROSTER, async () => {
+    for (let i = 0; i < 5; i++) {
+      await handler({ method: 'POST', body: { email: 'wrong-email-guess@example.com' } }, makeRes());
+    }
+    // A DIFFERENT wrong phone guess is a different identifier and must not be
+    // pre-locked by the email guesses above.
+    const res = makeRes();
+    await handler({ method: 'POST', body: { phone: '5550001111' } }, res);
+    assert.equal(res._status, 200, 'a different submitted identifier is a separate rate-limit bucket');
+  });
+});
+
+test('an unreadable rate-limit store fails the request CLOSED with 502, before the roster is even checked', async () => {
+  envSetup();
+  await withStubs([
+    { obj: rl, key: 'check', value: async () => ({ allowed: false, unavailable: true, reason: 'blob get 500' }) },
+  ], async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', body: { email: 'alice@example.com' } }, res);
+    assert.equal(res._status, 502);
+    assert.equal(res._json.ok, false);
+  });
+});
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [ ] **Step 6: Run the test to verify it fails**
 
 Run: `node --test test/checkin-verify.test.js`
 Expected: FAIL — `Cannot find module '../api/checkin-verify'`.
 
-- [ ] **Step 3: Write `api/checkin-verify.js`**
+- [ ] **Step 7: Write `api/checkin-verify.js`**
 
 ```js
 // POST /api/checkin-verify
@@ -2093,8 +2439,14 @@ Expected: FAIL — `Cannot find module '../api/checkin-verify'`.
 // what api/calendar-checkin-book.js requires, so verification is enforced at
 // the API boundary rather than only in the page's UI -- without it, anyone
 // could skip this step and POST straight to the booking endpoint.
+//
+// Rate limiting runs BEFORE the roster lookup and is keyed on whatever
+// identifier was submitted (see api/_checkin-verify-rate-limit.js) -- a
+// stranger hammering one guessed address gets throttled without affecting
+// any other visitor's ability to verify.
 const cc = require('./_checkin-clients');
 const ct = require('./_checkin-token');
+const rl = require('./_checkin-verify-rate-limit');
 const store = require('./_blob-store');
 
 module.exports = async function handler(req, res) {
@@ -2113,6 +2465,22 @@ module.exports = async function handler(req, res) {
       message: 'Enter an email or a phone number.' });
   }
 
+  const identifier = email || phone;
+
+  const limit = await rl.check(identifier);
+  if (!limit.allowed) {
+    if (limit.locked) {
+      return res.status(429).json({ ok: false, error: 'RATE_LIMITED',
+        message: 'Too many attempts. Try again in a few minutes.',
+        retryAfterSec: limit.retryAfterSec });
+    }
+    // limit.unavailable: fail CLOSED, same discipline as the admin gate --
+    // letting the lookup through when the counter can't be read hands back
+    // unlimited guessing just by making the Blob store flaky.
+    return res.status(502).json({ ok: false, error: 'UPSTREAM',
+      message: 'Could not check that right now.' });
+  }
+
   const read = await cc.loadClients();
   if (!read.ok) {
     if (read.reason === store.BLOB_NOT_CONFIGURED) {
@@ -2125,11 +2493,18 @@ module.exports = async function handler(req, res) {
 
   const client = cc.findClient(read.clients, { email, phone });
   if (!client) {
-    // 200, not 401/403, and nothing but {ok:false}. The page shows one generic
-    // message; the status line and the body must not distinguish "not on the
-    // list" from anything else.
+    // Count the miss against the identifier that was actually submitted, then
+    // reply exactly like before: 200, not 401/403, nothing but {ok:false}. The
+    // page shows one generic message; the status line and the body must not
+    // distinguish "not on the list" from anything else, and the rate-limit
+    // check above is likewise indistinguishable from a normal miss until the
+    // 6th attempt in a window.
+    await rl.recordFailure(identifier);
     return res.status(200).json({ ok: false });
   }
+
+  // A correct guess clears this identifier's own failure history.
+  await rl.clear(identifier);
 
   // Always scoped to the record's EMAIL, even when the visitor typed a phone:
   // email is guaranteed present, is the record key, and is the only channel the
@@ -2143,16 +2518,16 @@ module.exports = async function handler(req, res) {
 };
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [ ] **Step 8: Run the test to verify it passes**
 
 Run: `node --test test/checkin-verify.test.js`
-Expected: PASS (15 tests).
+Expected: PASS (20 tests).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add api/checkin-verify.js test/checkin-verify.test.js
-git commit -m "feat: add check-in client verification endpoint"
+git add api/_checkin-verify-rate-limit.js api/checkin-verify.js test/checkin-verify-rate-limit.test.js test/checkin-verify.test.js
+git commit -m "feat: add check-in client verification endpoint, rate-limited per identifier"
 ```
 
 ---
@@ -7500,6 +7875,15 @@ Expected: FAIL — `ENOENT: no such file or directory, open '.../check-in.html'`
         showVerifyError('Check-in booking is not set up yet. Message Omar directly.');
         return;
       }
+      // 429 is its own message, not the generic one: unlike a wrong email/phone,
+      // this can legitimately happen to a real client who mistyped their own
+      // address a few times, and "try again shortly" is honest without telling
+      // anyone whether the identifier they guessed is actually on the roster --
+      // the same 429 fires either way (see api/checkin-verify.js).
+      if (res.status === 429) {
+        showVerifyError((data && data.message) || 'Too many attempts. Try again in a few minutes.');
+        return;
+      }
       // Every other non-success, including the deliberate 200 {ok:false},
       // collapses to the one generic message.
       if (!data || data.ok !== true || !data.verifyToken) {
@@ -7837,6 +8221,7 @@ Run this yourself after the last task, before handing off.
 | Token always scoped to the record's email, even when a phone was typed | 2, 6 (test asserts it) |
 | 10-minute expiry | 2 (`VERIFY_TOKEN_TTL_MS`) |
 | Generic failure, no distinction between causes | 6 (200 for both, `{ok:false}` only), 15 (verbatim copy) |
+| Per-identifier rate limiting on `/api/checkin-verify` (added after spec review, not in the original design doc) | 1 (`CHECKIN_VERIFY_ATTEMPTS_BLOB`), 6 (`_checkin-verify-rate-limit.js`, wired into the handler, 429 handling in 15) |
 | `GET /api/calendar-checkin-availability`, same free/busy against the same calendar | 7 |
 | `POST /api/calendar-checkin-book`: re-verify, guard, manage token, `verifyToken` required, 403 otherwise | 10 |
 | `visitorEmail` from the token, not the body | 10 (`resolveVerifyToken`, and the "email in the body is ignored" test) |
@@ -7859,7 +8244,7 @@ Run this yourself after the last task, before handing off.
 
 No spec requirement is unmapped.
 
-**2. Placeholder scan** — the only occurrences of the word "placeholder" in this plan are (a) the `PASTE_REAL_ID` markers in Task 1 Step 5, which the task's PREREQUISITE resolves with a concrete command and whose test fails on anything not Slack-shaped, and (b) the deliberate, spec-mandated `[PLACEHOLDER]` email copy in Task 9. There is no "TBD", no "implement later", no "add appropriate error handling", no "write tests for the above", and no "similar to Task N" — every test step contains complete runnable code, and every implementation step contains the complete file or the exact replacement block.
+**2. Placeholder scan** — the only occurrence of the word "placeholder" in this plan is the deliberate, spec-mandated `[PLACEHOLDER]` email copy in Task 9. Task 1's three Slack channel IDs are real values (`C0C5FTTA081`, `C0C5FTTP1J5`, `C0C5C1U12DC`), substituted before this plan was finalized — not a marker left for later. There is no "TBD", no "implement later", no "add appropriate error handling", no "write tests for the above", and no "similar to Task N" — every test step contains complete runnable code, and every implementation step contains the complete file or the exact replacement block.
 
 **3. Type and signature consistency** — checked across tasks:
 
