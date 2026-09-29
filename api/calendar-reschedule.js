@@ -7,6 +7,7 @@ const store = require('./_blob-store');
 const guard = require('./_booking-guard');
 const email = require('./_email');
 const bslack = require('./_booking-slack');
+const { isCheckinEvent } = require('./_checkin-audience');
 const { postSystemAlert } = require('./_slack');
 const { makeBookingToken } = require('./_booking-token');
 const { loadTemplate } = require('./_load-template');
@@ -22,6 +23,18 @@ module.exports = async function handler(req, res) {
       message: loaded.message });
   }
   const { event, meta } = loaded;
+
+  // DEFENSE IN DEPTH, mirroring calendar-checkin-reschedule.js's own check in
+  // reverse. manageToken is an HMAC over eventId+email only -- it encodes no
+  // audience -- so nothing in loadBooking stops a token that is genuinely
+  // valid for a CHECK-IN booking from arriving here. The applicant endpoint
+  // must never be able to act on a check-in booking. The message is
+  // identical to the check-in side's own check, so the two rejections are
+  // indistinguishable from outside.
+  if (isCheckinEvent(meta)) {
+    return res.status(403).json({ ok: false, error: 'FORBIDDEN',
+      message: 'That booking is not managed here.' });
+  }
 
   const startMs = Date.parse(String(body.start || ''));
   if (!Number.isFinite(startMs)) {

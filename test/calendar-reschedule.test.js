@@ -387,6 +387,36 @@ test('a throwing Slack stub and a throwing email stub still result in a 200, con
   });
 });
 
+// THE mirror-image defense-in-depth check. manageToken is an HMAC over
+// eventId+email only -- it encodes no audience -- so a token that is
+// genuinely valid for a CHECK-IN booking must still be refused here: the
+// applicant endpoint must never move a check-in booking.
+test('an event tagged audience: "checkin" -> 403 FORBIDDEN, and patchEvent is never called', async () => {
+  envSetup();
+  const oldStart = validSlotStartMs();
+  const oldEnd = oldStart + 30 * 60 * 1000;
+  const newStart = oldStart + 4 * 3600 * 1000;
+  const patchSpy = spyStub({ ok: true, event: {} });
+
+  const checkinTaggedEvent = ourEvent({ startMs: oldStart, endMs: oldEnd });
+  checkinTaggedEvent.extendedProperties.private.audience = 'checkin';
+
+  await withStubs([
+    { obj: gcal, key: 'getEvent', value: async () => ({ ok: true, event: checkinTaggedEvent }) },
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+  ], async () => {
+    const res = makeRes();
+    // The token here is genuinely valid for this eventId+email pair.
+    await handler({ method: 'POST', body: goodBody(newStart) }, res);
+
+    assert.equal(res._status, 403);
+    assert.equal(res._json.error, 'FORBIDDEN');
+    assert.equal(res._json.message, 'That booking is not managed here.');
+    assert.equal(patchSpy.calls.length, 0,
+      'the applicant endpoint must never move a check-in booking');
+  });
+});
+
 test('a rejected token/ownership check (loadBooking failure) is passed through, e.g. 403 FORBIDDEN', async () => {
   envSetup();
   const startMs = validSlotStartMs();
