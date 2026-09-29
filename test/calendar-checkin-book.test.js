@@ -224,6 +224,7 @@ test('a missing, forged, or expired verifyToken -> 403 NOT_VERIFIED and insertEv
   envSetup();
   const startMs = validSlotStartMs();
   const insertSpy = spyStub({ ok: true, event: { id: 'should-never-exist' } });
+  const freeBusySpy = spyStub({ ok: true, busy: [] });
 
   const bad = [
     goodBody(startMs, { verifyToken: undefined }),
@@ -234,6 +235,7 @@ test('a missing, forged, or expired verifyToken -> 403 NOT_VERIFIED and insertEv
   ];
 
   await withStubs(baseStubs([
+    { obj: gcal, key: 'freeBusy', value: freeBusySpy },
     { obj: gcal, key: 'insertEvent', value: insertSpy },
   ]), async () => {
     const h = freshHandler();
@@ -243,6 +245,7 @@ test('a missing, forged, or expired verifyToken -> 403 NOT_VERIFIED and insertEv
       assert.equal(res._status, 403, `${JSON.stringify(body.verifyToken)} should be 403`);
       assert.equal(res._json.error, 'NOT_VERIFIED');
     }
+    assert.equal(freeBusySpy.calls.length, 0, 'an unverified caller must never reach freeBusy');
     assert.equal(insertSpy.calls.length, 0, 'an unverified caller must never reach the calendar');
   });
   delete require.cache[handlerPath];
@@ -252,10 +255,12 @@ test('a token for someone no longer on the roster -> 403 NOT_VERIFIED', async ()
   envSetup();
   const startMs = validSlotStartMs();
   const insertSpy = spyStub({ ok: true, event: { id: 'should-never-exist' } });
+  const freeBusySpy = spyStub({ ok: true, busy: [] });
 
   await withStubs(baseStubs([
     // Alice verified, then Omar removed her before she confirmed.
     { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [ROSTER[1]], usedDefault: false }) },
+    { obj: gcal, key: 'freeBusy', value: freeBusySpy },
     { obj: gcal, key: 'insertEvent', value: insertSpy },
   ]), async () => {
     const h = freshHandler();
@@ -263,6 +268,7 @@ test('a token for someone no longer on the roster -> 403 NOT_VERIFIED', async ()
     await h({ method: 'POST', body: goodBody(startMs) }, res);
     assert.equal(res._status, 403);
     assert.equal(res._json.error, 'NOT_VERIFIED');
+    assert.equal(freeBusySpy.calls.length, 0, 'a removed-client token must never reach freeBusy');
     assert.equal(insertSpy.calls.length, 0);
   });
   delete require.cache[handlerPath];
