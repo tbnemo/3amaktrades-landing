@@ -3,6 +3,7 @@
 const gcal = require('./_google-calendar');
 const email = require('./_email');
 const bslack = require('./_booking-slack');
+const { isCheckinEvent } = require('./_checkin-audience');
 const { postSystemAlert } = require('./_slack');
 const { loadTemplate } = require('./_load-template');
 const { loadBooking } = require('./_load-booking');
@@ -16,6 +17,17 @@ module.exports = async function handler(req, res) {
       message: loaded.message });
   }
   const { event, meta } = loaded;
+
+  // DEFENSE IN DEPTH, mirroring calendar-checkin-cancel.js's own check in
+  // reverse, and it MUST come before the delete: a 403 that arrives after the
+  // event is already gone is not a rejection. manageToken encodes no
+  // audience, so nothing upstream stops a check-in booking's token arriving
+  // here. Same message as the check-in side's own check, so the two are
+  // indistinguishable from outside.
+  if (isCheckinEvent(meta)) {
+    return res.status(403).json({ ok: false, error: 'FORBIDDEN',
+      message: 'That booking is not managed here.' });
+  }
 
   const startMs = Date.parse(event.start && event.start.dateTime) || Date.now();
   const endMs = Date.parse(event.end && event.end.dateTime) || startMs;
