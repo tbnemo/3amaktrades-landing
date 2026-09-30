@@ -811,6 +811,23 @@
     // the row that was just rendered, without a second round trip.
     const clientsByEmail = new Map();
 
+    // Set by the Edit button to the CURRENT expiresAt/pausedAt of the row it
+    // populated the form from, keyed to the email it was captured for. The
+    // add-form only carries name/email/phone/startDate/durationMonths as
+    // visible fields, and normalizeEntry() (api/_checkin-clients.js)
+    // recomputes expiresAt fresh from startDate+durationMonths whenever the
+    // posted body has no finite expiresAt of its own -- so without this, an
+    // Edit that merely fixes a typo'd phone number would silently discard any
+    // Renew extension or Pause/Resume adjustment already on the record. A
+    // fresh Add Client has no snapshot to carry (stays null), which is
+    // exactly right: a brand-new client's expiresAt SHOULD be computed fresh
+    // from the startDate/durationMonths just entered.
+    let editingSnapshot = null; // { email, expiresAt, pausedAt } | null
+
+    function emailsMatch(a, b) {
+      return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+    }
+
     // Mirrors isAccessActive's own precedence in api/_checkin-clients.js:
     // paused wins outright, then a past expiresAt, then a null expiresAt
     // defaults to active (the legacy-record migration safety net). This is
@@ -948,6 +965,20 @@
           return;
         }
 
+        // This is an EDIT of the same client the snapshot was captured from
+        // (not a fresh add, and not an edit whose email was then changed to a
+        // different address) -- carry its current expiresAt/pausedAt through
+        // unchanged, so normalizeEntry's "already a finite number -> keep it"
+        // branch fires instead of recomputing from startDate+durationMonths.
+        // Editing startDate/durationMonths here has no immediate effect on
+        // the current expiry -- it only changes what a future Renew computes
+        // from; Renew is the explicit action that changes expiry, Edit is for
+        // fixing mistakes in the other fields.
+        if (editingSnapshot && emailsMatch(editingSnapshot.email, client.email)) {
+          client.expiresAt = editingSnapshot.expiresAt;
+          client.pausedAt = editingSnapshot.pausedAt;
+        }
+
         let res, data;
         try {
           res = await fetch('/api/admin/checkin-clients', {
@@ -972,6 +1003,7 @@
           $('clientPhone').value = '';
           $('clientStartDate').value = '';
           $('clientDurationMonths').value = '';
+          editingSnapshot = null;
           return;
         }
         showClientErrors(Array.isArray(data.errors) && data.errors.length > 0
@@ -1029,6 +1061,10 @@
           $('clientPhone').value = c.phone || '';
           $('clientStartDate').value = c.startDate || '';
           $('clientDurationMonths').value = c.durationMonths || '';
+          // Stash the CURRENT expiresAt/pausedAt so the submit handler can
+          // carry them through unchanged -- see the comment on
+          // editingSnapshot's declaration for why this matters.
+          editingSnapshot = { email: c.email, expiresAt: c.expiresAt, pausedAt: c.pausedAt };
           $('clientErrors').hidden = true;
           $('clientSuccess').hidden = true;
           $('clientEmail').focus();

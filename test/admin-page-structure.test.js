@@ -220,6 +220,53 @@ test('renderClients computes Status from pausedAt/expiresAt and renders Edit, Pa
   assert.match(sectionWindow, /client-renew/);
 });
 
+// Bug fix: the add-form only carries name/email/phone/startDate/durationMonths
+// as VISIBLE fields, and normalizeEntry() (api/_checkin-clients.js) recomputes
+// expiresAt fresh from startDate+durationMonths whenever the posted body has
+// no finite expiresAt of its own. Without stashing the row's current
+// expiresAt/pausedAt and carrying them through resubmission, fixing a typo'd
+// phone number via Edit would silently reset a client's package to "started
+// fresh," discarding any prior Renew extension or Pause/Resume adjustment.
+test('Edit stashes the row\'s current expiresAt/pausedAt, and the submit handler carries them through unchanged for that same email', () => {
+  const clickIdx = html.indexOf("clientsTableBody').addEventListener('click'");
+  assert.ok(clickIdx !== -1, 'the delegated clientsTableBody click handler was not found');
+  const clickWindow = html.slice(clickIdx, clickIdx + 4000);
+  const editBranch = clickWindow.slice(clickWindow.indexOf('client-edit'));
+
+  // The Edit branch must capture a snapshot of the row's CURRENT
+  // expiresAt/pausedAt -- not just the four fields that land in the visible
+  // form -- keyed to the email it was captured for.
+  assert.match(editBranch, /editingSnapshot\s*=\s*\{[^}]*email[^}]*\}/s,
+    'Edit must stash a snapshot object keyed by email');
+  assert.match(editBranch, /expiresAt/,
+    'the Edit handler must stash the row\'s current expiresAt');
+  assert.match(editBranch, /pausedAt/,
+    'the Edit handler must stash the row\'s current pausedAt');
+
+  // The add-form submit handler must fold that stashed state back into the
+  // posted client object, gated on the email still matching what the
+  // snapshot was captured for -- so a brand-new Add Client (no snapshot) is
+  // unaffected, and an edit whose email was changed to a different address
+  // does not inherit someone else's package state.
+  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
+  assert.ok(submitIdx !== -1, 'the clientAddForm submit handler was not found');
+  const submitWindow = html.slice(submitIdx, submitIdx + 3000);
+
+  assert.match(submitWindow, /editingSnapshot\s*&&/,
+    'the submit handler must check editingSnapshot before trusting it');
+  assert.match(submitWindow, /client\.expiresAt\s*=\s*editingSnapshot\.expiresAt/,
+    'the submit handler must carry the stashed expiresAt through unchanged');
+  assert.match(submitWindow, /client\.pausedAt\s*=\s*editingSnapshot\.pausedAt/,
+    'the submit handler must carry the stashed pausedAt through unchanged');
+
+  // The email-match guard must run BEFORE the fetch, not after -- otherwise
+  // the wrong (or no) expiresAt/pausedAt would already be in the posted body.
+  const guardAt = submitWindow.search(/editingSnapshot\s*&&/);
+  const fetchAt = submitWindow.indexOf("fetch('/api/admin/checkin-clients'");
+  assert.ok(guardAt !== -1 && fetchAt !== -1 && guardAt < fetchAt,
+    'the editingSnapshot guard must run before the client object is POSTed');
+});
+
 test('the delegated table click handler wires Edit (repopulates the form) and Pause/Resume/Renew (posts a command)', () => {
   const idx = html.indexOf("clientsTableBody').addEventListener('click'");
   assert.ok(idx !== -1, 'the delegated clientsTableBody click handler was not found');
