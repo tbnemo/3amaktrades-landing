@@ -1,0 +1,41 @@
+# Runs the test suite on every push to main and every pull request.
+#
+# This exists because nothing did. Several deployments in a row failed to build
+# with exceeded_serverless_functions_per_deployment -- api/ had outgrown the
+# Hobby plan's 12-Serverless-Function limit -- and because Vercel keeps the last
+# successful deployment live when a build fails, production served stale code for
+# days. The only symptom was "the site looks out of date", and no check anywhere
+# went red.
+#
+# test/route-action.test.js now fails locally if api/ exceeds the cap. This
+# workflow is what makes that failure visible in the pull request, next to the
+# Vercel deployment, instead of only on the machine of whoever remembers to run
+# `npm test`.
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # The repo pins no Node version (no engines field, no .nvmrc). 24.x
+          # matches what this project is developed and tested against locally;
+          # the suite is plain `node --test` with no transpile step, so it needs
+          # nothing newer or older.
+          node-version: '24.x'
+          cache: npm
+
+      # `npm ci` rather than `npm install`: it installs exactly what
+      # package-lock.json pins and fails if the lockfile and package.json have
+      # drifted apart, which is what a CI install should do.
+      - run: npm ci
+
+      - run: npm test
