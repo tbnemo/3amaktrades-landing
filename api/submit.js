@@ -106,21 +106,38 @@ async function waClickHandler(req, res) {
 // Dispatch
 // ===========================================================================
 
-// Only the rewritten path is keyed here. 'submit' is deliberately NOT a key:
-// /api/submit is this file's own filesystem route, so under the reading of
-// Vercel's docs where a rewritten request already carries the destination path,
-// a rewritten /api/wa-click would look identical to a direct /api/submit and the
-// `:action` query parameter is the only thing telling them apart. Honouring that
-// parameter means POST /api/submit?action=wa-click also reaches the wa-click
-// handler -- which grants nothing, since /api/wa-click is itself a public
-// unauthenticated endpoint, and is strictly better than the alternative of a
-// warm-lead ping silently posting as a New Application.
+// Only the rewritten path is keyed here. 'submit' is deliberately NOT a key,
+// and that is load-bearing: /api/submit is this file's own filesystem route, so
+// under the reading of Vercel's docs where a rewritten request already carries
+// the DESTINATION path, a rewritten /api/wa-click arrives looking exactly like a
+// direct /api/submit. If 'submit' were a key the path would win and a warm-lead
+// ping would silently post as a New Application, so the ?action= parameter has
+// to be the tie-break.
+//
+// Which is why this one rewrite -- alone among the rules in vercel.json -- does
+// put the endpoint in its destination query string
+// (/api/submit?action=wa-click). It can safely do that because wa-click's only
+// caller is navigator.sendBeacon('/api/wa-click', <JSON blob>) in index.html,
+// which sends NO query string of its own: there is nothing of the caller's for a
+// destination query string to merge with or replace, so this rule is correct
+// under every reading of Vercel's behaviour rather than only the two the
+// path-encoded form relies on. The other endpoints all have callers that DO
+// send a query string (?date=/&days=, ?email=), so they stay query-string-free.
+//
+// The consequence, accepted deliberately: POST /api/submit?action=wa-click also
+// reaches the wa-click handler. That grants nothing -- /api/wa-click is itself a
+// public unauthenticated endpoint -- and is far better than the alternative
+// failure mode above.
 const ROUTES = {
   'wa-click': waClickHandler,
 };
 
 module.exports = async function handler(req, res) {
   const route = resolveAction(req, ROUTES);
+  // Not a silent fallback: /api/submit is NOT rewritten, so a direct request
+  // legitimately resolves to no keyed route and the submit handler is simply
+  // what /api/submit means. Every consolidated file that serves only rewritten
+  // paths 404s instead.
   return (route || submitHandler)(req, res);
 };
 

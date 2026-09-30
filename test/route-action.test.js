@@ -23,16 +23,26 @@ const { requestPathSegment, resolveAction, notFound } = require('../api/_route-a
 const REPO = path.join(__dirname, '..');
 const API = path.join(REPO, 'api');
 
-// Every .js file under api/ that is not `_`-prefixed, at any depth -- which is
-// what Vercel counts, and is deliberately NOT depth-limited: burying a handler
-// one directory deeper hides it from a `-maxdepth 2` count but not from the cap.
+// Every file under api/ that is not `_`-prefixed, at any depth.
+//
+// Deliberately NOT depth-limited: burying a handler one directory deeper hides
+// it from a `-maxdepth 2` count but not from the cap.
+//
+// Deliberately NOT limited to `.js` either. Vercel builds a function from any
+// file under api/ whose extension maps to a supported runtime -- .mjs, .cjs,
+// .ts, .py, .go, .rb among them -- so a predicate keyed on `.js` would let a
+// future api/foo.ts reproduce this exact incident while the guard stayed green.
+// api/ holds nothing but handlers and `_`-prefixed helpers, so "any file that is
+// not `_`-prefixed" is the honest predicate. If that ever over-counts (someone
+// drops an api/README.md in here), it fails loudly and obviously, which is the
+// right direction for this particular guard to err in.
 function functionFiles(dir = API, prefix = '') {
   const out = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
       out.push(...functionFiles(path.join(dir, entry.name), rel));
-    } else if (entry.name.endsWith('.js') && !entry.name.startsWith('_')) {
+    } else if (!entry.name.startsWith('_')) {
       out.push(rel);
     }
   }
@@ -149,41 +159,98 @@ const CONSOLIDATED = {
   '/api/submit': require('../api/submit'),
 };
 
+// The ONE path allowed to carry its endpoint in the destination query string,
+// and the reason it is allowed: /api/wa-click's only caller is
+// navigator.sendBeacon('/api/wa-click', <JSON blob>) in index.html, which sends
+// NO query string of its own. With nothing of the caller's to merge with or
+// replace, a destination query string cannot destroy anything, so that form is
+// correct under EVERY reading of Vercel's behaviour rather than only the two the
+// path-encoded form relies on -- and it is the form that matters there, because
+// /api/submit is not rewritten and the parameter is the only thing separating a
+// rewritten wa-click from a direct submit.
+//
+// Every other endpoint has a caller that DOES send a query string
+// (?date=/&days= on check-in availability, ?email= on the admin client DELETE),
+// so those rules must stay query-string-free.
+const CALLERS_SEND_NO_QUERY = new Set(['/api/wa-click']);
+
+// The literal public path a rule serves, and the endpoint segment it conveys --
+// from the source's :action(...) capture, or from the destination's ?action=.
+function ruleParts(rule) {
+  const literal = rule.source.replace(/:action\(([^)]+)\)/, '$1');
+  const fromSource = /:action\(([^)]+)\)/.exec(rule.source);
+  const fromDest = /[?&]action=([^&]+)/.exec(rule.destination);
+  return {
+    literal,
+    destinationPath: rule.destination.split('?')[0],
+    segment: fromSource ? fromSource[1] : (fromDest ? fromDest[1] : null),
+    carriesQuery: rule.destination.includes('?'),
+  };
+}
+
 test('every rewrite points at a consolidated file whose dispatch table answers its segment', () => {
   assert.ok(Array.isArray(vercelJson.rewrites) && vercelJson.rewrites.length > 0);
 
   for (const rule of vercelJson.rewrites) {
-    const mod = CONSOLIDATED[rule.destination];
-    assert.ok(mod, `rewrite destination ${rule.destination} is not a known consolidated file`);
+    const { literal, destinationPath, segment } = ruleParts(rule);
 
-    // "/api/admin/:action(checkin-clients)" -> "checkin-clients"
-    const m = /:action\(([^)]+)\)/.exec(rule.source);
-    assert.ok(m, `rewrite source ${rule.source} must capture its segment as :action(...), so the `
-      + 'segment survives as a query parameter under the reading of Vercel\'s docs where a '
-      + 'rewritten request carries the destination path');
-    const segment = m[1];
+    const mod = CONSOLIDATED[destinationPath];
+    assert.ok(mod, `rewrite destination ${destinationPath} is not a known consolidated file`);
+
+    assert.ok(segment, `rewrite source ${rule.source} conveys no endpoint: it must either capture `
+      + 'its segment as :action(...) or carry ?action= in its destination, or the request arrives '
+      + 'with no way to tell which handler it wanted');
 
     // The source's literal path must end in the same segment, so BOTH signals
-    // (req.url's path and the :action parameter) name the same endpoint.
-    const literal = rule.source.replace(/:action\(([^)]+)\)/, '$1');
+    // (req.url's path and the action parameter) name the same endpoint.
     assert.equal(literal.slice(literal.lastIndexOf('/') + 1), segment,
-      `rewrite source ${rule.source} must end in the segment it captures`);
+      `rewrite source ${rule.source} must end in the segment it conveys (${segment})`);
 
     assert.ok(Object.prototype.hasOwnProperty.call(mod.__routesForTests, segment),
-      `nothing in ${rule.destination} answers '${segment}', so the public path ${literal} is dead`);
+      `nothing in ${destinationPath} answers '${segment}', so the public path ${literal} is dead`);
   }
 });
 
-test('no rewrite destination carries a query string', () => {
-  // This is the invariant the whole dispatch design rests on. Vercel's docs do
-  // not state whether a destination's query string MERGES with the request's own
-  // or REPLACES it, and these endpoints depend on the caller's query surviving
-  // (?date=/&days= on check-in availability, ?email= on the admin client
-  // DELETE). A destination with no query string cannot disturb the request's.
+test('only a rewrite whose caller sends no query string may carry one in its destination', () => {
+  // Vercel's docs do not state whether a destination's query string MERGES with
+  // the request's own or REPLACES it. Where the caller sends a query string of
+  // its own, a destination query string could therefore destroy it, so the
+  // endpoint goes in the path instead. Where the caller sends none, there is
+  // nothing to lose and the parameter is the stronger signal.
   for (const rule of vercelJson.rewrites) {
-    assert.equal(rule.destination.includes('?'), false,
-      `rewrite to ${rule.destination} adds a query string; pass the endpoint in the PATH instead`);
+    const { literal, carriesQuery, segment } = ruleParts(rule);
+    if (!carriesQuery) continue;
+    assert.ok(CALLERS_SEND_NO_QUERY.has(literal),
+      `rewrite to ${rule.destination} adds a query string, but ${literal}'s caller sends its own `
+      + 'query string, which the destination could replace. Convey the endpoint in the PATH '
+      + 'instead, or add this path to CALLERS_SEND_NO_QUERY only after confirming every caller '
+      + 'sends no query string.');
+    assert.equal(rule.destination.split('?')[1], `action=${segment}`,
+      `${rule.destination} must carry exactly action=<segment> and nothing else`);
   }
+});
+
+test('/api/wa-click conveys its endpoint in a way that survives every reading of the docs', () => {
+  // The one dispatch that cannot fall back on a 404 if it resolves wrong -- it
+  // would fall into submitHandler and post a malformed New Application -- so it
+  // is the one that gets the belt-and-braces form.
+  const rule = vercelJson.rewrites.find(r => ruleParts(r).literal === '/api/wa-click');
+  assert.ok(rule, '/api/wa-click must still have a rewrite');
+  assert.equal(rule.source, '/api/wa-click');
+  assert.equal(rule.destination, '/api/submit?action=wa-click');
+
+  const submit = require('../api/submit');
+  // Reading 1: req.url is the original path (query preserved or not -- the path
+  // alone decides).
+  assert.equal(resolveAction({ url: '/api/wa-click' }, submit.__routesForTests),
+    submit.__routesForTests['wa-click']);
+  // Readings 2-4: req.url is the destination path, and because the caller sent
+  // no query string, ?action=wa-click is present whether the destination query
+  // merged with an empty one or replaced it.
+  assert.equal(
+    resolveAction({ url: '/api/submit?action=wa-click', query: { action: 'wa-click' } },
+      submit.__routesForTests),
+    submit.__routesForTests['wa-click']);
 });
 
 test('every public path the consolidated files used to serve still has a rewrite', () => {
