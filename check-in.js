@@ -141,6 +141,15 @@ if (typeof document !== 'undefined') {
       showVerifyError((data && data.message) || 'Too many attempts. Try again in a few minutes.');
       return;
     }
+    // Distinct from the generic message below: reaching this response already
+    // required a successful roster match server-side (api/calendar-checkin.js's
+    // verifyHandler), so showing the specific reason leaks nothing to a
+    // stranger -- it tells a real client their PACKAGE, not their email/phone,
+    // is the actual problem, which is exactly why this message exists.
+    if (data && data.error === 'ACCESS_INACTIVE') {
+      showVerifyError((data && data.message) || GENERIC_FAIL);
+      return;
+    }
     // Every other non-success, including the deliberate 200 {ok:false},
     // collapses to the one generic message.
     if (!data || data.ok !== true || !data.verifyToken) {
@@ -375,6 +384,19 @@ if (typeof document !== 'undefined') {
       $('pickerError').textContent = 'That time was just taken. Here are the current openings.';
       show('pickerError');
       await loadAvailability(state.rangeStart || localDateKey());
+      return;
+    }
+
+    // Checked by ERROR CODE, before the status-code-only 403/NOT_VERIFIED
+    // branch below: this is the race-window re-check in bookHandler (a
+    // client paused or ran out their package between verifying and
+    // confirming), and it is ALSO a 403 -- matching on status alone would
+    // shadow it with the generic "verify again" message below, which is the
+    // wrong follow-up for a client whose package, not whose token, is the
+    // problem.
+    if (data && data.error === 'ACCESS_INACTIVE') {
+      $('pickerError').textContent = (data && data.message) || 'Could not book that time -- try again.';
+      show('pickerError');
       return;
     }
 

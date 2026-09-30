@@ -125,6 +125,47 @@ test('an expired verification (403 NOT_VERIFIED) sends the visitor back to the v
   assert.match(js, /NOT_VERIFIED/);
 });
 
+// Narrow, explicitly-authorized exception to the check-in.js do-not-touch
+// rule: without this, an expired/paused client's verify/book response
+// collapses into the same generic message as a total stranger, even though
+// verifyHandler and bookHandler (api/calendar-checkin.js) both send back a
+// SPECIFIC, safe-to-show ACCESS_INACTIVE message precisely so a real
+// client's support follow-up says "my access lapsed," not "my email isn't
+// working." Safe to show here for the same reason it's safe server-side:
+// reaching either response already required a successful roster/token
+// match, so it reveals nothing to someone who hasn't already proven they're
+// a real client.
+test('a verify response carrying ACCESS_INACTIVE shows its own specific message, not the generic one', () => {
+  const idx = js.indexOf("fetch('/api/checkin-verify'");
+  assert.ok(idx !== -1, "the verify handler's fetch call was not found");
+  const window = js.slice(idx, idx + 2500);
+
+  const accessIdx = window.search(/error\s*===\s*['"]ACCESS_INACTIVE['"]/);
+  assert.ok(accessIdx !== -1, 'the verify response handler must branch on error === "ACCESS_INACTIVE"');
+
+  // The branch must come BEFORE the generic fallback -- an earlier return
+  // there would shadow it.
+  const genericIdx = window.search(/showVerifyError\(GENERIC_FAIL\)/);
+  assert.ok(genericIdx !== -1 && accessIdx < genericIdx,
+    'the ACCESS_INACTIVE branch must be checked before the generic GENERIC_FAIL fallback');
+});
+
+test('a book-time 403 carrying ACCESS_INACTIVE shows its own specific message instead of the generic NOT_VERIFIED handling', () => {
+  const idx = js.indexOf("fetch('/api/calendar-checkin-book'");
+  assert.ok(idx !== -1, "the book handler's fetch call was not found");
+  const window = js.slice(idx, idx + 2500);
+
+  const accessIdx = window.search(/error\s*===\s*['"]ACCESS_INACTIVE['"]/);
+  assert.ok(accessIdx !== -1, 'the book response handler must branch on error === "ACCESS_INACTIVE"');
+
+  // Must be checked BEFORE the existing 403/NOT_VERIFIED branch, which
+  // matches by STATUS CODE alone (ACCESS_INACTIVE is also a 403) and would
+  // otherwise shadow it with the generic "verify again" handling.
+  const statusOnlyIdx = window.search(/res\.status\s*===\s*403/);
+  assert.ok(statusOnlyIdx !== -1 && accessIdx < statusOnlyIdx,
+    'ACCESS_INACTIVE must be checked before the status-code-only 403/NOT_VERIFIED branch');
+});
+
 test('the verify token is held in a JS variable, never written to storage', () => {
   assert.equal(/localStorage/.test(js), false, 'a verify token must not be persisted');
   assert.equal(/sessionStorage/.test(js), false);
