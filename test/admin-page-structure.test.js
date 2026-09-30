@@ -638,6 +638,63 @@ test('Package Length is a <select> offering the 1/2/3/6/9/12-month presets, and 
   assert.match(submitWindow, /durationMonths:\s*Number\(\$\('clientDurationMonths'\)\.value\)/);
 });
 
+// CRITICAL fix (code review): the six presets are a UI convenience only --
+// validateClient (api/_checkin-clients.js) never restricted durationMonths
+// to them, and the free-typed number input this replaced had no upper bound
+// either. So an existing client's durationMonths CAN be a non-preset value
+// (created before this dropdown shipped, or via the API directly). Setting
+// a <select>'s .value to a number matching no <option> silently deselects
+// everything (value becomes '') -- which both blocks the WHOLE (required)
+// form from submitting on an unrelated edit, and, if the admin then picks
+// any preset just to get unblocked, would silently recompute expiresAt from
+// the wrong duration. ensureDurationOption() must inject a one-off <option>
+// for the true stored value BEFORE the select's value is assigned, so it
+// round-trips correctly instead of vanishing.
+test('a non-preset durationMonths value gets its own injected <option> before Edit-populate sets the select value', () => {
+  const fnIdx = html.indexOf('function ensureDurationOption');
+  assert.ok(fnIdx !== -1, 'ensureDurationOption not found');
+  const fnWindow = html.slice(fnIdx, fnIdx + 900);
+
+  assert.match(fnWindow, /DURATION_MONTH_PRESETS\.includes\(months\)/,
+    'ensureDurationOption must check the value against the preset list and bail out if it matches');
+  assert.match(fnWindow, /document\.createElement\('option'\)/,
+    'a non-preset value must get a real injected <option> element');
+  assert.match(fnWindow, /opt\.value\s*=\s*String\(months\)/,
+    'the injected option\'s value must be the EXACT stored durationMonths, not a rounded/substitute preset');
+  assert.match(fnWindow, /\$\('clientDurationMonths'\)\.appendChild\(opt\)/,
+    'the injected option must actually be appended to the select');
+
+  // The Edit click-handler must call ensureDurationOption(c.durationMonths)
+  // strictly BEFORE assigning the select's value -- calling it after is too
+  // late, since the assignment is exactly what silently deselects
+  // everything when no matching <option> exists yet.
+  const clickIdx = html.indexOf("clientsTableBody').addEventListener('click'");
+  assert.ok(clickIdx !== -1, 'the delegated clientsTableBody click handler was not found');
+  const clickWindow = html.slice(clickIdx, clickIdx + 2000);
+  const ensureAt = clickWindow.indexOf('ensureDurationOption(c.durationMonths)');
+  const assignAt = clickWindow.indexOf("$('clientDurationMonths').value = c.durationMonths || '';");
+  assert.ok(ensureAt !== -1, 'Edit must call ensureDurationOption(c.durationMonths)');
+  assert.ok(assignAt !== -1, 'Edit must still assign the select value from c.durationMonths');
+  assert.ok(ensureAt < assignAt,
+    'ensureDurationOption must run BEFORE the select value assignment it is meant to protect');
+});
+
+// A stale injected option must never accumulate across repeated Edits (a
+// DIFFERENT client's non-preset value left behind by a previous Edit), and
+// must not survive past a successful Add/Edit submit that resets the form.
+test('the injected custom duration option is cleared on every ensureDurationOption call and on the post-submit form reset', () => {
+  const fnIdx = html.indexOf('function ensureDurationOption');
+  const fnWindow = html.slice(fnIdx, fnIdx + 300);
+  assert.match(fnWindow, /clearCustomDurationOption\(\)/,
+    'ensureDurationOption must clear any previously-injected option first, on every call -- ' +
+    'this is what cleans up a stale option left behind by a DIFFERENT client\'s Edit');
+
+  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
+  const submitWindow = html.slice(submitIdx, submitIdx + 4000);
+  assert.match(submitWindow, /clearCustomDurationOption\(\)/,
+    'the post-submit form reset must also clear any injected custom duration option');
+});
+
 // The classic flexbox min-width:auto gotcha: a flex item's content (a long
 // typed name/email) was preventing it from shrinking, pushing the row (and
 // the page) into horizontal scroll instead of the input containing its own

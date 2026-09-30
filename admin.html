@@ -1134,6 +1134,47 @@
     // call clientStartDatePicker.refresh() -- see initDatePicker's comment.
     let clientStartDatePicker = null;
 
+    // The 1/2/3/6/9/12 options on #clientDurationMonths are a UI convenience,
+    // not a backend restriction -- validateClient in api/_checkin-clients.js
+    // only requires durationMonths to be a positive number, and the native
+    // number input this replaced had no upper bound either. So a client can
+    // already exist (created before this dropdown shipped, or via the API
+    // directly) with a durationMonths that matches none of the six presets.
+    const DURATION_MONTH_PRESETS = [1, 2, 3, 6, 9, 12];
+    const CUSTOM_DURATION_OPTION_ID = 'clientDurationMonthsCustomOption';
+
+    // Removes the one-off <option> ensureDurationOption() may have injected,
+    // so a stale non-preset option from a PREVIOUS Edit (or from before the
+    // form was last reset) never lingers in the list.
+    function clearCustomDurationOption() {
+      const existing = $(CUSTOM_DURATION_OPTION_ID);
+      if (existing) existing.remove();
+    }
+
+    // Setting a <select>'s .value to a number matching no <option> silently
+    // deselects everything (selectedIndex -1, value ''). That is doubly bad
+    // here: the select is required, so it blocks the WHOLE form from
+    // submitting (a generic browser tooltip) even to fix an unrelated field
+    // like a phone typo; and if the admin then picks any preset just to get
+    // unblocked, that value would no longer match editingSnapshot.durationMonths,
+    // so the submit handler's datesUnchanged check would go false and
+    // silently recompute expiresAt from the wrong duration -- changing the
+    // client's actual package length as a side effect of an edit that never
+    // touched it. Injecting a one-off <option> for the true stored value
+    // keeps it round-tripping correctly instead of vanishing. Always clears
+    // any previously-injected option first, so this also serves as the
+    // "different client opened for Edit" cleanup path.
+    function ensureDurationOption(months) {
+      clearCustomDurationOption();
+      if (!Number.isFinite(months) || months <= 0) return;
+      if (DURATION_MONTH_PRESETS.includes(months)) return;
+      const opt = document.createElement('option');
+      opt.id = CUSTOM_DURATION_OPTION_ID;
+      opt.value = String(months);
+      opt.textContent = `${months} months`;
+      $('clientDurationMonths').appendChild(opt);
+    }
+
     function emailsMatch(a, b) {
       return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
     }
@@ -1340,6 +1381,7 @@
           $('clientPhone').value = '';
           $('clientStartDate').value = '';
           clientStartDatePicker.refresh();
+          clearCustomDurationOption();
           $('clientDurationMonths').value = '';
           editingSnapshot = null;
           return;
@@ -1399,6 +1441,11 @@
           $('clientPhone').value = c.phone || '';
           $('clientStartDate').value = c.startDate || '';
           clientStartDatePicker.refresh();
+          // The stored durationMonths may not match any preset <option> (see
+          // ensureDurationOption's comment) -- inject a one-off option for it
+          // FIRST, so the assignment below actually lands on that value
+          // instead of silently deselecting everything.
+          ensureDurationOption(c.durationMonths);
           $('clientDurationMonths').value = c.durationMonths || '';
           // Stash a snapshot of the CURRENT record so the submit handler can
           // carry expiresAt/pausedAt through unchanged -- see the comment on
