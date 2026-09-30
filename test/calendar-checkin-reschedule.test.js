@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const tz = require('../api/_timezone');
 const store = require('../api/_blob-store');
+const cc = require('../api/_checkin-clients');
 const gcal = require('../api/_google-calendar');
 const guard = require('../api/_booking-guard');
 const cslack = require('../api/_checkin-slack');
@@ -140,8 +141,15 @@ function goodBody(newStartMs, overrides = {}) {
   };
 }
 
+// The roster lookup rescheduleHandler now does for its access-control gate
+// (mirroring bookHandler). Defaults to an ACTIVE client at EMAIL so every
+// pre-existing test in this file -- none of which simulate a check-in roster
+// at all -- keeps passing unchanged; tests for the gate itself override this.
 function baseStubs(extra = []) {
   return [
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, usedDefault: false, clients: [
+      { name: 'Alice Client', email: EMAIL, phone: '5550100100', pausedAt: null, expiresAt: null },
+    ] }) },
     { obj: loadMod, key: 'loadCheckinTemplate', value: async () => ({ ok: true, template: CHECKIN_TEMPLATE, usedDefault: false }) },
     { obj: gcal, key: 'freeBusy', value: async () => ({ ok: true, busy: [] }) },
     { obj: cslack, key: 'postCheckinBookingChanged', value: async () => ({ ts: null }) },
@@ -229,6 +237,57 @@ test('an event tagged with some OTHER audience value -> 403 FORBIDDEN', async ()
     await h({ method: 'POST', body: goodBody(newStart) }, res);
     assert.equal(res._status, 403);
     assert.equal(patchSpy.calls.length, 0);
+  });
+  delete require.cache[handlerPath];
+});
+
+// Defense in depth, mirroring bookHandler's own gate: a client paused or
+// expired since booking must not be able to move an existing check-in to a
+// new slot either -- rescheduleHandler had no isAccessActive check at all.
+test('a PAUSED client -> 403 ACCESS_INACTIVE, and patchEvent is never called', async () => {
+  envSetup();
+  const oldStart = validSlotStartMs();
+  const oldEnd = oldStart + 15 * 60 * 1000;
+  const newStart = oldStart + 2 * 3600 * 1000;
+  const patchSpy = spyStub({ ok: true, event: {} });
+
+  await withStubs(baseStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [
+      { name: 'Alice Client', email: EMAIL, phone: '5550100100', pausedAt: Date.now(), expiresAt: null },
+    ] }) },
+    { obj: gcal, key: 'getEvent', value: async () => ({ ok: true, event: checkinEvent({ startMs: oldStart, endMs: oldEnd }) }) },
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+  ]), async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody(newStart) }, res);
+    assert.equal(res._status, 403);
+    assert.equal(res._json.error, 'ACCESS_INACTIVE');
+    assert.equal(patchSpy.calls.length, 0, 'a paused client must never reach the calendar');
+  });
+  delete require.cache[handlerPath];
+});
+
+test('an EXPIRED client -> 403 ACCESS_INACTIVE, and patchEvent is never called', async () => {
+  envSetup();
+  const oldStart = validSlotStartMs();
+  const oldEnd = oldStart + 15 * 60 * 1000;
+  const newStart = oldStart + 2 * 3600 * 1000;
+  const patchSpy = spyStub({ ok: true, event: {} });
+
+  await withStubs(baseStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [
+      { name: 'Alice Client', email: EMAIL, phone: '5550100100', pausedAt: null, expiresAt: Date.now() - 1000 },
+    ] }) },
+    { obj: gcal, key: 'getEvent', value: async () => ({ ok: true, event: checkinEvent({ startMs: oldStart, endMs: oldEnd }) }) },
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+  ]), async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody(newStart) }, res);
+    assert.equal(res._status, 403);
+    assert.equal(res._json.error, 'ACCESS_INACTIVE');
+    assert.equal(patchSpy.calls.length, 0, 'an expired client must never reach the calendar');
   });
   delete require.cache[handlerPath];
 });

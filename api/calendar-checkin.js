@@ -505,6 +505,24 @@ async function rescheduleHandler(req, res) {
       message: 'That booking is not managed here.' });
   }
 
+  // Defense in depth, mirroring bookHandler's own gate: a client who was
+  // paused or ran out their package since booking must not be able to move
+  // an existing check-in to a new slot either.
+  const clientsRes = await cc.loadClients();
+  if (!clientsRes.ok) {
+    if (clientsRes.reason === store.BLOB_NOT_CONFIGURED) {
+      return res.status(503).json({ ok: false, error: 'BLOB_NOT_CONFIGURED',
+        message: 'Booking storage is not set up yet.' });
+    }
+    return res.status(502).json({ ok: false, error: 'UPSTREAM',
+      message: 'Could not check that right now.' });
+  }
+  const client = cc.findClient(clientsRes.clients, { email: meta.visitorEmail });
+  if (!cc.isAccessActive(client)) {
+    return res.status(403).json({ ok: false, error: 'ACCESS_INACTIVE',
+      message: "Your check-in access isn't currently active. Contact Omar directly." });
+  }
+
   const startMs = Date.parse(String(body.start || ''));
   if (!Number.isFinite(startMs)) {
     return res.status(400).json({ ok: false, error: 'BAD_REQUEST',
