@@ -212,7 +212,7 @@ test('renderClients computes Status from pausedAt/expiresAt and renders Edit, Pa
   assert.ok(sectionAt !== -1, 'client manager section not found');
   const renderAt = html.indexOf('function renderClients');
   assert.ok(renderAt !== -1 && renderAt > sectionAt, 'renderClients not found');
-  const sectionWindow = html.slice(sectionAt, renderAt + 3000);
+  const sectionWindow = html.slice(sectionAt, renderAt + 4500);
   assert.match(sectionWindow, /pausedAt/);
   assert.match(sectionWindow, /expiresAt/);
   assert.match(sectionWindow, /client-edit/);
@@ -265,6 +265,82 @@ test('Edit stashes the row\'s current expiresAt/pausedAt, and the submit handler
   const fetchAt = submitWindow.indexOf("fetch('/api/admin/checkin-clients'");
   assert.ok(guardAt !== -1 && fetchAt !== -1 && guardAt < fetchAt,
     'the editingSnapshot guard must run before the client object is POSTed');
+});
+
+// CRITICAL regression check: editingSnapshot as first shipped was cleared
+// ONLY on a successful form save, so a Renew/Pause/Resume/Remove that
+// happened while an Edit was still open left it frozen at pre-change values.
+// Resubmitting that stale edit would then silently revert a Renew or
+// un-pause a client -- the exact bug the snapshot exists to prevent, reached
+// by a different trigger. renderClients() is where every one of those
+// actions ends up (each calls it on success), so it is the one place that
+// can catch all of them.
+test('renderClients invalidates a stale editingSnapshot on every re-render, and rebuilds it fresh if that client survives', () => {
+  const idx = html.indexOf('function renderClients');
+  assert.ok(idx !== -1, 'renderClients not found');
+  const fnWindow = html.slice(idx, idx + 2500);
+
+  // The clearing site itself.
+  assert.match(fnWindow, /editingSnapshot\s*=\s*null/,
+    'renderClients must clear editingSnapshot -- every lifecycle action ' +
+    '(Renew, Pause, Resume, Remove) ends in exactly this render');
+
+  // It must run near the top, before the per-client render loop -- not as
+  // an afterthought once the (now-stale) rows are already drawn.
+  const clearAt = fnWindow.search(/editingSnapshot\s*=\s*null/);
+  const loopAt = fnWindow.indexOf('for (');
+  assert.ok(clearAt !== -1 && loopAt !== -1 && clearAt < loopAt,
+    'editingSnapshot must be cleared before the per-client render loop');
+
+  // A bare clear alone is not enough: it would fix the "Remove" sequence but
+  // leave the "Renew/Pause/Resume while still editing" sequences resubmitting
+  // with NO expiresAt/pausedAt at all -- which normalizeEntry defaults the
+  // same wrong way (recompute expiresAt from scratch; pausedAt -> null) as
+  // applying a stale value would. renderClients must therefore REBUILD the
+  // snapshot from the freshly-rendered record for that same email, inside
+  // the loop, whenever it is still present.
+  assert.match(fnWindow, /editingSnapshot\s*=\s*\{/,
+    'renderClients must rebuild editingSnapshot from the live record when ' +
+    'the client being edited is still in the newly-rendered list');
+  const rebuildAt = fnWindow.search(/editingSnapshot\s*=\s*\{/);
+  assert.ok(rebuildAt !== -1 && rebuildAt > clearAt && rebuildAt < loopAt + 500,
+    'the rebuild must happen inside/around the per-client loop, after the clear');
+});
+
+// Fix: Edit ALWAYS preserving expiresAt/pausedAt meant correcting a wrong
+// startDate/durationMonths via Edit had zero effect on the actual expiry.
+// The submit handler must only carry expiresAt through when the form's
+// CURRENT startDate/durationMonths still match what editingSnapshot captured
+// -- if the admin changed either, expiresAt must recompute fresh from the
+// new values (same as a brand-new Add). pausedAt is carried through either
+// way -- fixing a date typo must not also silently toggle pause state.
+test('the submit handler only preserves expiresAt when startDate/durationMonths are unchanged from the snapshot; pausedAt always carries through', () => {
+  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
+  assert.ok(submitIdx !== -1, 'the clientAddForm submit handler was not found');
+  const submitWindow = html.slice(submitIdx, submitIdx + 3000);
+
+  assert.match(submitWindow, /client\.startDate\s*===\s*editingSnapshot\.startDate/,
+    'the submit handler must compare the form\'s current startDate against the snapshot');
+  assert.match(submitWindow, /client\.durationMonths\s*===\s*editingSnapshot\.durationMonths/,
+    'the submit handler must compare the form\'s current durationMonths against the snapshot');
+
+  // client.expiresAt may only be assigned AFTER that comparison -- i.e.
+  // inside its true branch, not unconditionally.
+  const cmpAt = submitWindow.search(/client\.startDate\s*===\s*editingSnapshot\.startDate/);
+  const expiresAssignAt = submitWindow.indexOf('client.expiresAt = editingSnapshot.expiresAt');
+  assert.ok(cmpAt !== -1 && expiresAssignAt !== -1 && cmpAt < expiresAssignAt,
+    'client.expiresAt must only be carried through AFTER the dates-unchanged comparison');
+
+  // client.pausedAt must be assigned OUTSIDE (after) that comparison's own
+  // block closes -- i.e. unconditionally once we know this is the same
+  // client being edited, regardless of whether the dates changed.
+  const innerIfAt = submitWindow.indexOf('if (datesUnchanged)');
+  assert.ok(innerIfAt !== -1, 'expected an explicit datesUnchanged check');
+  const innerCloseAt = submitWindow.indexOf('}', expiresAssignAt);
+  const pausedAssignAt = submitWindow.indexOf('client.pausedAt = editingSnapshot.pausedAt');
+  assert.ok(innerCloseAt !== -1 && pausedAssignAt !== -1 && pausedAssignAt > innerCloseAt,
+    'client.pausedAt must be assigned after the datesUnchanged block closes, ' +
+    'so it carries through regardless of whether dates changed');
 });
 
 test('the delegated table click handler wires Edit (repopulates the form) and Pause/Resume/Renew (posts a command)', () => {

@@ -811,18 +811,28 @@
     // the row that was just rendered, without a second round trip.
     const clientsByEmail = new Map();
 
-    // Set by the Edit button to the CURRENT expiresAt/pausedAt of the row it
-    // populated the form from, keyed to the email it was captured for. The
-    // add-form only carries name/email/phone/startDate/durationMonths as
-    // visible fields, and normalizeEntry() (api/_checkin-clients.js)
-    // recomputes expiresAt fresh from startDate+durationMonths whenever the
-    // posted body has no finite expiresAt of its own -- so without this, an
-    // Edit that merely fixes a typo'd phone number would silently discard any
-    // Renew extension or Pause/Resume adjustment already on the record. A
-    // fresh Add Client has no snapshot to carry (stays null), which is
-    // exactly right: a brand-new client's expiresAt SHOULD be computed fresh
-    // from the startDate/durationMonths just entered.
-    let editingSnapshot = null; // { email, expiresAt, pausedAt } | null
+    // Set by the Edit button to a snapshot of the row it populated the form
+    // from, keyed to the email it was captured for. The add-form only carries
+    // name/email/phone/startDate/durationMonths as visible fields, and
+    // normalizeEntry() (api/_checkin-clients.js) recomputes expiresAt fresh
+    // from startDate+durationMonths whenever the posted body has no finite
+    // expiresAt of its own -- so without this, an Edit that merely fixes a
+    // typo'd phone number would silently discard any Renew extension or
+    // Pause/Resume adjustment already on the record. A fresh Add Client has
+    // no snapshot to carry (stays null), which is exactly right: a brand-new
+    // client's expiresAt SHOULD be computed fresh from the
+    // startDate/durationMonths just entered.
+    //
+    // CRITICAL: this snapshot goes stale the instant anything else changes
+    // the record -- a Renew, a Pause/Resume, or a Remove, every one of which
+    // re-renders the table. renderClients() below is what keeps it honest: it
+    // invalidates the snapshot on every render, then rebuilds it fresh from
+    // whatever was just rendered for that same email (or leaves it cleared,
+    // if that client is gone -- e.g. Removed). Without that, a still-open
+    // Edit resubmitted after an out-of-band Renew/Pause would silently revert
+    // it -- the exact bug this snapshot exists to prevent, reached a
+    // different way.
+    let editingSnapshot = null; // { email, startDate, durationMonths, expiresAt, pausedAt } | null
 
     function emailsMatch(a, b) {
       return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -846,12 +856,27 @@
     function renderClients(clients) {
       const body = $('clientsTableBody');
       body.innerHTML = '';
+
+      // Invalidate whatever editingSnapshot was captured before this render --
+      // it may now be stale (a Renew/Pause/Resume/Remove just happened, and
+      // every one of those ends in exactly this render). Rebuilt below, from
+      // this same fresh data, ONLY if that email is still on the list; if it
+      // was Removed, there is nothing left to inherit and it stays cleared.
+      const editingEmail = editingSnapshot ? editingSnapshot.email : null;
+      editingSnapshot = null;
+
       clientsByEmail.clear();
       const list = Array.isArray(clients) ? clients : [];
       $('clientsEmpty').hidden = list.length > 0;
 
       for (const c of list) {
         clientsByEmail.set(c.email, c);
+        if (editingEmail && emailsMatch(c.email, editingEmail)) {
+          editingSnapshot = {
+            email: c.email, startDate: c.startDate || '', durationMonths: c.durationMonths,
+            expiresAt: c.expiresAt, pausedAt: c.pausedAt,
+          };
+        }
         const tr = document.createElement('tr');
 
         // textContent, never innerHTML: a client's own name is data, and this
@@ -967,15 +992,27 @@
 
         // This is an EDIT of the same client the snapshot was captured from
         // (not a fresh add, and not an edit whose email was then changed to a
-        // different address) -- carry its current expiresAt/pausedAt through
-        // unchanged, so normalizeEntry's "already a finite number -> keep it"
-        // branch fires instead of recomputing from startDate+durationMonths.
-        // Editing startDate/durationMonths here has no immediate effect on
-        // the current expiry -- it only changes what a future Renew computes
-        // from; Renew is the explicit action that changes expiry, Edit is for
-        // fixing mistakes in the other fields.
+        // different address).
         if (editingSnapshot && emailsMatch(editingSnapshot.email, client.email)) {
-          client.expiresAt = editingSnapshot.expiresAt;
+          // Only carry expiresAt through unchanged (firing normalizeEntry's
+          // "already a finite number -> keep it" branch instead of
+          // recomputing) if the admin has NOT deliberately changed
+          // startDate/durationMonths since Edit opened. Editing those fields
+          // on this form IS how an admin corrects a data-entry mistake in the
+          // package length/start -- if they just changed one, recompute
+          // expiresAt fresh from the new values (same as a brand-new Add),
+          // rather than silently keeping it pinned to the old ones. Renew
+          // remains the only action that extends expiry without touching
+          // these fields.
+          const datesUnchanged = client.startDate === editingSnapshot.startDate
+            && client.durationMonths === editingSnapshot.durationMonths;
+          if (datesUnchanged) {
+            client.expiresAt = editingSnapshot.expiresAt;
+          }
+          // pausedAt is carried through regardless of the above -- fixing a
+          // wrong startDate/durationMonths must not also silently un-pause
+          // (or re-pause) the client; Pause/Resume are the only actions that
+          // change this.
           client.pausedAt = editingSnapshot.pausedAt;
         }
 
@@ -1061,10 +1098,14 @@
           $('clientPhone').value = c.phone || '';
           $('clientStartDate').value = c.startDate || '';
           $('clientDurationMonths').value = c.durationMonths || '';
-          // Stash the CURRENT expiresAt/pausedAt so the submit handler can
-          // carry them through unchanged -- see the comment on
-          // editingSnapshot's declaration for why this matters.
-          editingSnapshot = { email: c.email, expiresAt: c.expiresAt, pausedAt: c.pausedAt };
+          // Stash a snapshot of the CURRENT record so the submit handler can
+          // carry expiresAt/pausedAt through unchanged -- see the comment on
+          // editingSnapshot's declaration for why this matters, and why
+          // renderClients() keeps this fresh rather than letting it go stale.
+          editingSnapshot = {
+            email: c.email, startDate: c.startDate || '', durationMonths: c.durationMonths,
+            expiresAt: c.expiresAt, pausedAt: c.pausedAt,
+          };
           $('clientErrors').hidden = true;
           $('clientSuccess').hidden = true;
           $('clientEmail').focus();
