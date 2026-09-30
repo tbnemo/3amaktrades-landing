@@ -43,6 +43,17 @@ function spyStub(result) {
   return fn;
 }
 
+// Matches test/calendar-reminders.test.js's withFixedNow -- pins Date.now()
+// for the duration of `fn` so a handler's OWN internal Date.now() call (e.g.
+// renewClient's default `nowMs = Date.now()`) and the test's expectation are
+// reading the exact same instant, not two independent live-clock samples a
+// few awaits apart.
+function withFixedNow(nowMs, fn) {
+  const orig = Date.now;
+  Date.now = () => nowMs;
+  return Promise.resolve(fn()).finally(() => { Date.now = orig; });
+}
+
 function cookieValueOf(setCookie) { return setCookie.split(';')[0]; }
 function authedReq(method, body) {
   return { method, headers: { cookie: cookieValueOf(auth.issueSessionCookie()) }, body, query: {} };
@@ -360,7 +371,12 @@ test('authenticated DELETE reads the email from the query string when the body i
 test('POST with command:"renew" -> 200, calls cc.renewClient, and saves the updated roster', async () => {
   envSetup();
   const saveSpy = spyStub({ ok: true });
-  await withStubs([
+  // Pinned so the handler's internal `cc.renewClient(client)` (which defaults
+  // to Date.now()) and this test's own expectation read the IDENTICAL instant
+  // -- two independent live-clock samples a few awaits apart can (rarely)
+  // straddle a month-rollover boundary and disagree. See withFixedNow.
+  const FIXED_NOW = Date.UTC(2026, 5, 15); // well after ALICE's fixture expiresAt
+  await withFixedNow(FIXED_NOW, () => withStubs([
     { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [ALICE, BOB], usedDefault: false }) },
     { obj: cc, key: 'saveClients', value: saveSpy },
   ], async () => {
@@ -372,9 +388,10 @@ test('POST with command:"renew" -> 200, calls cc.renewClient, and saves the upda
     const written = saveSpy.calls[0][0];
     assert.equal(written.length, 2, 'the roster size must not change');
     const updatedAlice = written.find(c => c.email === 'alice@example.com');
-    assert.equal(updatedAlice.expiresAt, cc.renewClient(ALICE).expiresAt);
+    const expected = cc.renewClient(ALICE, FIXED_NOW);
+    assert.equal(updatedAlice.expiresAt, expected.expiresAt);
     assert.deepEqual(res._json.clients, written);
-  });
+  }));
 });
 
 test('POST with command:"pause" -> 200 and the client is saved with pausedAt set', async () => {
