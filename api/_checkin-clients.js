@@ -26,11 +26,82 @@ function normalizePhone(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
 
+// Adds `months` calendar months to an epoch-ms instant, in UTC (this is
+// coarse "package length" math, not scheduling -- UTC sidesteps DST
+// entirely, the same way the rest of this file treats dates as plain values).
+function addMonths(ms, months) {
+  const d = new Date(ms);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return d.getTime();
+}
+
+// "YYYY-MM-DD" + a package length -> the epoch-ms instant it expires.
+function computeExpiresAt(startDate, durationMonths) {
+  const parts = String(startDate || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
+  const [y, m, d] = parts;
+  return addMonths(Date.UTC(y, m - 1, d), durationMonths);
+}
+
+// Extends from whichever is LATER: their current expiry, or right now. This
+// handles both an early renewal (extends from the existing expiry, so paid
+// time is never shortened) and a lapsed renewal (extends from today, so a
+// client who renews after lapsing doesn't retroactively get back-dated).
+function renewClient(client, nowMs = Date.now()) {
+  const base = Math.max(client.expiresAt || 0, nowMs);
+  return { ...client, expiresAt: addMonths(base, client.durationMonths) };
+}
+
+// Blocks access immediately. A no-op if already paused (idempotent).
+function pauseClient(client, nowMs = Date.now()) {
+  if (client.pausedAt != null) return client;
+  return { ...client, pausedAt: nowMs };
+}
+
+// Shifts expiresAt forward by exactly how long they were paused, so frozen
+// time is never lost. A no-op if not currently paused (idempotent).
+function resumeClient(client, nowMs = Date.now()) {
+  if (client.pausedAt == null) return client;
+  const pausedMs = nowMs - client.pausedAt;
+  return {
+    ...client,
+    pausedAt: null,
+    expiresAt: client.expiresAt == null ? null : client.expiresAt + pausedMs,
+  };
+}
+
+// Whether this client currently has booking access. A null expiresAt means
+// "no package configured yet" (e.g. a client added before this feature
+// existed) -- NOT expired; it stays active until an admin sets a real
+// package via Edit or Renew. This must NEVER be trusted from a request body
+// -- it's only ever computed server-side from the stored record.
+function isAccessActive(client, nowMs = Date.now()) {
+  if (!client) return false;
+  if (client.pausedAt != null) return false;
+  if (client.expiresAt == null) return true;
+  return nowMs < client.expiresAt;
+}
+
 function normalizeEntry(c) {
+  const startDate = String((c && c.startDate) || '').trim();
+  const durationMonths = Math.max(1, Math.round(Number(c && c.durationMonths) || 1));
+  const pausedAt = Number.isFinite(c && c.pausedAt) ? c.pausedAt : null;
+  const rawExpiresAt = c && c.expiresAt;
+  // An already-finite expiresAt is the normal case: an existing record's
+  // expiresAt is already the tracked source of truth, mutated only by
+  // renewClient/resumeClient/a fresh admin add. Only compute it fresh when
+  // there is nothing stored yet.
+  const expiresAt = Number.isFinite(rawExpiresAt)
+    ? rawExpiresAt
+    : (startDate ? computeExpiresAt(startDate, durationMonths) : null);
   return {
     name: String((c && c.name) || '').trim(),
     email: normalizeEmail(c && c.email),
     phone: String((c && c.phone) || '').trim(),
+    startDate,
+    durationMonths,
+    pausedAt,
+    expiresAt,
   };
 }
 
@@ -50,12 +121,25 @@ async function saveClients(clients) {
   return store.writeJson(store.CHECKIN_CLIENTS_BLOB, { clients });
 }
 
+const START_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 function validateClient(entry) {
   const errors = [];
   const src = (entry && typeof entry === 'object') ? entry : {};
   const email = normalizeEmail(src.email);
   if (!email) errors.push('email is required -- it is the only channel booking notices go through');
   else if (!EMAIL_RE.test(email)) errors.push('email is not a valid address');
+
+  const startDate = String(src.startDate || '').trim();
+  if (!startDate || !START_DATE_RE.test(startDate)) {
+    errors.push('startDate is required and must be YYYY-MM-DD');
+  }
+
+  const durationMonths = Number(src.durationMonths);
+  if (!Number.isFinite(durationMonths) || durationMonths <= 0) {
+    errors.push('durationMonths is required and must be a positive number');
+  }
+
   return { ok: errors.length === 0, errors };
 }
 
@@ -104,4 +188,5 @@ function removeClient(clients, email) {
 module.exports = {
   loadClients, saveClients, findClient, upsertClient, removeClient,
   validateClient, normalizeEmail, normalizePhone,
+  addMonths, computeExpiresAt, renewClient, pauseClient, resumeClient, isAccessActive,
 };

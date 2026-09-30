@@ -106,6 +106,16 @@ async function verifyHandler(req, res) {
   // A correct guess clears this identifier's own failure history.
   await rl.clear(identifier);
 
+  // Safe to be a SPECIFIC, non-generic message here (unlike the roster-
+  // membership failure above): reaching this branch already required a
+  // successful roster match, so the visitor has already proven they're a
+  // real client -- this reveals nothing to someone who hasn't already
+  // guessed correctly.
+  if (!cc.isAccessActive(client)) {
+    return res.status(403).json({ ok: false, error: 'ACCESS_INACTIVE',
+      message: "Your check-in access isn't currently active. Contact Omar directly." });
+  }
+
   // Always scoped to the record's EMAIL, even when the visitor typed a phone:
   // email is guaranteed present, is the record key, and is the only channel the
   // confirmation can reach them on. The email itself is deliberately NOT
@@ -255,6 +265,15 @@ async function bookHandler(req, res) {
     return res.status(403).json({ ok: false, error: 'NOT_VERIFIED',
       message: 'Your verification has expired. Please verify again.' });
   }
+  // Defense in depth for the race window between verifying (minting the
+  // token) and actually confirming the booking, during which an admin could
+  // pause this client. verifyHandler already checked this at mint time, but
+  // that check is now stale.
+  if (!cc.isAccessActive(client)) {
+    return res.status(403).json({ ok: false, error: 'ACCESS_INACTIVE',
+      message: "Your check-in access isn't currently active. Contact Omar directly." });
+  }
+
   const addr = client.email;
   const name = client.name;
   const phone = client.phone;

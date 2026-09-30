@@ -240,6 +240,54 @@ test('a verified client whose name is blank still verifies, with an empty name',
   });
 });
 
+// --- Package lifecycle gating --------------------------------------------
+
+test('a PAUSED client is rejected with 403 ACCESS_INACTIVE even with a correct email/phone match', async () => {
+  envSetup();
+  const paused = [{ name: 'Alice Client', email: 'alice@example.com', phone: '15550100100', pausedAt: Date.now(), expiresAt: Date.now() + 1e9 }];
+  await withRoster(paused, async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', body: { email: 'alice@example.com' } }, res);
+    assert.equal(res._status, 403);
+    assert.equal(res._json.ok, false);
+    assert.equal(res._json.error, 'ACCESS_INACTIVE');
+    assert.equal(res._json.verifyToken, undefined, 'no token is minted for an inactive client');
+  });
+});
+
+test('an EXPIRED client is rejected with the same 403 ACCESS_INACTIVE', async () => {
+  envSetup();
+  const expired = [{ name: 'Alice Client', email: 'alice@example.com', phone: '', pausedAt: null, expiresAt: Date.now() - 1000 }];
+  await withRoster(expired, async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', body: { email: 'alice@example.com' } }, res);
+    assert.equal(res._status, 403);
+    assert.equal(res._json.error, 'ACCESS_INACTIVE');
+  });
+});
+
+test('an ACTIVE client (expiresAt in the future) still succeeds exactly as before', async () => {
+  envSetup();
+  const active = [{ name: 'Alice Client', email: 'alice@example.com', phone: '', pausedAt: null, expiresAt: Date.now() + 1e9 }];
+  await withRoster(active, async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', body: { email: 'alice@example.com' } }, res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.ok, true);
+  });
+});
+
+test('a legacy client with no expiresAt at all still succeeds exactly as before', async () => {
+  envSetup();
+  const legacy = [{ name: 'Alice Client', email: 'alice@example.com', phone: '' }];
+  await withRoster(legacy, async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', body: { email: 'alice@example.com' } }, res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.ok, true);
+  });
+});
+
 // --- Rate limiting -----------------------------------------------------
 
 test('after 5 failed guesses at the SAME identifier, the 6th returns 429 RATE_LIMITED', async () => {

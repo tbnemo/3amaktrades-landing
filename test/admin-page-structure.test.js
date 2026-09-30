@@ -142,6 +142,101 @@ test('the client manager has a table body, an add form, and its message slots', 
   }
 });
 
+// The Check-Ins tab used to combine the hours form AND the client roster in
+// one panel. It now splits into "Check-In Hours" (hours only) and a third
+// "Clients" tab holding the (now-enhanced) client manager.
+test('the Check-Ins tab split into Check-In Hours and a third Clients tab', () => {
+  const ids = new Set(idsIn(html));
+  for (const id of ['tabClients', 'panelClients']) {
+    assert.ok(ids.has(id), `missing tab element "${id}"`);
+  }
+  // clientsPanel must now live inside panelClients, not panelCheckins.
+  const panelCheckinsAt = html.indexOf('id="panelCheckins"');
+  const panelClientsAt = html.indexOf('id="panelClients"');
+  const clientsPanelAt = html.indexOf('id="clientsPanel"');
+  assert.ok(panelCheckinsAt !== -1 && panelClientsAt !== -1 && clientsPanelAt !== -1);
+  assert.ok(panelClientsAt > panelCheckinsAt, 'panelClients must come after panelCheckins');
+  assert.ok(clientsPanelAt > panelClientsAt, 'clientsPanel must live inside panelClients');
+
+  // chk-availabilityPanel (the hours form) must still be inside panelCheckins,
+  // and panelCheckins must no longer also contain the client table.
+  const chkAvailAt = html.indexOf('id="chk-availabilityPanel"');
+  assert.ok(chkAvailAt > panelCheckinsAt && chkAvailAt < panelClientsAt,
+    'chk-availabilityPanel must stay inside panelCheckins');
+});
+
+test('the Check-In Hours tab button is relabeled and the new Clients tab is a real, keyboard-reachable tab', () => {
+  const chkBtn = html.match(/<button[^>]*id="tabCheckins"[^>]*>([^<]*)</);
+  assert.ok(chkBtn, 'tabCheckins button not found');
+  assert.match(chkBtn[1], /Check-In Hours/);
+
+  const clientsBtn = html.match(/<button[^>]*id="tabClients"[^>]*>/);
+  assert.ok(clientsBtn, 'tabClients must be a <button>, not a div');
+  assert.match(clientsBtn[0], /aria-selected=/, 'tabClients must carry aria-selected');
+  assert.match(clientsBtn[0], /role="tab"/);
+});
+
+// startDate + durationMonths are now required on every add/edit, matching the
+// extended api/_checkin-clients.js validateClient.
+test('the add-client form gains required startDate and durationMonths inputs', () => {
+  const ids = new Set(idsIn(html));
+  for (const id of ['clientStartDate', 'clientDurationMonths']) {
+    assert.ok(ids.has(id), `missing client-manager id "${id}"`);
+  }
+  const startInput = html.match(/<input[^>]*id="clientStartDate"[^>]*>/);
+  assert.ok(startInput, 'clientStartDate input not found');
+  assert.match(startInput[0], /type="date"/);
+  assert.match(startInput[0], /\brequired\b/);
+
+  const durationInput = html.match(/<input[^>]*id="clientDurationMonths"[^>]*>/);
+  assert.ok(durationInput, 'clientDurationMonths input not found');
+  assert.match(durationInput[0], /type="number"/);
+  assert.match(durationInput[0], /min="1"/);
+  assert.match(durationInput[0], /\brequired\b/);
+});
+
+test('the clients table header gains Status and Expires columns', () => {
+  const tbodyAt = html.indexOf('id="clientsTableBody"');
+  const headerWindow = html.slice(Math.max(0, tbodyAt - 400), tbodyAt);
+  assert.match(headerWindow, /<th>Status<\/th>/);
+  assert.match(headerWindow, /<th>Expires<\/th>/);
+});
+
+// Status is computed CLIENT-SIDE from pausedAt/expiresAt, never trusted as a
+// server-sent field -- mirrors isAccessActive's own precedence (paused wins,
+// then expiry, then a null expiresAt defaults to active/legacy).
+test('renderClients computes Status from pausedAt/expiresAt and renders Edit, Pause/Resume and Renew actions', () => {
+  // The status computation (computeClientStatus) sits just above renderClients
+  // in the same "client manager" section -- widen the window to cover both.
+  const sectionAt = html.indexOf('// ── client manager');
+  assert.ok(sectionAt !== -1, 'client manager section not found');
+  const renderAt = html.indexOf('function renderClients');
+  assert.ok(renderAt !== -1 && renderAt > sectionAt, 'renderClients not found');
+  const sectionWindow = html.slice(sectionAt, renderAt + 3000);
+  assert.match(sectionWindow, /pausedAt/);
+  assert.match(sectionWindow, /expiresAt/);
+  assert.match(sectionWindow, /client-edit/);
+  assert.match(sectionWindow, /client-pause-resume/);
+  assert.match(sectionWindow, /client-renew/);
+});
+
+test('the delegated table click handler wires Edit (repopulates the form) and Pause/Resume/Renew (posts a command)', () => {
+  const idx = html.indexOf("clientsTableBody').addEventListener('click'");
+  assert.ok(idx !== -1, 'the delegated clientsTableBody click handler was not found');
+  const fnWindow = html.slice(idx, idx + 4000);
+
+  // Edit repopulates the add-form, including the two new package fields.
+  assert.match(fnWindow, /client-edit/);
+  assert.match(fnWindow, /clientStartDate/);
+  assert.match(fnWindow, /clientDurationMonths/);
+
+  // Pause/Resume/Renew POST a `command` to the same endpoint used for adds.
+  assert.match(fnWindow, /client-pause-resume/);
+  assert.match(fnWindow, /client-renew/);
+  assert.match(fnWindow, /command/);
+  assert.match(fnWindow, /\/api\/admin\/checkin-clients/);
+});
+
 // Email is the record key and the only channel notices go through, so the add
 // form must not let it be submitted empty.
 test('the client email input is required and typed as an email; name and phone are not required', () => {

@@ -274,6 +274,31 @@ test('a token for someone no longer on the roster -> 403 NOT_VERIFIED', async ()
   delete require.cache[handlerPath];
 });
 
+// Defense in depth for the race window between verifying (minting a token)
+// and confirming the booking: an admin could pause the client in between.
+test('a client paused AFTER verifying but BEFORE booking -> 403 ACCESS_INACTIVE, and the calendar is never touched', async () => {
+  envSetup();
+  const startMs = validSlotStartMs();
+  const insertSpy = spyStub({ ok: true, event: { id: 'should-never-exist' } });
+  const freeBusySpy = spyStub({ ok: true, busy: [] });
+  const pausedAlice = { ...ROSTER[0], pausedAt: Date.now() };
+
+  await withStubs(baseStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [pausedAlice, ROSTER[1]], usedDefault: false }) },
+    { obj: gcal, key: 'freeBusy', value: freeBusySpy },
+    { obj: gcal, key: 'insertEvent', value: insertSpy },
+  ]), async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody(startMs) }, res);
+    assert.equal(res._status, 403);
+    assert.equal(res._json.error, 'ACCESS_INACTIVE');
+    assert.equal(freeBusySpy.calls.length, 0, 'a paused client must never reach freeBusy');
+    assert.equal(insertSpy.calls.length, 0, 'a paused client must never reach the calendar');
+  });
+  delete require.cache[handlerPath];
+});
+
 // An arbitrary email in the body must be ignored outright -- not merely
 // rejected -- since the token alone decides whose booking this is.
 test('an email in the request body is ignored: the booking uses the TOKEN owner', async () => {

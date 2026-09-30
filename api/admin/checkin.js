@@ -127,6 +127,36 @@ async function clientsHandler(req, res) {
   }
 
   if (req.method === 'POST') {
+    // Lifecycle actions (renew/pause/resume) are distinguished by a `command`
+    // field in the JSON body -- a separate, inner concept from the route-level
+    // `?action=` that _route-action.js uses purely for file consolidation.
+    // Checked first so a command-carrying body never falls through to the
+    // upsert logic below, and everything else falls through unchanged.
+    if (req.body && req.body.command) {
+      const { command, email } = req.body;
+      if (!cc.normalizeEmail(email)) {
+        return res.status(400).json({ ok: false, errors: ['email is required'] });
+      }
+      const read = await cc.loadClients();
+      if (!read.ok) return readFailure(res, read.reason);
+
+      const client = cc.findClient(read.clients, { email });
+      if (!client) {
+        return res.status(404).json({ ok: false, errors: ['That email is not on the list.'] });
+      }
+
+      let updated;
+      if (command === 'renew') updated = cc.renewClient(client);
+      else if (command === 'pause') updated = cc.pauseClient(client);
+      else if (command === 'resume') updated = cc.resumeClient(client);
+      else return res.status(400).json({ ok: false, errors: [`unknown command: ${command}`] });
+
+      const clients = cc.upsertClient(read.clients, updated);
+      const written = await cc.saveClients(clients);
+      if (!written.ok) return writeFailure(res, written.reason);
+      return res.status(200).json({ ok: true, clients });
+    }
+
     const incoming = (req.body && req.body.client) || null;
     // Validate BEFORE reading the list: a bad entry must not even cost a read.
     const check = cc.validateClient(incoming);

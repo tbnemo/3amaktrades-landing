@@ -48,8 +48,18 @@ function authedReq(method, body) {
   return { method, headers: { cookie: cookieValueOf(auth.issueSessionCookie()) }, body, query: {} };
 }
 
-const ALICE = { name: 'Alice', email: 'alice@example.com', phone: '5550100100' };
-const BOB = { name: 'Bob', email: 'bob@example.com', phone: '' };
+// Canonical, already-normalized fixtures (see test/checkin-clients.test.js for
+// why expiresAt is precomputed to match normalizeEntry's own derivation).
+const ALICE = {
+  name: 'Alice', email: 'alice@example.com', phone: '5550100100',
+  startDate: '2026-01-01', durationMonths: 3, pausedAt: null,
+  expiresAt: Date.UTC(2026, 3, 1),
+};
+const BOB = {
+  name: 'Bob', email: 'bob@example.com', phone: '',
+  startDate: '2026-02-15', durationMonths: 1, pausedAt: null,
+  expiresAt: Date.UTC(2026, 2, 15),
+};
 
 test('GET with no session -> 401, and loadClients is NOT called', async () => {
   envSetup();
@@ -128,13 +138,20 @@ test('authenticated POST with a valid client -> 200 and saveClients called once 
     { obj: cc, key: 'saveClients', value: saveSpy },
   ], async () => {
     const res = makeRes();
-    await handler(authedReq('POST', { client: { name: 'Bob', email: 'BOB@Example.com', phone: ' 555-0199 ' } }), res);
+    await handler(authedReq('POST', { client: {
+      name: 'Bob', email: 'BOB@Example.com', phone: ' 555-0199 ',
+      startDate: '2026-03-01', durationMonths: 2,
+    } }), res);
     assert.equal(res._status, 200);
     assert.equal(res._json.ok, true);
     assert.equal(saveSpy.calls.length, 1);
     const written = saveSpy.calls[0][0];
     assert.equal(written.length, 2);
-    assert.deepEqual(written[1], { name: 'Bob', email: 'bob@example.com', phone: '555-0199' });
+    assert.deepEqual(written[1], {
+      name: 'Bob', email: 'bob@example.com', phone: '555-0199',
+      startDate: '2026-03-01', durationMonths: 2, pausedAt: null,
+      expiresAt: cc.computeExpiresAt('2026-03-01', 2),
+    });
     // The response echoes the saved list so the page never needs a second GET.
     assert.deepEqual(res._json.clients, written);
   });
@@ -148,7 +165,10 @@ test('authenticated POST with an email already on the list REPLACES it instead o
     { obj: cc, key: 'saveClients', value: saveSpy },
   ], async () => {
     const res = makeRes();
-    await handler(authedReq('POST', { client: { name: 'Alice Renamed', email: 'alice@example.com', phone: '5559999999' } }), res);
+    await handler(authedReq('POST', { client: {
+      name: 'Alice Renamed', email: 'alice@example.com', phone: '5559999999',
+      startDate: '2026-01-01', durationMonths: 3,
+    } }), res);
     assert.equal(res._status, 200);
     const written = saveSpy.calls[0][0];
     assert.equal(written.length, 2, 'the list must not grow');
@@ -205,9 +225,16 @@ test('authenticated POST with no phone is accepted -- phone is optional', async 
     { obj: cc, key: 'saveClients', value: saveSpy },
   ], async () => {
     const res = makeRes();
-    await handler(authedReq('POST', { client: { name: 'Solo', email: 'solo@example.com' } }), res);
+    await handler(authedReq('POST', { client: {
+      name: 'Solo', email: 'solo@example.com',
+      startDate: '2026-01-01', durationMonths: 1,
+    } }), res);
     assert.equal(res._status, 200);
-    assert.deepEqual(saveSpy.calls[0][0], [{ name: 'Solo', email: 'solo@example.com', phone: '' }]);
+    assert.deepEqual(saveSpy.calls[0][0], [{
+      name: 'Solo', email: 'solo@example.com', phone: '',
+      startDate: '2026-01-01', durationMonths: 1, pausedAt: null,
+      expiresAt: cc.computeExpiresAt('2026-01-01', 1),
+    }]);
   });
 });
 
@@ -321,6 +348,119 @@ test('authenticated DELETE reads the email from the query string when the body i
     }, res);
     assert.equal(res._status, 200);
     assert.deepEqual(saveSpy.calls[0][0], [ALICE]);
+  });
+});
+
+// ===========================================================================
+// The lifecycle `command` branch: renew / pause / resume, keyed on a `command`
+// field in the POST body (a separate concept from the route-level `?action=`
+// that _route-action.js uses for file consolidation).
+// ===========================================================================
+
+test('POST with command:"renew" -> 200, calls cc.renewClient, and saves the updated roster', async () => {
+  envSetup();
+  const saveSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [ALICE, BOB], usedDefault: false }) },
+    { obj: cc, key: 'saveClients', value: saveSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { command: 'renew', email: 'ALICE@example.com' }), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.ok, true);
+    assert.equal(saveSpy.calls.length, 1);
+    const written = saveSpy.calls[0][0];
+    assert.equal(written.length, 2, 'the roster size must not change');
+    const updatedAlice = written.find(c => c.email === 'alice@example.com');
+    assert.equal(updatedAlice.expiresAt, cc.renewClient(ALICE).expiresAt);
+    assert.deepEqual(res._json.clients, written);
+  });
+});
+
+test('POST with command:"pause" -> 200 and the client is saved with pausedAt set', async () => {
+  envSetup();
+  const saveSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [ALICE], usedDefault: false }) },
+    { obj: cc, key: 'saveClients', value: saveSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { command: 'pause', email: 'alice@example.com' }), res);
+    assert.equal(res._status, 200);
+    const written = saveSpy.calls[0][0];
+    assert.ok(Number.isFinite(written[0].pausedAt));
+  });
+});
+
+test('POST with command:"resume" -> 200 and the client is saved with pausedAt cleared', async () => {
+  envSetup();
+  const pausedAlice = { ...ALICE, pausedAt: 12345 };
+  const saveSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [pausedAlice], usedDefault: false }) },
+    { obj: cc, key: 'saveClients', value: saveSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { command: 'resume', email: 'alice@example.com' }), res);
+    assert.equal(res._status, 200);
+    const written = saveSpy.calls[0][0];
+    assert.equal(written[0].pausedAt, null);
+  });
+});
+
+test('POST with a command but no email -> 400, saveClients NOT called', async () => {
+  envSetup();
+  const saveSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [ALICE], usedDefault: false }) },
+    { obj: cc, key: 'saveClients', value: saveSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { command: 'renew', email: '' }), res);
+    assert.equal(res._status, 400);
+    assert.equal(saveSpy.calls.length, 0);
+  });
+});
+
+test('POST with a command for an email not on the list -> 404, saveClients NOT called', async () => {
+  envSetup();
+  const saveSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [ALICE], usedDefault: false }) },
+    { obj: cc, key: 'saveClients', value: saveSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { command: 'renew', email: 'nobody@example.com' }), res);
+    assert.equal(res._status, 404);
+    assert.equal(res._json.ok, false);
+    assert.equal(saveSpy.calls.length, 0);
+  });
+});
+
+test('POST with an unknown command -> 400, saveClients NOT called', async () => {
+  envSetup();
+  const saveSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [ALICE], usedDefault: false }) },
+    { obj: cc, key: 'saveClients', value: saveSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { command: 'nuke', email: 'alice@example.com' }), res);
+    assert.equal(res._status, 400);
+    assert.equal(res._json.ok, false);
+    assert.ok(res._json.errors.some(e => /nuke/i.test(e)));
+    assert.equal(saveSpy.calls.length, 0);
+  });
+});
+
+test('POST with a command while unauthenticated -> 401, loadClients NOT called', async () => {
+  envSetup();
+  const spy = spyStub({ ok: true, clients: [ALICE] });
+  await withStubs([{ obj: cc, key: 'loadClients', value: spy }], async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', headers: {}, body: { command: 'renew', email: 'alice@example.com' }, query: {} }, res);
+    assert.equal(res._status, 401);
+    assert.equal(spy.calls.length, 0);
   });
 });
 

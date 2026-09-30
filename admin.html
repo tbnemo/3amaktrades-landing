@@ -237,15 +237,25 @@
     }
     .clients-table tr:last-child td{border-block-end:none;}
     .clients-table td.client-actions{text-align:end; white-space:nowrap; padding-inline-end:0;}
-    .client-remove{
+    .client-remove, .client-action{
       background:transparent; color:var(--dim);
       font-size:12px; letter-spacing:.06em; padding:6px 8px;
     }
-    .client-remove:hover{color:var(--gold);}
-    .client-remove:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+    .client-action{margin-inline-start:4px;}
+    .client-remove:hover, .client-action:hover{color:var(--gold);}
+    .client-remove:focus-visible, .client-action:focus-visible{
+      outline:2px solid var(--gold);outline-offset:2px;
+    }
     #clientsEmpty{color:var(--dim);font-size:14px;margin:0 0 24px;}
     .clients-add-row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;}
     .clients-add-row .field{flex:1 1 180px;margin-block-end:0;}
+
+    /* Status badge in the clients table -- computed client-side, never a
+       server-sent field. Paused/expired share the dim tone (both mean "no
+       booking access right now"); active gets the gold accent. */
+    .client-status{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+    .client-status.is-active{color:var(--gold);}
+    .client-status.is-paused, .client-status.is-expired{color:var(--dim);}
 
     [hidden]{display:none !important;}
   </style>
@@ -303,7 +313,9 @@
         <button type="button" class="tab-btn" id="tabApplicants" role="tab"
                 aria-selected="true" aria-controls="panelApplicants">New Applicants</button>
         <button type="button" class="tab-btn" id="tabCheckins" role="tab"
-                aria-selected="false" aria-controls="panelCheckins">Check-Ins</button>
+                aria-selected="false" aria-controls="panelCheckins">Check-In Hours</button>
+        <button type="button" class="tab-btn" id="tabClients" role="tab"
+                aria-selected="false" aria-controls="panelClients">Clients</button>
       </div>
 
       <div id="panelApplicants" role="tabpanel" aria-labelledby="tabApplicants">
@@ -401,14 +413,18 @@
             </div>
           </form>
         </section>
+      </div>
 
+      <div id="panelClients" role="tabpanel" aria-labelledby="tabClients" hidden>
         <section class="panel" id="clientsPanel">
           <h2>Check-In Clients</h2>
           <p style="color:var(--dim);font-size:13px;margin:0 0 18px;">
             Only people on this list can book a check-in call. Email is required --
             it is the only channel confirmations and cancellations go through.
             Phone is optional, and just gives them a second way to identify
-            themselves. Adding an email that is already listed updates that entry.
+            themselves. Start date and package length together determine when
+            access expires. Adding an email that is already listed updates that
+            entry.
           </p>
           <div id="clientsStorageMissingNote" class="note-error" hidden>
             The Vercel Blob store does not exist yet, so the client list cannot be
@@ -417,7 +433,7 @@
 
           <table class="clients-table">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Phone</th><th></th></tr>
+              <tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Expires</th><th></th></tr>
             </thead>
             <tbody id="clientsTableBody"></tbody>
           </table>
@@ -436,6 +452,14 @@
               <div class="field">
                 <label for="clientPhone">Phone (optional)</label>
                 <input class="input" type="tel" id="clientPhone" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="clientStartDate">Start date (required)</label>
+                <input class="input" type="date" id="clientStartDate" required />
+              </div>
+              <div class="field">
+                <label for="clientDurationMonths">Package length, months (required)</label>
+                <input class="input" type="number" id="clientDurationMonths" min="1" step="1" required />
               </div>
             </div>
 
@@ -773,21 +797,44 @@
 
     // ── tabs ────────────────────────────────────────────────────────────────
     function selectTab(which) {
-      const applicants = which === 'applicants';
-      $('tabApplicants').setAttribute('aria-selected', applicants ? 'true' : 'false');
-      $('tabCheckins').setAttribute('aria-selected', applicants ? 'false' : 'true');
-      $('panelApplicants').hidden = !applicants;
-      $('panelCheckins').hidden = applicants;
+      $('tabApplicants').setAttribute('aria-selected', which === 'applicants' ? 'true' : 'false');
+      $('tabCheckins').setAttribute('aria-selected', which === 'checkins' ? 'true' : 'false');
+      $('tabClients').setAttribute('aria-selected', which === 'clients' ? 'true' : 'false');
+      $('panelApplicants').hidden = which !== 'applicants';
+      $('panelCheckins').hidden = which !== 'checkins';
+      $('panelClients').hidden = which !== 'clients';
     }
 
     // ── client manager ──────────────────────────────────────────────────────
+
+    // Keyed by email (the record key) so Edit can repopulate the add-form from
+    // the row that was just rendered, without a second round trip.
+    const clientsByEmail = new Map();
+
+    // Mirrors isAccessActive's own precedence in api/_checkin-clients.js:
+    // paused wins outright, then a past expiresAt, then a null expiresAt
+    // defaults to active (the legacy-record migration safety net). This is
+    // display-only -- the server is the only place access is ever enforced.
+    function computeClientStatus(c) {
+      if (c.pausedAt != null) return 'paused';
+      if (typeof c.expiresAt === 'number' && c.expiresAt < Date.now()) return 'expired';
+      return 'active';
+    }
+
+    function formatExpires(expiresAt) {
+      if (typeof expiresAt !== 'number') return '—';
+      return new Date(expiresAt).toLocaleDateString();
+    }
+
     function renderClients(clients) {
       const body = $('clientsTableBody');
       body.innerHTML = '';
+      clientsByEmail.clear();
       const list = Array.isArray(clients) ? clients : [];
       $('clientsEmpty').hidden = list.length > 0;
 
       for (const c of list) {
+        clientsByEmail.set(c.email, c);
         const tr = document.createElement('tr');
 
         // textContent, never innerHTML: a client's own name is data, and this
@@ -799,17 +846,50 @@
         const phoneTd = document.createElement('td');
         phoneTd.textContent = c.phone || '—';
 
+        const status = computeClientStatus(c);
+        const statusTd = document.createElement('td');
+        const statusSpan = document.createElement('span');
+        statusSpan.className = `client-status is-${status}`;
+        statusSpan.textContent = status[0].toUpperCase() + status.slice(1);
+        statusTd.appendChild(statusSpan);
+
+        const expiresTd = document.createElement('td');
+        expiresTd.textContent = formatExpires(c.expiresAt);
+
         const actionsTd = document.createElement('td');
         actionsTd.className = 'client-actions';
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'client-remove';
-        btn.textContent = 'Remove';
-        // The email is the record key, so it is what the DELETE carries.
-        btn.dataset.email = c.email;
-        actionsTd.appendChild(btn);
 
-        tr.append(nameTd, emailTd, phoneTd, actionsTd);
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'client-action client-edit';
+        editBtn.textContent = 'Edit';
+        editBtn.dataset.email = c.email;
+        actionsTd.appendChild(editBtn);
+
+        const pauseResumeBtn = document.createElement('button');
+        pauseResumeBtn.type = 'button';
+        pauseResumeBtn.className = 'client-action client-pause-resume';
+        pauseResumeBtn.textContent = status === 'paused' ? 'Resume' : 'Pause';
+        pauseResumeBtn.dataset.email = c.email;
+        pauseResumeBtn.dataset.command = status === 'paused' ? 'resume' : 'pause';
+        actionsTd.appendChild(pauseResumeBtn);
+
+        const renewBtn = document.createElement('button');
+        renewBtn.type = 'button';
+        renewBtn.className = 'client-action client-renew';
+        renewBtn.textContent = 'Renew';
+        renewBtn.dataset.email = c.email;
+        actionsTd.appendChild(renewBtn);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'client-remove';
+        removeBtn.textContent = 'Remove';
+        // The email is the record key, so it is what the DELETE carries.
+        removeBtn.dataset.email = c.email;
+        actionsTd.appendChild(removeBtn);
+
+        tr.append(nameTd, emailTd, phoneTd, statusTd, expiresTd, actionsTd);
         body.appendChild(tr);
       }
     }
@@ -850,11 +930,21 @@
           name: $('clientName').value.trim(),
           email: $('clientEmail').value.trim(),
           phone: $('clientPhone').value.trim(),
+          startDate: $('clientStartDate').value.trim(),
+          durationMonths: Number($('clientDurationMonths').value),
         };
         // The server validates too -- this is only so the obvious case does not
         // need a round trip.
         if (!client.email) {
           showClientErrors(['Email is required.']);
+          return;
+        }
+        if (!client.startDate) {
+          showClientErrors(['Start date is required.']);
+          return;
+        }
+        if (!Number.isFinite(client.durationMonths) || client.durationMonths <= 0) {
+          showClientErrors(['Package length (months) is required and must be a positive number.']);
           return;
         }
 
@@ -880,6 +970,8 @@
           $('clientName').value = '';
           $('clientEmail').value = '';
           $('clientPhone').value = '';
+          $('clientStartDate').value = '';
+          $('clientDurationMonths').value = '';
           return;
         }
         showClientErrors(Array.isArray(data.errors) && data.errors.length > 0
@@ -887,15 +979,10 @@
           : [`Save failed (status ${res.status})`]);
       });
 
-      // Delegated, because the rows are re-rendered after every change and a
-      // per-row listener would be re-attached (and leak) each time.
-      $('clientsTableBody').addEventListener('click', async (e) => {
-        const btn = e.target.closest('.client-remove');
-        if (!btn) return;
-        const email = btn.dataset.email;
-        if (!email) return;
-        if (!window.confirm(`Remove ${email} from the check-in client list?`)) return;
-
+      // One lifecycle command (renew/pause/resume) POSTed to the same
+      // add/edit endpoint, distinguished by a `command` field in the body --
+      // see the matching branch in api/admin/checkin.js's clientsHandler.
+      async function sendCommand(btn, command, email) {
         $('clientErrors').hidden = true;
         $('clientSuccess').hidden = true;
         btn.disabled = true;
@@ -903,9 +990,9 @@
         let res, data;
         try {
           res = await fetch('/api/admin/checkin-clients', {
-            method: 'DELETE',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
+            body: JSON.stringify({ command, email }),
           });
           data = await res.json().catch(() => ({}));
         } catch (err) {
@@ -918,9 +1005,82 @@
 
         if (res.status === 200 && data.ok) {
           renderClients(data.clients);
+          $('clientSuccess').hidden = false;
           return;
         }
         btn.disabled = false;
+        showClientErrors(Array.isArray(data.errors) && data.errors.length > 0
+          ? data.errors
+          : [`${command} failed (status ${res.status})`]);
+      }
+
+      // Delegated, because the rows are re-rendered after every change and a
+      // per-row listener would be re-attached (and leak) each time.
+      $('clientsTableBody').addEventListener('click', async (e) => {
+        const editBtn = e.target.closest('.client-edit');
+        if (editBtn) {
+          const c = clientsByEmail.get(editBtn.dataset.email);
+          if (!c) return;
+          // Populate the add-form with this row's full data, for re-submission
+          // as an update -- upsertClient already replaces-by-email, so no new
+          // endpoint is needed.
+          $('clientName').value = c.name || '';
+          $('clientEmail').value = c.email || '';
+          $('clientPhone').value = c.phone || '';
+          $('clientStartDate').value = c.startDate || '';
+          $('clientDurationMonths').value = c.durationMonths || '';
+          $('clientErrors').hidden = true;
+          $('clientSuccess').hidden = true;
+          $('clientEmail').focus();
+          return;
+        }
+
+        const pauseResumeBtn = e.target.closest('.client-pause-resume');
+        if (pauseResumeBtn) {
+          const email = pauseResumeBtn.dataset.email;
+          const command = pauseResumeBtn.dataset.command; // 'pause' or 'resume'
+          if (email && command) await sendCommand(pauseResumeBtn, command, email);
+          return;
+        }
+
+        const renewBtn = e.target.closest('.client-renew');
+        if (renewBtn) {
+          const email = renewBtn.dataset.email;
+          if (email) await sendCommand(renewBtn, 'renew', email);
+          return;
+        }
+
+        const removeBtn = e.target.closest('.client-remove');
+        if (!removeBtn) return;
+        const email = removeBtn.dataset.email;
+        if (!email) return;
+        if (!window.confirm(`Remove ${email} from the check-in client list?`)) return;
+
+        $('clientErrors').hidden = true;
+        $('clientSuccess').hidden = true;
+        removeBtn.disabled = true;
+
+        let res, data;
+        try {
+          res = await fetch('/api/admin/checkin-clients', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+          data = await res.json().catch(() => ({}));
+        } catch (err) {
+          removeBtn.disabled = false;
+          showClientErrors(['Network error -- try again.']);
+          return;
+        }
+
+        if (res.status === 401) { showGate(); return; }
+
+        if (res.status === 200 && data.ok) {
+          renderClients(data.clients);
+          return;
+        }
+        removeBtn.disabled = false;
         showClientErrors(Array.isArray(data.errors) && data.errors.length > 0
           ? data.errors
           : [`Remove failed (status ${res.status})`]);
@@ -947,6 +1107,7 @@
       selectTab('applicants');
       $('tabApplicants').addEventListener('click', () => selectTab('applicants'));
       $('tabCheckins').addEventListener('click', () => selectTab('checkins'));
+      $('tabClients').addEventListener('click', () => selectTab('clients'));
 
       wireAvailabilityForm(PREFIX_APPLICANTS, '/api/admin/availability', 'storageMissingNote');
       wireAvailabilityForm(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');

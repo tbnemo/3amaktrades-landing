@@ -27,8 +27,20 @@ function spyStub(result) {
   return fn;
 }
 
-const ALICE = { name: 'Alice', email: 'alice@example.com', phone: '+1 (555) 010-0100' };
-const BOB = { name: 'Bob', email: 'bob@example.com', phone: '' };
+// Canonical, already-normalized fixtures: expiresAt matches exactly what
+// normalizeEntry/computeExpiresAt would derive from startDate+durationMonths,
+// so round-tripping either fixture through normalizeEntry is a no-op and
+// identity-style assertions below (e.g. "carried through unchanged") hold.
+const ALICE = {
+  name: 'Alice', email: 'alice@example.com', phone: '+1 (555) 010-0100',
+  startDate: '2026-01-01', durationMonths: 3, pausedAt: null,
+  expiresAt: Date.UTC(2026, 3, 1),
+};
+const BOB = {
+  name: 'Bob', email: 'bob@example.com', phone: '',
+  startDate: '2026-02-15', durationMonths: 1, pausedAt: null,
+  expiresAt: Date.UTC(2026, 2, 15),
+};
 
 test('normalizeEmail trims and lowercases; normalizePhone keeps digits only', () => {
   assert.equal(cc.normalizeEmail('  Alice@Example.COM '), 'alice@example.com');
@@ -74,7 +86,10 @@ test('loadClients normalizes entries and drops any with no email', async () => {
   ], async () => {
     const r = await cc.loadClients();
     assert.equal(r.ok, true);
-    assert.deepEqual(r.clients, [{ name: 'Alice', email: 'alice@example.com', phone: '555-0100' }]);
+    assert.deepEqual(r.clients, [{
+      name: 'Alice', email: 'alice@example.com', phone: '555-0100',
+      startDate: '', durationMonths: 1, pausedAt: null, expiresAt: null,
+    }]);
   });
 });
 
@@ -153,28 +168,59 @@ test('findClient prefers an email hit over a phone hit', () => {
 });
 
 test('validateClient requires a well-formed, non-empty email and allows a missing phone', () => {
-  assert.deepEqual(cc.validateClient({ name: 'A', email: 'a@b.co' }), { ok: true, errors: [] });
-  assert.deepEqual(cc.validateClient({ name: '', email: 'a@b.co', phone: '' }), { ok: true, errors: [] });
+  const pkg = { startDate: '2026-01-01', durationMonths: 3 };
+  assert.deepEqual(cc.validateClient({ name: 'A', email: 'a@b.co', ...pkg }), { ok: true, errors: [] });
+  assert.deepEqual(cc.validateClient({ name: '', email: 'a@b.co', phone: '', ...pkg }), { ok: true, errors: [] });
 
-  const noEmail = cc.validateClient({ name: 'A', phone: '5550100' });
+  const noEmail = cc.validateClient({ name: 'A', phone: '5550100', ...pkg });
   assert.equal(noEmail.ok, false);
   assert.ok(noEmail.errors.some(e => /email/i.test(e)));
 
-  const blank = cc.validateClient({ name: 'A', email: '   ' });
+  const blank = cc.validateClient({ name: 'A', email: '   ', ...pkg });
   assert.equal(blank.ok, false);
 
-  const bad = cc.validateClient({ name: 'A', email: 'not-an-email' });
+  const bad = cc.validateClient({ name: 'A', email: 'not-an-email', ...pkg });
   assert.equal(bad.ok, false);
   assert.ok(bad.errors.some(e => /email/i.test(e)));
 
   assert.equal(cc.validateClient(null).ok, false);
 });
 
+test('validateClient requires startDate as YYYY-MM-DD and durationMonths as a positive number', () => {
+  const base = { name: 'A', email: 'a@b.co' };
+
+  const noStart = cc.validateClient({ ...base, durationMonths: 3 });
+  assert.equal(noStart.ok, false);
+  assert.ok(noStart.errors.some(e => /startDate/i.test(e)));
+
+  const badStart = cc.validateClient({ ...base, startDate: '01/01/2026', durationMonths: 3 });
+  assert.equal(badStart.ok, false);
+  assert.ok(badStart.errors.some(e => /startDate/i.test(e)));
+
+  const noDuration = cc.validateClient({ ...base, startDate: '2026-01-01' });
+  assert.equal(noDuration.ok, false);
+  assert.ok(noDuration.errors.some(e => /durationMonths/i.test(e)));
+
+  const zeroDuration = cc.validateClient({ ...base, startDate: '2026-01-01', durationMonths: 0 });
+  assert.equal(zeroDuration.ok, false);
+
+  const negDuration = cc.validateClient({ ...base, startDate: '2026-01-01', durationMonths: -1 });
+  assert.equal(negDuration.ok, false);
+
+  assert.deepEqual(
+    cc.validateClient({ ...base, startDate: '2026-01-01', durationMonths: 6 }),
+    { ok: true, errors: [] },
+  );
+});
+
 test('upsertClient appends a new entry, normalized', () => {
   const out = cc.upsertClient([ALICE], { name: ' Bob ', email: ' BOB@Example.com ', phone: ' 555-0199 ' });
   assert.equal(out.length, 2);
   assert.deepEqual(out[0], ALICE, 'the existing entry is carried through unchanged');
-  assert.deepEqual(out[1], { name: 'Bob', email: 'bob@example.com', phone: '555-0199' });
+  assert.deepEqual(out[1], {
+    name: 'Bob', email: 'bob@example.com', phone: '555-0199',
+    startDate: '', durationMonths: 1, pausedAt: null, expiresAt: null,
+  });
 });
 
 test('upsertClient does not mutate the array it was given', () => {
@@ -212,4 +258,96 @@ test('removeClient with an empty email removes nothing', () => {
   const r = cc.removeClient([ALICE], '');
   assert.equal(r.removed, false);
   assert.equal(r.clients.length, 1);
+});
+
+// ===========================================================================
+// Package lifecycle: addMonths, computeExpiresAt, renewClient, pauseClient,
+// resumeClient, isAccessActive.
+// ===========================================================================
+
+test('addMonths adds N calendar months to an epoch instant, in UTC', () => {
+  const start = Date.UTC(2025, 0, 15); // 2025-01-15T00:00:00Z
+  assert.equal(cc.addMonths(start, 2), Date.UTC(2025, 2, 15));
+  assert.equal(cc.addMonths(start, 0), start);
+});
+
+test('computeExpiresAt converts a YYYY-MM-DD start + duration into an epoch expiry', () => {
+  assert.equal(cc.computeExpiresAt('2026-01-01', 3), Date.UTC(2026, 3, 1));
+  assert.equal(cc.computeExpiresAt('2026-12-01', 1), Date.UTC(2027, 0, 1));
+});
+
+test('computeExpiresAt returns null for a malformed or missing startDate', () => {
+  assert.equal(cc.computeExpiresAt('', 3), null);
+  assert.equal(cc.computeExpiresAt('not-a-date', 3), null);
+  assert.equal(cc.computeExpiresAt(null, 3), null);
+});
+
+test('renewClient extends from the CURRENT expiry when renewing before it lapses', () => {
+  const nowMs = Date.UTC(2026, 1, 1); // Feb 1 2026 -- still active
+  const client = { ...ALICE, durationMonths: 1, expiresAt: Date.UTC(2026, 2, 1) }; // expires Mar 1
+  const renewed = cc.renewClient(client, nowMs);
+  // Extends from the EXISTING expiry (Mar 1), not from now (Feb 1) -- paid
+  // time already on the books is never shortened by an early renewal.
+  assert.equal(renewed.expiresAt, Date.UTC(2026, 3, 1));
+});
+
+test('renewClient extends from NOW when renewing after the package has already lapsed', () => {
+  const nowMs = Date.UTC(2026, 4, 1); // May 1 2026
+  const client = { ...ALICE, durationMonths: 1, expiresAt: Date.UTC(2026, 1, 1) }; // expired Feb 1
+  const renewed = cc.renewClient(client, nowMs);
+  // Extends from NOW (May 1), not from the stale Feb 1 expiry -- a lapsed
+  // renewal must not retroactively back-date the new expiry.
+  assert.equal(renewed.expiresAt, Date.UTC(2026, 5, 1));
+});
+
+test('pauseClient sets pausedAt, and is a no-op (same reference) if already paused', () => {
+  const client = { ...ALICE, pausedAt: null };
+  const paused = cc.pauseClient(client, 1000);
+  assert.equal(paused.pausedAt, 1000);
+  assert.notEqual(paused, client, 'pausing an active client returns a new object');
+
+  const alreadyPaused = { ...client, pausedAt: 500 };
+  const again = cc.pauseClient(alreadyPaused, 9999);
+  assert.equal(again, alreadyPaused, 'pausing an already-paused client is a true no-op');
+});
+
+test('resumeClient shifts expiresAt forward by exactly the paused duration, and is a no-op when not paused', () => {
+  const client = { ...ALICE, pausedAt: 1000, expiresAt: 10000 };
+  const resumed = cc.resumeClient(client, 5000); // paused for 4000ms
+  assert.equal(resumed.pausedAt, null);
+  assert.equal(resumed.expiresAt, 14000);
+
+  const notPaused = { ...client, pausedAt: null };
+  const again = cc.resumeClient(notPaused, 5000);
+  assert.equal(again, notPaused, 'resuming a non-paused client is a true no-op');
+});
+
+test('resumeClient leaves a null expiresAt as null (no package configured yet)', () => {
+  const client = { ...ALICE, pausedAt: 1000, expiresAt: null };
+  const resumed = cc.resumeClient(client, 5000);
+  assert.equal(resumed.expiresAt, null);
+  assert.equal(resumed.pausedAt, null);
+});
+
+test('pauseClient/resumeClient preserve exact remaining time across multiple pause/resume cycles', () => {
+  let client = { ...ALICE, pausedAt: null, expiresAt: 10000 };
+
+  client = cc.pauseClient(client, 2000);
+  client = cc.resumeClient(client, 3000); // paused 1000ms -> expiresAt shifts to 11000
+  assert.equal(client.expiresAt, 11000);
+  assert.equal(client.pausedAt, null);
+
+  client = cc.pauseClient(client, 4000);
+  client = cc.resumeClient(client, 4500); // paused 500ms -> expiresAt shifts to 11500
+  assert.equal(client.expiresAt, 11500);
+  assert.equal(client.pausedAt, null);
+});
+
+test('isAccessActive covers active, paused, expired, and legacy null-expiresAt states', () => {
+  const nowMs = 10000;
+  assert.equal(cc.isAccessActive({ pausedAt: null, expiresAt: 20000 }, nowMs), true, 'active');
+  assert.equal(cc.isAccessActive({ pausedAt: 5000, expiresAt: 20000 }, nowMs), false, 'paused blocks access even before expiry');
+  assert.equal(cc.isAccessActive({ pausedAt: null, expiresAt: 5000 }, nowMs), false, 'expired');
+  assert.equal(cc.isAccessActive({ pausedAt: null, expiresAt: null }, nowMs), true, 'legacy null expiresAt means active, not expired');
+  assert.equal(cc.isAccessActive(null, nowMs), false, 'no client at all is never active');
 });
