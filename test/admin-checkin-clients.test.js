@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const auth = require('../api/_admin-auth');
 const store = require('../api/_blob-store');
 const cc = require('../api/_checkin-clients');
-const handler = require('../api/admin/checkin-clients.js');
+const handler = require('../api/admin/checkin.js').clients;
 
 function makeRes() {
   return {

@@ -4,7 +4,7 @@ const store = require('../api/_blob-store');
 const cc = require('../api/_checkin-clients');
 const ct = require('../api/_checkin-token');
 const rl = require('../api/_checkin-verify-rate-limit');
-const handler = require('../api/checkin-verify');
+const handler = require('../api/calendar-checkin').verify;
 
 function makeRes() {
   return {

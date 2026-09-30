@@ -4,7 +4,7 @@ const tz = require('../api/_timezone');
 const store = require('../api/_blob-store');
 const gcal = require('../api/_google-calendar');
 const loadMod = require('../api/_load-checkin-template');
-const handler = require('../api/calendar-checkin-availability');
+const handler = require('../api/calendar-checkin').availability;
 
 function makeRes() {
   return {
@@ -90,10 +90,10 @@ function withCheckinTemplate(fn) {
 // require-time, so the module must be re-required AFTER the stub is installed
 // for the stub to take effect -- the same dance test/admin-availability.test.js
 // performs for admin/availability.js.
-const handlerPath = require.resolve('../api/calendar-checkin-availability');
+const handlerPath = require.resolve('../api/calendar-checkin');
 function freshHandler() {
   delete require.cache[handlerPath];
-  return require(handlerPath);
+  return require(handlerPath).availability;
 }
 
 test('happy path: 200 with the CHECK-IN template timezone, slotMinutes and day keys', async () => {

@@ -4,7 +4,7 @@ const auth = require('../api/_admin-auth');
 const av = require('../api/_availability');
 const store = require('../api/_blob-store');
 const { loadCheckinTemplate } = require('../api/_load-checkin-template');
-const handler = require('../api/admin/checkin-availability.js');
+const handler = require('../api/admin/checkin.js').availability;
 
 function makeRes() {
   return {

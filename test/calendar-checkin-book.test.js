@@ -51,10 +51,10 @@ function spyStub(result) {
   return fn;
 }
 
-const handlerPath = require.resolve('../api/calendar-checkin-book');
+const handlerPath = require.resolve('../api/calendar-checkin');
 function freshHandler() {
   delete require.cache[handlerPath];
-  return require(handlerPath);
+  return require(handlerPath).book;
 }
 
 // The check-in template used throughout: 15-minute slots, no buffer, mon-fri
@@ -849,7 +849,7 @@ test('non-POST requests return 405', async () => {
   envSetup();
   for (const method of ['GET', 'PUT', 'DELETE']) {
     const res = makeRes();
-    await require('../api/calendar-checkin-book')({ method, body: {} }, res);
+    await require('../api/calendar-checkin').book({ method, body: {} }, res);
     assert.equal(res._status, 405);
   }
 });

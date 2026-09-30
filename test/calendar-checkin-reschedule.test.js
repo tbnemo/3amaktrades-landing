@@ -49,10 +49,10 @@ function spyStub(result) {
   return fn;
 }
 
-const handlerPath = require.resolve('../api/calendar-checkin-reschedule');
+const handlerPath = require.resolve('../api/calendar-checkin');
 function freshHandler() {
   delete require.cache[handlerPath];
-  return require(handlerPath);
+  return require(handlerPath).reschedule;
 }
 
 // 15-minute slots, mon-fri 09:00-12:00 America/Toronto, no buffer, 24h notice.
@@ -671,7 +671,7 @@ test('non-POST requests return 405', async () => {
   envSetup();
   for (const method of ['GET', 'PUT', 'DELETE']) {
     const res = makeRes();
-    await require('../api/calendar-checkin-reschedule')({ method, body: {} }, res);
+    await require('../api/calendar-checkin').reschedule({ method, body: {} }, res);
     assert.equal(res._status, 405);
   }
 });

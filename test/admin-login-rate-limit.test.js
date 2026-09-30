@@ -12,7 +12,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const store = require('../api/_blob-store');
 const rateLimit = require('../api/_login-rate-limit');
-const handler = require('../api/admin/login');
+const handler = require('../api/admin/auth').login;
 
 const PASSCODE = 'correct-horse-battery';
 
