@@ -248,7 +248,71 @@
     }
     #clientsEmpty{color:var(--dim);font-size:14px;margin:0 0 24px;}
     .clients-add-row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;}
-    .clients-add-row .field{flex:1 1 180px;margin-block-end:0;}
+    /* Bug fix: a flex item's default min-width is `auto`, which resolves to
+       its content's intrinsic width -- so a long typed name/email was
+       preventing the field from shrinking below that width, pushing the
+       whole row (and the page) into horizontal scroll instead of just
+       scrolling its own text like a normal text input. min-width:0 lets the
+       field (and the input/select inside it) shrink to its flex-basis and
+       contain its own overflow instead. Scoped to .clients-add-row only --
+       the New Applicants and Check-In Hours forms are untouched. */
+    .clients-add-row .field{flex:1 1 180px;margin-block-end:0;min-width:0;}
+    .clients-add-row .input, .clients-add-row select.input{min-width:0;}
+
+    /* ══ custom date picker (Start Date, Clients tab only) ══
+       Reskins the native <input type="date">'s popup, which exposes no CSS
+       hooks of its own -- see check-in.html's .day/.day-strip for the same
+       flat, gold-accent, zero-radius treatment applied there to a different
+       shape (a 14-day strip) than this one (a full month grid). */
+    .date-field{position:relative;}
+    .date-trigger{
+      width:100%; display:flex; align-items:center; justify-content:space-between;
+      gap:8px; text-align:start;
+    }
+    .date-trigger-text.is-placeholder{color:var(--dim);font-weight:600;}
+    .date-trigger-caret{color:var(--dim);font-size:12px;flex-shrink:0;}
+    .date-picker-panel{
+      position:absolute; inset-inline-start:0; top:100%; margin-block-start:6px;
+      width:264px; max-width:calc(100vw - 40px); background:var(--band);
+      border:1px solid var(--gold-lo); padding:14px; z-index:20;
+    }
+    .date-picker-head{display:flex;align-items:center;justify-content:space-between;margin-block-end:10px;}
+    .date-picker-label{
+      font-family:'Big Shoulders Display',sans-serif; font-weight:800;
+      text-transform:uppercase; letter-spacing:.04em; font-size:14px; color:var(--bone);
+    }
+    .date-nav-btn{
+      flex:0 0 auto; width:28px; height:28px;
+      background:transparent; color:var(--bone);
+      border:1px solid var(--gold-lo); border-radius:0;
+      font-size:14px; line-height:1; font-family:'Inter',system-ui,sans-serif;
+    }
+    .date-nav-btn:hover{border-color:var(--gold);color:var(--gold);}
+    .date-nav-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+    .date-picker-weekdays{
+      display:grid; grid-template-columns:repeat(7,1fr); text-align:center;
+      font-size:11px; letter-spacing:.05em; color:var(--dim); margin-block-end:6px;
+    }
+    .date-picker-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+    .date-cell{
+      background:var(--band); color:var(--bone); border:1px solid transparent;
+      border-radius:0; font-family:'Inter',system-ui,sans-serif; font-weight:600;
+      font-size:13px; padding:7px 0; text-align:center; cursor:pointer;
+    }
+    .date-cell:hover:not(.is-outside){background:var(--slab);}
+    .date-cell.is-selected{background:var(--gold);color:var(--ink);}
+    .date-cell.is-outside{opacity:.35;cursor:default;}
+    .date-cell:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+    .date-picker-foot{
+      display:flex; justify-content:space-between; margin-block-start:10px;
+      padding-block-start:10px; border-block-start:1px solid #241D08;
+    }
+    .date-picker-link{
+      background:transparent; color:var(--gold); font-size:12px;
+      letter-spacing:.05em; text-transform:uppercase; padding:4px;
+    }
+    .date-picker-link:hover{color:var(--bone);}
+    .date-picker-link:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 
     /* Status badge in the clients table -- computed client-side, never a
        server-sent field. Paused/expired share the dim tone (both mean "no
@@ -453,13 +517,47 @@
                 <label for="clientPhone">Phone (optional)</label>
                 <input class="input" type="tel" id="clientPhone" autocomplete="off" />
               </div>
-              <div class="field">
-                <label for="clientStartDate">Start date (required)</label>
-                <input class="input" type="date" id="clientStartDate" required />
+              <div class="field date-field">
+                <label for="clientStartDateTrigger">Start date (required)</label>
+                <button type="button" class="input date-trigger" id="clientStartDateTrigger"
+                        aria-haspopup="true" aria-expanded="false" aria-controls="clientStartDatePanel">
+                  <span class="date-trigger-text is-placeholder" id="clientStartDateDisplay">mm/dd/yyyy</span>
+                  <span class="date-trigger-caret" aria-hidden="true">▾</span>
+                </button>
+                <!-- The real value-holding element every existing read/write
+                     site (submit, post-submit reset, Edit-populate) already
+                     addresses as #clientStartDate -- kept as a plain hidden
+                     input carrying the "YYYY-MM-DD" string so none of those
+                     sites needed to change their value contract, only gain a
+                     .refresh() call where they write it directly. -->
+                <input type="hidden" id="clientStartDate" required />
+                <div class="date-picker-panel" id="clientStartDatePanel" hidden>
+                  <div class="date-picker-head">
+                    <button type="button" class="date-nav-btn" id="clientStartDatePrevMonth" aria-label="Previous month">‹</button>
+                    <span class="date-picker-label" id="clientStartDateMonthLabel"></span>
+                    <button type="button" class="date-nav-btn" id="clientStartDateNextMonth" aria-label="Next month">›</button>
+                  </div>
+                  <div class="date-picker-weekdays">
+                    <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+                  </div>
+                  <div class="date-picker-grid" id="clientStartDateGrid"></div>
+                  <div class="date-picker-foot">
+                    <button type="button" class="date-picker-link" id="clientStartDateTodayBtn">Today</button>
+                    <button type="button" class="date-picker-link" id="clientStartDateClearBtn">Clear</button>
+                  </div>
+                </div>
               </div>
               <div class="field">
                 <label for="clientDurationMonths">Package length, months (required)</label>
-                <input class="input" type="number" id="clientDurationMonths" min="1" step="1" required />
+                <select class="input" id="clientDurationMonths" required>
+                  <option value="" disabled selected hidden>Select months</option>
+                  <option value="1">1 month</option>
+                  <option value="2">2 months</option>
+                  <option value="3">3 months</option>
+                  <option value="6">6 months</option>
+                  <option value="9">9 months</option>
+                  <option value="12">12 months</option>
+                </select>
               </div>
             </div>
 
@@ -805,6 +903,203 @@
       $('panelClients').hidden = which !== 'clients';
     }
 
+    // ── custom date picker (Start Date, Clients tab) ───────────────────────
+    // Reskins the native <input type="date"> popup, which exposes no CSS
+    // hooks -- check-in.html solves the analogous problem for a different
+    // shape (a 14-day strip for a near-future booking slot) by hand-building
+    // its own widget instead of using a native date input; this does the
+    // same for a full month grid, since a client's start date can be any
+    // past or future calendar date.
+
+    const DP_MONTH_NAMES = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
+    ];
+
+    function dpPad2(n) { return String(n).padStart(2, '0'); }
+
+    // Parses a "YYYY-MM-DD" string into {y, m, d} (m is 1-indexed), or null
+    // if it is not well-formed -- built from the numeric parts directly
+    // (never `new Date(str)`) so this can never drift across a timezone
+    // boundary the way parsing an ISO date string as UTC-midnight can.
+    function dpParseISO(str) {
+      if (typeof str !== 'string') return null;
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str.trim());
+      if (!m) return null;
+      const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+      if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+      return { y, m: mo, d };
+    }
+
+    function dpFormatISO(y, m, d) {
+      return `${String(y).padStart(4, '0')}-${dpPad2(m)}-${dpPad2(d)}`;
+    }
+
+    // "Sep 30, 2026" -- the readable trigger display. Returns '' for an
+    // empty/unparseable value so the caller can fall back to the placeholder.
+    function dpFormatDisplay(iso) {
+      const parsed = dpParseISO(iso);
+      if (!parsed) return '';
+      return `${DP_MONTH_NAMES[parsed.m - 1].slice(0, 3)} ${parsed.d}, ${parsed.y}`;
+    }
+
+    function dpDaysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+
+    // 0=Mon..6=Sun weekday of the 1st of the given month (native getDay() is
+    // 0=Sun..6=Sat; shifted so the grid's week starts on Monday).
+    function dpFirstWeekdayMon0(y, m) {
+      return (new Date(y, m - 1, 1).getDay() + 6) % 7;
+    }
+
+    // Wires one trigger+panel date-picker instance. baseId is the id of the
+    // hidden value-holding input ('clientStartDate'); every other element's
+    // id is baseId + a fixed suffix, matching the markup above.
+    function initDatePicker(baseId) {
+      const valueInput = $(baseId);
+      const trigger = $(`${baseId}Trigger`);
+      const display = $(`${baseId}Display`);
+      const panel = $(`${baseId}Panel`);
+      const grid = $(`${baseId}Grid`);
+      const monthLabel = $(`${baseId}MonthLabel`);
+      const prevBtn = $(`${baseId}PrevMonth`);
+      const nextBtn = $(`${baseId}NextMonth`);
+      const todayBtn = $(`${baseId}TodayBtn`);
+      const clearBtn = $(`${baseId}ClearBtn`);
+
+      let viewYear, viewMonth; // viewMonth is 1-indexed
+
+      // Re-reads valueInput.value and updates the trigger's visible text.
+      // Must be called explicitly by any code that sets valueInput.value
+      // directly (programmatic assignment fires no 'input'/'change' event
+      // this widget could otherwise listen for) -- see the Edit-populate and
+      // post-submit reset call sites, which both call this.
+      function refresh() {
+        const text = dpFormatDisplay(valueInput.value);
+        if (text) {
+          display.textContent = text;
+          display.classList.remove('is-placeholder');
+        } else {
+          display.textContent = 'mm/dd/yyyy';
+          display.classList.add('is-placeholder');
+        }
+      }
+
+      // The displayed month resets to the selected date's month every time
+      // the panel opens, or to today's month when nothing is selected --
+      // never wherever prior navigation last left it.
+      function resetViewToValue() {
+        const parsed = dpParseISO(valueInput.value);
+        const today = new Date();
+        viewYear = parsed ? parsed.y : today.getFullYear();
+        viewMonth = parsed ? parsed.m : today.getMonth() + 1;
+      }
+
+      function makeCell(dayNum, isOutside, isSelected) {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'date-cell' + (isOutside ? ' is-outside' : '') + (isSelected ? ' is-selected' : '');
+        cell.textContent = String(dayNum);
+        if (isOutside) {
+          // Adjacent-month filler, shown dimmed for grid context only -- not
+          // a real day in the displayed month, so never selectable.
+          cell.disabled = true;
+          cell.tabIndex = -1;
+        } else {
+          cell.addEventListener('click', () => selectDay(dayNum));
+        }
+        return cell;
+      }
+
+      function renderGrid() {
+        monthLabel.textContent = `${DP_MONTH_NAMES[viewMonth - 1]} ${viewYear}`;
+        grid.innerHTML = '';
+
+        const selected = dpParseISO(valueInput.value);
+        const firstOffset = dpFirstWeekdayMon0(viewYear, viewMonth);
+        const numDays = dpDaysInMonth(viewYear, viewMonth);
+
+        const prevMonth = viewMonth === 1 ? 12 : viewMonth - 1;
+        const prevYear = viewMonth === 1 ? viewYear - 1 : viewYear;
+        const prevMonthDays = dpDaysInMonth(prevYear, prevMonth);
+        for (let i = 0; i < firstOffset; i++) {
+          grid.appendChild(makeCell(prevMonthDays - firstOffset + 1 + i, true, false));
+        }
+
+        for (let d = 1; d <= numDays; d++) {
+          const isSelected = !!selected && selected.y === viewYear && selected.m === viewMonth && selected.d === d;
+          grid.appendChild(makeCell(d, false, isSelected));
+        }
+
+        const totalCells = firstOffset + numDays;
+        const trailing = (7 - (totalCells % 7)) % 7;
+        for (let i = 1; i <= trailing; i++) {
+          grid.appendChild(makeCell(i, true, false));
+        }
+      }
+
+      function selectDay(d) {
+        valueInput.value = dpFormatISO(viewYear, viewMonth, d);
+        refresh();
+        closePanel();
+      }
+
+      function onOutsideClick(e) {
+        if (panel.contains(e.target) || trigger.contains(e.target)) return;
+        closePanel();
+      }
+
+      function onKeydown(e) {
+        if (e.key === 'Escape') {
+          closePanel();
+          trigger.focus();
+        }
+      }
+
+      function openPanel() {
+        resetViewToValue();
+        renderGrid();
+        panel.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        document.addEventListener('click', onOutsideClick, true);
+        document.addEventListener('keydown', onKeydown, true);
+      }
+
+      function closePanel() {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('click', onOutsideClick, true);
+        document.removeEventListener('keydown', onKeydown, true);
+      }
+
+      trigger.addEventListener('click', () => {
+        if (panel.hidden) openPanel(); else closePanel();
+      });
+      prevBtn.addEventListener('click', () => {
+        viewMonth -= 1;
+        if (viewMonth < 1) { viewMonth = 12; viewYear -= 1; }
+        renderGrid();
+      });
+      nextBtn.addEventListener('click', () => {
+        viewMonth += 1;
+        if (viewMonth > 12) { viewMonth = 1; viewYear += 1; }
+        renderGrid();
+      });
+      todayBtn.addEventListener('click', () => {
+        const now = new Date();
+        valueInput.value = dpFormatISO(now.getFullYear(), now.getMonth() + 1, now.getDate());
+        refresh();
+        closePanel();
+      });
+      clearBtn.addEventListener('click', () => {
+        valueInput.value = '';
+        refresh();
+        closePanel();
+      });
+
+      refresh();
+      return { refresh };
+    }
+
     // ── client manager ──────────────────────────────────────────────────────
 
     // Keyed by email (the record key) so Edit can repopulate the add-form from
@@ -833,6 +1128,11 @@
     // it -- the exact bug this snapshot exists to prevent, reached a
     // different way.
     let editingSnapshot = null; // { email, startDate, durationMonths, expiresAt, pausedAt } | null
+
+    // Initialized in init(); any code that sets $('clientStartDate').value
+    // directly (the post-submit reset and Edit-populate, below) must also
+    // call clientStartDatePicker.refresh() -- see initDatePicker's comment.
+    let clientStartDatePicker = null;
 
     function emailsMatch(a, b) {
       return String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -1039,6 +1339,7 @@
           $('clientEmail').value = '';
           $('clientPhone').value = '';
           $('clientStartDate').value = '';
+          clientStartDatePicker.refresh();
           $('clientDurationMonths').value = '';
           editingSnapshot = null;
           return;
@@ -1097,6 +1398,7 @@
           $('clientEmail').value = c.email || '';
           $('clientPhone').value = c.phone || '';
           $('clientStartDate').value = c.startDate || '';
+          clientStartDatePicker.refresh();
           $('clientDurationMonths').value = c.durationMonths || '';
           // Stash a snapshot of the CURRENT record so the submit handler can
           // carry expiresAt/pausedAt through unchanged -- see the comment on
@@ -1188,6 +1490,7 @@
 
       wireAvailabilityForm(PREFIX_APPLICANTS, '/api/admin/availability', 'storageMissingNote');
       wireAvailabilityForm(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');
+      clientStartDatePicker = initDatePicker('clientStartDate');
       wireClientManager();
 
       const authed = await loadStatus();

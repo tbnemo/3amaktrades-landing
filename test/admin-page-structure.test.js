@@ -178,6 +178,16 @@ test('the Check-In Hours tab button is relabeled and the new Clients tab is a re
 
 // startDate + durationMonths are now required on every add/edit, matching the
 // extended api/_checkin-clients.js validateClient.
+//
+// UI-polish update: startDate and durationMonths are no longer a native
+// <input type="date"> / <input type="number"> -- the native date popup has
+// no CSS hooks and clashed with the site's black/gold identity, and the
+// number spinner became a themed preset dropdown. #clientStartDate is now a
+// hidden input (still holding the same "YYYY-MM-DD" string every read/write
+// site addresses) driven by a custom trigger+panel widget;
+// #clientDurationMonths is now a <select> of preset month values. The ids
+// and required-ness are unchanged -- only the underlying element types are,
+// deliberately, since that IS the presentation this task replaced.
 test('the add-client form gains required startDate and durationMonths inputs', () => {
   const ids = new Set(idsIn(html));
   for (const id of ['clientStartDate', 'clientDurationMonths']) {
@@ -185,13 +195,12 @@ test('the add-client form gains required startDate and durationMonths inputs', (
   }
   const startInput = html.match(/<input[^>]*id="clientStartDate"[^>]*>/);
   assert.ok(startInput, 'clientStartDate input not found');
-  assert.match(startInput[0], /type="date"/);
+  assert.match(startInput[0], /type="hidden"/,
+    'clientStartDate is the hidden value-holding element behind the custom date-picker widget');
   assert.match(startInput[0], /\brequired\b/);
 
-  const durationInput = html.match(/<input[^>]*id="clientDurationMonths"[^>]*>/);
-  assert.ok(durationInput, 'clientDurationMonths input not found');
-  assert.match(durationInput[0], /type="number"/);
-  assert.match(durationInput[0], /min="1"/);
+  const durationInput = html.match(/<select[^>]*id="clientDurationMonths"[^>]*>/);
+  assert.ok(durationInput, 'clientDurationMonths select not found');
   assert.match(durationInput[0], /\brequired\b/);
 });
 
@@ -482,4 +491,166 @@ test('the new CSS uses the existing custom properties and introduces no new colo
   // rule is logical everywhere, and this section is the newest code in it.
   const physical = newCss.match(/\b(margin|padding|border)-(left|right)\s*:/g) || [];
   assert.deepEqual(physical, [], `physical side properties in new CSS: ${physical.join(', ')}`);
+});
+
+// ══ Clients-tab form-field polish: custom date picker, package dropdown,
+// ══ and the horizontal-overflow fix. ══════════════════════════════════════
+
+// The native <input type="date">'s calendar popup has essentially no CSS
+// hooks, so a fully custom trigger+panel widget replaces it -- mirroring
+// check-in.html's own hand-built day-picker (a different shape: a 14-day
+// strip there, vs. a full month grid here, since a client's start date can
+// be any past or future date).
+test('a custom date-picker trigger and dropdown panel exist for the Start Date field', () => {
+  const ids = new Set(idsIn(html));
+  const required = [
+    'clientStartDateTrigger', 'clientStartDateDisplay', 'clientStartDatePanel',
+    'clientStartDatePrevMonth', 'clientStartDateMonthLabel', 'clientStartDateNextMonth',
+    'clientStartDateGrid', 'clientStartDateTodayBtn', 'clientStartDateClearBtn',
+  ];
+  for (const id of required) {
+    assert.ok(ids.has(id), `missing date-picker element "${id}"`);
+  }
+
+  // The trigger is a real <button>, not a div -- keyboard-reachable like
+  // every other interactive control on this page.
+  const trigger = html.match(/<button[^>]*id="clientStartDateTrigger"[^>]*>/);
+  assert.ok(trigger, 'clientStartDateTrigger must be a <button>');
+  assert.match(trigger[0], /aria-haspopup=/);
+  assert.match(trigger[0], /aria-expanded="false"/);
+
+  // The dropdown panel starts hidden.
+  const panel = html.match(/<div[^>]*id="clientStartDatePanel"[^>]*>/);
+  assert.ok(panel, 'clientStartDatePanel not found');
+  assert.match(panel[0], /\bhidden\b/, 'the date-picker panel must start hidden');
+
+  // Weekday headers, per the spec ("Mo/Tu/We/Th/Fr/Sa/Su or similar").
+  const panelAt = html.indexOf('id="clientStartDatePanel"');
+  const gridAt = html.indexOf('id="clientStartDateGrid"');
+  const weekdaysWindow = html.slice(panelAt, gridAt);
+  for (const wd of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']) {
+    assert.ok(weekdaysWindow.includes(`>${wd}<`), `missing weekday header "${wd}"`);
+  }
+});
+
+// #clientStartDate itself must remain the real value-holding element every
+// existing read/write site (submit handler, post-submit reset, Edit-populate)
+// already addresses by that exact id -- only its element type changes (a
+// hidden input instead of a visible native date input), so none of those
+// call sites needed their value contract rewritten.
+test('#clientStartDate stays the hidden value-holding input behind the custom widget, still carrying a "YYYY-MM-DD" string', () => {
+  const startInput = html.match(/<input[^>]*id="clientStartDate"[^>]*>/);
+  assert.ok(startInput, 'clientStartDate input not found');
+  assert.match(startInput[0], /type="hidden"/);
+
+  // The submit handler still reads it by the same id/contract.
+  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
+  const submitWindow = html.slice(submitIdx, submitIdx + 4000);
+  assert.match(submitWindow, /startDate:\s*\$\('clientStartDate'\)\.value\.trim\(\)/,
+    'the submit handler must still read #clientStartDate.value as a plain string');
+
+  // The post-submit reset still clears it by the same id, and must also
+  // refresh the trigger's displayed text -- setting .value directly on a
+  // hidden input fires no event the widget could otherwise react to.
+  const resetAt = submitWindow.indexOf("$('clientStartDate').value = '';");
+  assert.ok(resetAt !== -1, 'the post-submit reset must still clear #clientStartDate.value');
+  const afterReset = submitWindow.slice(resetAt, resetAt + 120);
+  assert.match(afterReset, /clientStartDatePicker\.refresh\(\)/,
+    'the post-submit reset must refresh the date-picker trigger display after clearing the hidden value');
+
+  // Edit-populate still writes #clientStartDate.value from the row's stored
+  // startDate, and must likewise refresh the trigger display.
+  const clickIdx = html.indexOf("clientsTableBody').addEventListener('click'");
+  const clickWindow = html.slice(clickIdx, clickIdx + 2000);
+  const editAt = clickWindow.indexOf("$('clientStartDate').value = c.startDate || '';");
+  assert.ok(editAt !== -1, 'Edit must still populate #clientStartDate.value from the stored startDate');
+  const afterEdit = clickWindow.slice(editAt, editAt + 120);
+  assert.match(afterEdit, /clientStartDatePicker\.refresh\(\)/,
+    'Edit-populate must refresh the date-picker trigger display after setting the hidden value');
+});
+
+// Month navigation and day-selection logic must exist, and a selected day's
+// cell must actually write back into the hidden #clientStartDate value.
+test('the date picker implements month navigation and day selection, writing the chosen date back into #clientStartDate', () => {
+  const idx = html.indexOf('function initDatePicker');
+  assert.ok(idx !== -1, 'initDatePicker not found');
+  const fnWindow = html.slice(idx, idx + 6000);
+
+  assert.match(fnWindow, /viewMonth\s*-=\s*1/, 'previous-month navigation not found');
+  assert.match(fnWindow, /viewMonth\s*\+=\s*1/, 'next-month navigation not found');
+  assert.match(fnWindow, /function\s+selectDay/, 'day-selection logic not found');
+  assert.match(fnWindow, /valueInput\.value\s*=\s*dpFormatISO\(/,
+    'selecting a day must write the chosen date back into the hidden value input');
+
+  // Clicking outside the panel or pressing Escape closes it without
+  // changing the selection (no valueInput.value assignment near either).
+  assert.match(fnWindow, /function\s+onOutsideClick/);
+  assert.match(fnWindow, /function\s+onKeydown/);
+  assert.match(fnWindow, /e\.key\s*===\s*'Escape'/);
+});
+
+// The dimmed adjacent-month filler days (visible in the native picker's
+// screenshot too) must be genuinely unclickable, not merely styled dim.
+test('adjacent-month filler days in the date-picker grid are disabled, not just visually dimmed', () => {
+  const idx = html.indexOf('function makeCell');
+  assert.ok(idx !== -1, 'makeCell not found');
+  const fnWindow = html.slice(idx, idx + 800);
+  assert.match(fnWindow, /isOutside/);
+  assert.match(fnWindow, /cell\.disabled\s*=\s*true/);
+});
+
+// Today/Clear text actions, per the spec.
+test('the date-picker panel has Today and Clear actions that write/clear the hidden value', () => {
+  const todayBtn = html.match(/<button[^>]*id="clientStartDateTodayBtn"[^>]*>([^<]*)</);
+  assert.ok(todayBtn, 'clientStartDateTodayBtn not found');
+  assert.match(todayBtn[1], /Today/i);
+  const clearBtn = html.match(/<button[^>]*id="clientStartDateClearBtn"[^>]*>([^<]*)</);
+  assert.ok(clearBtn, 'clientStartDateClearBtn not found');
+  assert.match(clearBtn[1], /Clear/i);
+
+  const idx = html.indexOf('function initDatePicker');
+  const fnWindow = html.slice(idx, idx + 6000);
+  assert.match(fnWindow, /clearBtn\.addEventListener\('click',[^]*?valueInput\.value\s*=\s*'';/,
+    'Clear must blank the hidden value');
+  assert.match(fnWindow, /todayBtn\.addEventListener\('click',[^]*?valueInput\.value\s*=\s*dpFormatISO\(/,
+    'Today must set the hidden value to today\'s date');
+});
+
+// Package Length is now a themed dropdown of preset month values instead of
+// a free-typed number spinner.
+test('Package Length is a <select> offering the 1/2/3/6/9/12-month presets, and keeps durationMonths\' value contract', () => {
+  const durationInput = html.match(/<select[^>]*id="clientDurationMonths"[^>]*>/);
+  assert.ok(durationInput, 'clientDurationMonths select not found');
+  assert.match(durationInput[0], /\brequired\b/);
+  assert.match(durationInput[0], /class="input"/, 'must reuse the shared .input theming class');
+
+  const idx = html.indexOf('id="clientDurationMonths"');
+  const optionsWindow = html.slice(idx, html.indexOf('</select>', idx));
+  for (const months of [1, 2, 3, 6, 9, 12]) {
+    assert.match(optionsWindow, new RegExp(`<option value="${months}">`),
+      `missing the ${months}-month preset option`);
+  }
+
+  // The submit handler still reads it the same way (Number(...) of .value),
+  // and the reset/Edit-populate call sites are untouched in shape.
+  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
+  const submitWindow = html.slice(submitIdx, submitIdx + 1200);
+  assert.match(submitWindow, /durationMonths:\s*Number\(\$\('clientDurationMonths'\)\.value\)/);
+});
+
+// The classic flexbox min-width:auto gotcha: a flex item's content (a long
+// typed name/email) was preventing it from shrinking, pushing the row (and
+// the page) into horizontal scroll instead of the input containing its own
+// text like a normal text field.
+test('the clients-add-row overflow fix (min-width:0) is present, scoped to the Clients add-row only', () => {
+  const styleBlock = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+  assert.match(styleBlock, /\.clients-add-row\s+\.field\s*\{[^}]*min-width\s*:\s*0\b/,
+    '.clients-add-row .field must set min-width:0 so it can shrink below its content\'s intrinsic width');
+
+  // Scoped -- must not appear as a bare, page-wide rule on .field or .input
+  // that would also affect the New Applicants / Check-In Hours forms.
+  const bareFieldRule = styleBlock.match(/(?<!clients-add-row\s)\.field\s*\{[^}]*\}/);
+  assert.ok(bareFieldRule, 'expected the base .field rule to still exist');
+  assert.equal(/min-width\s*:\s*0/.test(bareFieldRule[0]), false,
+    'the overflow fix must be scoped to .clients-add-row .field, not the shared base .field rule');
 });
