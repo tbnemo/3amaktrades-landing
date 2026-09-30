@@ -1,8 +1,8 @@
 const fetch = require('node-fetch');
 
 const CHANNEL_NEW_APPLICATIONS = 'C0B3EAGNATT'; // #1-new-applications
-const CHANNEL_INCOMPLETE_LEADS = 'C0BRK4HDFFH'; // #2-incomplete-leads
-const CHANNEL_WARM_LEADS = 'C0BRXBD8QAZ'; // #3-warm-leads
+const CHANNEL_INCOMPLETE_LEADS = 'C0BRK4HDFFH'; // #3-incomplete-leads (channel renamed since; routes by ID, unaffected)
+const CHANNEL_WARM_LEADS = 'C0BRXBD8QAZ'; // #2-warm-leads (channel renamed since; routes by ID, unaffected)
 const CHANNEL_NEW_CALLS_BOOKED = 'C0C5EU42DDF'; // #4-new-calls-booked
 const CHANNEL_RESCHEDULED_CALLS = 'C0C5CRRRJP4'; // #5-rescheduled-calls
 const CHANNEL_CANCELLED_CALLS = 'C0C5EU6RPLZ'; // #6-cancelled-calls
