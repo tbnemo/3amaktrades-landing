@@ -4,6 +4,12 @@ const fs = require('fs');
 const path = require('path');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'check-in.html'), 'utf8');
+// The page's own logic now lives in check-in.js (extracted so its pure
+// helpers are unit-testable -- see test/check-in.test.js). Assertions below
+// that check JS CONTENT (endpoint strings, error branches, message copy)
+// read this instead of check-in.html; assertions checking actual HTML
+// markup/CSS keep reading `html`.
+const js = fs.readFileSync(path.join(__dirname, '..', 'check-in.js'), 'utf8');
 
 function idsIn(source) {
   const out = [];
@@ -38,14 +44,24 @@ test('all three steps and their key elements exist', () => {
   }
 });
 
-test('the page calls exactly the three check-in endpoints and no applicant one', () => {
+test('the page loads its logic from check-in.js, at the same spot the inline script used to sit', () => {
+  assert.match(html, /<script src="check-in\.js"><\/script>\s*<\/body>/,
+    'check-in.js must be loaded right before </body>, where the inline script used to run');
+});
+
+test('check-in.js calls exactly the three check-in endpoints and no applicant one', () => {
   for (const url of ['/api/checkin-verify', '/api/calendar-checkin-availability', '/api/calendar-checkin-book']) {
-    assert.ok(html.includes(url), `check-in.html must call ${url}`);
+    assert.ok(js.includes(url), `check-in.js must call ${url}`);
   }
   for (const url of ['/api/calendar-book', '/api/calendar-availability', '/api/admin/']) {
-    assert.equal(html.includes(url), false, `check-in.html must not call ${url}`);
+    assert.equal(js.includes(url), false, `check-in.js must not call ${url}`);
   }
   // No shared widget code, per the explicit decision in the spec.
+  assert.equal(js.includes('booking-widget.js'), false);
+  assert.equal(js.includes('BookingWidget'), false);
+  // And check-in.html itself no longer inlines any of this -- it only
+  // references the external file.
+  assert.equal(html.includes('/api/checkin-verify'), false);
   assert.equal(html.includes('booking-widget.js'), false);
   assert.equal(html.includes('BookingWidget'), false);
 });
@@ -53,7 +69,7 @@ test('the page calls exactly the three check-in endpoints and no applicant one',
 // The generic message is a decision, not a placeholder: it must not hint at
 // whether the identifier was unknown or something else failed.
 test('the failed-verification copy is the exact generic message from the spec', () => {
-  assert.ok(html.includes("We couldn't verify that email or phone. If you're a current client, contact Omar directly."),
+  assert.ok(js.includes("We couldn't verify that email or phone. If you're a current client, contact Omar directly."),
     'the generic verification-failure message must appear verbatim');
 });
 
@@ -101,24 +117,24 @@ test('the fonts are the site fonts, loaded from Google Fonts', () => {
 });
 
 test('a 409 on confirm is handled as an expected race: cleared selection and a re-fetch', () => {
-  assert.match(html, /409/, 'the confirm handler must branch on 409');
-  assert.match(html, /SLOT_TAKEN/);
+  assert.match(js, /409/, 'the confirm handler must branch on 409');
+  assert.match(js, /SLOT_TAKEN/);
 });
 
 test('an expired verification (403 NOT_VERIFIED) sends the visitor back to the verify step', () => {
-  assert.match(html, /NOT_VERIFIED/);
+  assert.match(js, /NOT_VERIFIED/);
 });
 
 test('the verify token is held in a JS variable, never written to storage', () => {
-  assert.equal(/localStorage/.test(html), false, 'a verify token must not be persisted');
-  assert.equal(/sessionStorage/.test(html), false);
-  assert.equal(/document\.cookie/.test(html), false);
+  assert.equal(/localStorage/.test(js), false, 'a verify token must not be persisted');
+  assert.equal(/sessionStorage/.test(js), false);
+  assert.equal(/document\.cookie/.test(js), false);
 });
 
 test('the booking POST sends the verifyToken, the start instant, the visitor zone and lang', () => {
-  const idx = html.indexOf('/api/calendar-checkin-book');
+  const idx = js.indexOf('/api/calendar-checkin-book');
   assert.ok(idx !== -1);
-  const window = html.slice(idx, idx + 600);
+  const window = js.slice(idx, idx + 600);
   for (const field of ['verifyToken', 'start', 'visitorTimeZone', 'lang']) {
     assert.ok(window.includes(field), `the book POST body must carry ${field}`);
   }
@@ -132,9 +148,9 @@ test('the page is marked noindex: a direct client link is not a public page', ()
 });
 
 test('a 502 from checkin-verify shows its own message, distinct from the generic non-match copy', () => {
-  const idx = html.indexOf("res.status === 502");
+  const idx = js.indexOf("res.status === 502");
   assert.ok(idx !== -1, 'the verify submit handler must branch on 502');
-  const window = html.slice(idx, idx + 300);
+  const window = js.slice(idx, idx + 300);
   assert.match(window, /Something went wrong checking that/,
     'a 502 (infra failure) must not collapse into the generic "could not verify" message');
 });
@@ -150,7 +166,7 @@ test('the inline error containers announce themselves to screen readers', () => 
 test('slot times are only ever FORMATTED from the absolute ISO instants the server sends', () => {
   // No manual offset arithmetic on instants: the server sends absolute ISO and
   // Intl does the zone work, which is the site-wide rule.
-  assert.match(html, /Intl\.DateTimeFormat/);
-  assert.equal(/getTimezoneOffset/.test(html), false,
+  assert.match(js, /Intl\.DateTimeFormat/);
+  assert.equal(/getTimezoneOffset/.test(js), false,
     'manual offset math on a slot instant is exactly the bug this rule prevents');
 });
