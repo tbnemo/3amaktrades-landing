@@ -49,13 +49,21 @@ function wouldRemind(startMs, nowMs) {
 }
 
 // Two independent ways in, both sufficient on their own: Vercel's own cron
-// carries the CRON_SECRET bearer token (unchanged, below); an admin's browser
-// carries their own signed session cookie instead, via the "Send Check-In
-// Reminders Now" catch-up button on admin.html -- recovering from a day the
-// once-daily cron missed entirely, without exposing CRON_SECRET to the client.
-// Checked in this order purely because the bearer check is the cheaper one
-// (no HMAC verify) when it is present; neither check's success or failure
-// affects the other.
+// carries the CRON_SECRET bearer token on a GET (unchanged, below); an
+// admin's browser carries their own signed session cookie instead, via the
+// "Send Due Reminders Now" catch-up button on admin.html -- recovering from
+// a day the once-daily cron missed entirely, without exposing CRON_SECRET to
+// the client.
+//
+// The session path is POST-ONLY. The session cookie is SameSite=Lax, which
+// IS attached on a top-level cross-site GET (a plain link, a redirect,
+// window.open) -- a bearer-only endpoint never had that exposure, since
+// browsers never attach an Authorization header automatically. Restricting
+// the cookie path to POST forces a CORS preflight on the admin's own
+// `Content-Type: application/json` fetch, which a hostile page's simple
+// top-level navigation cannot replicate without our server opting in via
+// CORS headers (it does not) -- closing the CSRF hole while costing real
+// cron nothing, since cron never sends a session cookie either way.
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
   const header = (req.headers && req.headers.authorization) || '';
@@ -63,11 +71,11 @@ function authorized(req) {
   // attacker-supplied input. safeEqual length-checks before timingSafeEqual, which
   // throws on a length mismatch.
   if (secret && safeEqual(header, `Bearer ${secret}`)) return true;
-  return verifySession(req);
+  return req.method === 'POST' && verifySession(req);
 }
 
 async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).end();
+  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).end();
   if (!authorized(req)) {
     return res.status(401).json({ ok: false,
       error: process.env.CRON_SECRET ? 'unauthorized' : 'CRON_SECRET not set' });

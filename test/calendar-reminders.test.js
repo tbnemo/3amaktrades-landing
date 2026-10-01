@@ -132,18 +132,26 @@ test('correct bearer -> 200 with {ok:true, considered, sent, skipped}', async ()
 
 // ===========================================================================
 // Admin-session catch-up auth: a SECOND, independent way in, for the "Send
-// Check-In Reminders Now" button on admin.html -- recovering from a day the
+// Due Reminders Now" button on admin.html -- recovering from a day the
 // once-daily Vercel cron missed entirely. Must not weaken or replace the
 // CRON_SECRET path real Vercel cron depends on.
+//
+// POST-ONLY (code review, CSRF finding): the session cookie is
+// SameSite=Lax, which browsers DO attach on a top-level cross-site GET (a
+// plain link, a redirect, window.open). A bearer-only endpoint never had
+// this exposure. Restricting the session path to POST forces a CORS
+// preflight the attacker's page cannot pass (we send no CORS headers), so
+// these tests cover both halves: POST+cookie works, GET+cookie (even a
+// perfectly valid one) does not.
 // ===========================================================================
 
-function reqWithCookie(cookie) {
-  return { method: 'GET', headers: cookie ? { cookie } : {} };
+function reqWithCookie(cookie, method) {
+  return { method: method || 'POST', headers: cookie ? { cookie } : {} };
 }
 
 function cookieValueOf(setCookie) { return setCookie.split(';')[0]; }
 
-test('a request with a valid admin session cookie and NO bearer header at all is authorized', async () => {
+test('a POST with a valid admin session cookie and NO bearer header at all is authorized', async () => {
   envSetup();
   await withStubs([
     { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [] }) },
@@ -152,6 +160,22 @@ test('a request with a valid admin session cookie and NO bearer header at all is
     await handler(reqWithCookie(cookieValueOf(auth.issueSessionCookie())), res);
     assert.equal(res._status, 200);
     assert.equal(res._json.ok, true);
+  });
+});
+
+// CSRF finding, closed: a GET carrying the EXACT SAME valid session cookie
+// must still be rejected -- a GET is exactly what a hostile page's top-level
+// navigation or window.open can forge (it rides along automatically on
+// SameSite=Lax); a POST with a custom Content-Type cannot be forged the
+// same way without a CORS opt-in this server never grants.
+test('a GET with a valid admin session cookie is REJECTED -- the session path is POST-only (CSRF)', async () => {
+  envSetup();
+  const listSpy = spyStub({ ok: true, events: [] });
+  await withStubs([{ obj: gcal, key: 'listEvents', value: listSpy }], async () => {
+    const res = makeRes();
+    await handler(reqWithCookie(cookieValueOf(auth.issueSessionCookie()), 'GET'), res);
+    assert.equal(res._status, 401);
+    assert.equal(listSpy.calls.length, 0, 'a forgeable GET must never trigger a real send, even with a valid cookie');
   });
 });
 
@@ -503,11 +527,26 @@ test('WINDOW: an event starting beyond now+lead is skipped even if listEvents ha
   }
 });
 
-test('a non-GET method returns 405', async () => {
+// POST is now a legitimate method too (the admin-session catch-up path is
+// POST-only, see authorized()'s CSRF comment) -- this must use a method
+// that is genuinely never valid, not POST.
+test('a method that is neither GET nor POST returns 405', async () => {
   envSetup();
   const res = makeRes();
-  await handler({ method: 'POST', headers: { authorization: `Bearer ${SECRET}` } }, res);
+  await handler({ method: 'PUT', headers: { authorization: `Bearer ${SECRET}` } }, res);
   assert.equal(res._status, 405);
+});
+
+test('POST with the correct CRON_SECRET bearer also succeeds (the method gate is not GET-only)', async () => {
+  envSetup();
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [] }) },
+  ], async () => {
+    const res = makeRes();
+    await handler({ method: 'POST', headers: { authorization: `Bearer ${SECRET}` } }, res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.ok, true);
+  });
 });
 
 // ---- audience branching -------------------------------------------------
