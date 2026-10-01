@@ -5,6 +5,7 @@ const gcal = require('../api/_google-calendar');
 const guard = require('../api/_booking-guard');
 const email = require('../api/_email');
 const handler = require('../api/calendar-reminders');
+const auth = require('../api/_admin-auth');
 const cemail = require('../api/_checkin-email');
 const loadCheckinMod = require('../api/_load-checkin-template');
 const av = require('../api/_availability');
@@ -126,6 +127,61 @@ test('correct bearer -> 200 with {ok:true, considered, sent, skipped}', async ()
     assert.equal(res._json.considered, 0);
     assert.equal(res._json.sent, 0);
     assert.equal(res._json.skipped, 0);
+  });
+});
+
+// ===========================================================================
+// Admin-session catch-up auth: a SECOND, independent way in, for the "Send
+// Check-In Reminders Now" button on admin.html -- recovering from a day the
+// once-daily Vercel cron missed entirely. Must not weaken or replace the
+// CRON_SECRET path real Vercel cron depends on.
+// ===========================================================================
+
+function reqWithCookie(cookie) {
+  return { method: 'GET', headers: cookie ? { cookie } : {} };
+}
+
+function cookieValueOf(setCookie) { return setCookie.split(';')[0]; }
+
+test('a request with a valid admin session cookie and NO bearer header at all is authorized', async () => {
+  envSetup();
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [] }) },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqWithCookie(cookieValueOf(auth.issueSessionCookie())), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.ok, true);
+  });
+});
+
+test('a request with neither a valid session cookie nor the CRON_SECRET bearer is still rejected', async () => {
+  envSetup();
+  const listSpy = spyStub({ ok: true, events: [] });
+  await withStubs([{ obj: gcal, key: 'listEvents', value: listSpy }], async () => {
+    const res = makeRes();
+    await handler(reqWithCookie(null), res);
+    assert.equal(res._status, 401);
+    assert.equal(listSpy.calls.length, 0);
+  });
+});
+
+test('a garbage/forged session cookie is rejected the same as no cookie at all', async () => {
+  envSetup();
+  const res = makeRes();
+  await handler(reqWithCookie('amak_admin=forged.garbage'), res);
+  assert.equal(res._status, 401);
+});
+
+test('the CRON_SECRET bearer path still works exactly as before, with no session cookie present at all', async () => {
+  envSetup();
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [] }) },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqGet(SECRET), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.ok, true, 'a real Vercel cron request (bearer only, no cookie) must be unaffected');
   });
 });
 

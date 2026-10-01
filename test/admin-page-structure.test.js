@@ -672,7 +672,9 @@ test('a non-preset durationMonths value gets its own injected <option> before Ed
   assert.ok(clickIdx !== -1, 'the delegated clientsTableBody click handler was not found');
   const clickWindow = html.slice(clickIdx, clickIdx + 2000);
   const ensureAt = clickWindow.indexOf('ensureDurationOption(c.durationMonths)');
-  const assignAt = clickWindow.indexOf("$('clientDurationMonths').value = c.durationMonths || '';");
+  // NOT `c.durationMonths || ''` -- durationMonths === 0 ("No package") is a
+  // legitimate value, and the `||` fallback would misfire on exactly it.
+  const assignAt = clickWindow.indexOf("$('clientDurationMonths').value = Number.isFinite(c.durationMonths) ? String(c.durationMonths) : '';");
   assert.ok(ensureAt !== -1, 'Edit must call ensureDurationOption(c.durationMonths)');
   assert.ok(assignAt !== -1, 'Edit must still assign the select value from c.durationMonths');
   assert.ok(ensureAt < assignAt,
@@ -693,6 +695,191 @@ test('the injected custom duration option is cleared on every ensureDurationOpti
   const submitWindow = html.slice(submitIdx, submitIdx + 4000);
   assert.match(submitWindow, /clearCustomDurationOption\(\)/,
     'the post-submit form reset must also clear any injected custom duration option');
+});
+
+// ══ Payments tab, "No package" option, client search, and the manual ══
+// ══ reminder catch-up button. ══════════════════════════════════════════
+
+test('a fourth Payments tab exists, is keyboard-reachable, and its panel sits after panelClients', () => {
+  const ids = new Set(idsIn(html));
+  for (const id of ['tabPayments', 'panelPayments', 'paymentsPanel']) {
+    assert.ok(ids.has(id), `missing Payments tab element "${id}"`);
+  }
+  const tabBtn = html.match(/<button[^>]*id="tabPayments"[^>]*>/);
+  assert.ok(tabBtn, 'tabPayments must be a <button>');
+  assert.match(tabBtn[0], /role="tab"/);
+  assert.match(tabBtn[0], /aria-selected=/);
+
+  const panelClientsAt = html.indexOf('id="panelClients"');
+  const panelPaymentsAt = html.indexOf('id="panelPayments"');
+  assert.ok(panelClientsAt !== -1 && panelPaymentsAt !== -1 && panelPaymentsAt > panelClientsAt,
+    'panelPayments must come after panelClients');
+});
+
+test('the Payments tab button is wired through the SAME selectTab mechanism as the other tabs', () => {
+  const idx = html.indexOf('function selectTab');
+  assert.ok(idx !== -1, 'selectTab not found');
+  const fnWindow = html.slice(idx, idx + 1000);
+  assert.match(fnWindow, /tabPayments.*aria-selected/);
+  assert.match(fnWindow, /panelPayments'\)\.hidden/);
+
+  const clickIdx = html.indexOf("tabPayments').addEventListener('click'");
+  assert.ok(clickIdx !== -1, "tabPayments must be wired via addEventListener('click', ...)");
+  assert.match(html.slice(clickIdx, clickIdx + 100), /selectTab\('payments'\)/);
+});
+
+test('Payments tab has a month selector, a Collected/Overdue summary, and a rows container', () => {
+  const ids = new Set(idsIn(html));
+  for (const id of ['paymentsMonthLabel', 'paymentsPrevMonth', 'paymentsNextMonth', 'paymentsSummary', 'paymentsRows', 'paymentsEmpty']) {
+    assert.ok(ids.has(id), `missing Payments element "${id}"`);
+  }
+  assert.match(html, /Collected/);
+  assert.match(html, /Overdue/);
+});
+
+// Status is Paid / Not Paid / Not Set, and "Not Set" (no amount entered) must
+// be distinct from "Not Paid" (an amount was entered and is unpaid).
+test('renderPaymentsTab computes a Paid/Not Paid/Not Set status distinguishing a missing amount from an unpaid one', () => {
+  const idx = html.indexOf('function paymentStatusOf');
+  assert.ok(idx !== -1, 'paymentStatusOf not found');
+  const fnWindow = html.slice(idx, idx + 300);
+  assert.match(fnWindow, /not-set/);
+  assert.match(fnWindow, /entry\.amountOwed/);
+  assert.match(fnWindow, /entry\.paid/);
+
+  const renderIdx = html.indexOf('function renderPaymentsTab');
+  assert.ok(renderIdx !== -1, 'renderPaymentsTab not found');
+  const renderWindow = html.slice(renderIdx, renderIdx + 3000);
+  assert.match(renderWindow, /pay-toggle/);
+  assert.match(renderWindow, /pay-amount-input/);
+});
+
+// Adapted from Built By Stones' own clientActiveInMonth, but 3AMAK tracks
+// expiry via expiresAt (epoch ms), not expiresOn (a YMD string) -- the
+// adaptation must compare instants, not slice strings.
+test('clientActiveInMonth compares against expiresAt (epoch ms), not a sliced date string', () => {
+  const idx = html.indexOf('function clientActiveInMonth');
+  assert.ok(idx !== -1, 'clientActiveInMonth not found');
+  const fnWindow = html.slice(idx, idx + 700);
+  assert.match(fnWindow, /c\.expiresAt/);
+  assert.equal(/expiresOn/.test(fnWindow), false,
+    'must not port BBS\'s expiresOn string-slicing literally -- 3AMAK has no such field');
+  assert.equal(/\.slice\(0,\s*7\)/.test(fnWindow), false,
+    'must compare epoch-ms instants, not slice a YMD string the way BBS does');
+});
+
+// Editing an amount or toggling Paid must save through the SAME whole-roster
+// upsert endpoint every other client edit already uses -- no new endpoint.
+test('editing a payment amount or toggling Paid persists via POST /api/admin/checkin-clients, optimistically re-rendering first', () => {
+  const idx = html.indexOf('async function savePaymentsFor');
+  assert.ok(idx !== -1, 'savePaymentsFor not found');
+  const fnWindow = html.slice(idx, idx + 1200);
+  assert.match(fnWindow, /clientsByEmail\.set\(/, 'must update the local cache optimistically');
+  assert.match(fnWindow, /renderPaymentsTab\(\)/, 'must re-render immediately, before the round trip resolves');
+  assert.match(fnWindow, /fetch\('\/api\/admin\/checkin-clients'/);
+  assert.match(fnWindow, /method:\s*'POST'/);
+
+  const wireIdx = html.indexOf('function wirePaymentsTab');
+  assert.ok(wireIdx !== -1, 'wirePaymentsTab not found');
+  const wireWindow = html.slice(wireIdx, wireIdx + 1800);
+  assert.match(wireWindow, /pay-amount-input/);
+  assert.match(wireWindow, /pay-toggle/);
+  assert.match(wireWindow, /savePaymentsFor\(/);
+});
+
+// "No package" (durationMonths:0) is a 7th option, placed FIRST, on the
+// EXISTING select -- not a separate control.
+test('"No package" (value 0) is the first option on the existing Package Length select', () => {
+  const idx = html.indexOf('id="clientDurationMonths"');
+  const selectWindow = html.slice(idx, html.indexOf('</select>', idx));
+  const firstRealOption = selectWindow.match(/<option value="[^"]*"[^>]*>(?:(?!hidden)[^<])*<\/option>/g);
+  assert.match(selectWindow, /<option value="0">No package<\/option>/);
+  // Must come before every numeric preset -- "placed FIRST ... matching the
+  // reference's convention" (right after the disabled placeholder option).
+  const noPackageAt = selectWindow.indexOf('<option value="0">No package</option>');
+  const oneMonthAt = selectWindow.indexOf('<option value="1">');
+  assert.ok(noPackageAt !== -1 && oneMonthAt !== -1 && noPackageAt < oneMonthAt,
+    '"No package" must come before the 1-month preset');
+});
+
+// The Renew button must not be left clickable for a client with nothing to
+// renew -- the least-surprising choice, given renewClient is already a
+// no-op server-side for durationMonths:0.
+test('the Renew button is disabled for a durationMonths:0 ("No package") client', () => {
+  const idx = html.indexOf('function renderClients');
+  assert.ok(idx !== -1, 'renderClients not found');
+  const fnWindow = html.slice(idx, idx + 4500);
+  assert.match(fnWindow, /c\.durationMonths\s*===\s*0/);
+  assert.match(fnWindow, /renewBtn\.disabled\s*=\s*true/);
+});
+
+// The Edit-populate falsy-0 bug: `c.durationMonths || ''` silently
+// deselects the whole select for exactly a durationMonths:0 client, the
+// same class of bug ensureDurationOption already fixed for a non-preset
+// value -- Number.isFinite must be used instead of a truthiness check.
+test('Edit-populate does not use a falsy fallback that would misfire on durationMonths === 0', () => {
+  const clickIdx = html.indexOf("clientsTableBody').addEventListener('click'");
+  assert.ok(clickIdx !== -1);
+  const clickWindow = html.slice(clickIdx, clickIdx + 2000);
+  assert.equal(/\$\('clientDurationMonths'\)\.value\s*=\s*c\.durationMonths\s*\|\|\s*''/.test(clickWindow), false,
+    'c.durationMonths || \'\' silently deselects everything for durationMonths === 0');
+  assert.match(clickWindow, /\$\('clientDurationMonths'\)\.value\s*=\s*Number\.isFinite\(c\.durationMonths\)/,
+    'must distinguish a real (possibly-zero) stored value from a missing one');
+});
+
+// A real bug this task's self-review caught: the submit handler's own
+// client-side pre-check short-circuited BEFORE the fetch, rejecting
+// durationMonths === 0 ("No package") with a client-side error the server
+// would have happily accepted.
+test('the submit handler\'s client-side durationMonths pre-check accepts 0 ("No package")', () => {
+  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
+  assert.ok(submitIdx !== -1);
+  const submitWindow = html.slice(submitIdx, submitIdx + 1500);
+  const checkMatch = submitWindow.match(/if\s*\(!Number\.isFinite\(client\.durationMonths\)\s*\|\|\s*client\.durationMonths\s*(<=?)\s*0\)/);
+  assert.ok(checkMatch, 'expected the durationMonths pre-check');
+  assert.equal(checkMatch[1], '<', 'the pre-check must use < 0, not <= 0, so 0 is accepted client-side too');
+});
+
+test('a client search input exists above the clients table and filters rows live as the admin types', () => {
+  const ids = new Set(idsIn(html));
+  assert.ok(ids.has('clientSearchInput'), 'missing clientSearchInput');
+
+  const searchAt = html.indexOf('id="clientSearchInput"');
+  const tableAt = html.indexOf('id="clientsTableBody"');
+  assert.ok(searchAt !== -1 && tableAt !== -1 && searchAt < tableAt,
+    'the search input must sit above the clients table');
+
+  const fnIdx = html.indexOf('function filterClientRows');
+  assert.ok(fnIdx !== -1, 'filterClientRows not found');
+  const fnWindow = html.slice(fnIdx, fnIdx + 700);
+  assert.match(fnWindow, /clientSearchInput/);
+  assert.match(fnWindow, /toLowerCase/);
+  assert.match(fnWindow, /includes\(q\)/);
+
+  // Wired live (input event), and re-applied after every render so an
+  // in-progress search survives an Add/Edit/Renew/Pause/Resume/Remove.
+  assert.match(html, /clientSearchInput'\)\.addEventListener\('input',\s*filterClientRows\)/);
+  const renderIdx = html.indexOf('function renderClients');
+  const renderWindow = html.slice(renderIdx, renderIdx + 4500);
+  assert.match(renderWindow, /filterClientRows\(\)/,
+    'renderClients must re-apply the search filter after rebuilding the table');
+});
+
+test('a "Send Check-In Reminders Now" button exists with a status line, and posts to /api/calendar-reminders', () => {
+  const ids = new Set(idsIn(html));
+  for (const id of ['sendRemindersNowBtn', 'sendRemindersStatus']) {
+    assert.ok(ids.has(id), `missing reminders catch-up element "${id}"`);
+  }
+  const btn = html.match(/<button[^>]*id="sendRemindersNowBtn"[^>]*>([^<]*)</);
+  assert.ok(btn, 'sendRemindersNowBtn must be a <button>');
+  assert.match(btn[1], /Send Check-In Reminders Now/i);
+
+  const idx = html.indexOf('function wireRemindersCatchup');
+  assert.ok(idx !== -1, 'wireRemindersCatchup not found');
+  const fnWindow = html.slice(idx, idx + 1200);
+  assert.match(fnWindow, /fetch\('\/api\/calendar-reminders'\)/);
+  assert.match(fnWindow, /data\.sent/);
+  assert.match(fnWindow, /data\.skipped/);
 });
 
 // The classic flexbox min-width:auto gotcha: a flex item's content (a long

@@ -36,7 +36,12 @@ function addMonths(ms, months) {
 }
 
 // "YYYY-MM-DD" + a package length -> the epoch-ms instant it expires.
+// durationMonths === 0 is the explicit "No package" sentinel (an admin-chosen
+// ongoing/indefinite client) -- it ALWAYS expires at null, regardless of
+// startDate, rather than at addMonths(start, 0) which would just equal start
+// itself and read as "expired on day one."
 function computeExpiresAt(startDate, durationMonths) {
+  if (Number(durationMonths) === 0) return null;
   const parts = String(startDate || '').split('-').map(Number);
   if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
   const [y, m, d] = parts;
@@ -47,7 +52,12 @@ function computeExpiresAt(startDate, durationMonths) {
 // handles both an early renewal (extends from the existing expiry, so paid
 // time is never shortened) and a lapsed renewal (extends from today, so a
 // client who renews after lapsing doesn't retroactively get back-dated).
+//
+// A durationMonths === 0 ("No package") client has nothing to renew -- a
+// no-op, same reference, matching pauseClient/resumeClient's own no-op
+// convention for an action that does not apply.
 function renewClient(client, nowMs = Date.now()) {
+  if (Number(client.durationMonths) === 0) return client;
   const base = Math.max(client.expiresAt || 0, nowMs);
   return { ...client, expiresAt: addMonths(base, client.durationMonths) };
 }
@@ -82,18 +92,52 @@ function isAccessActive(client, nowMs = Date.now()) {
   return nowMs < client.expiresAt;
 }
 
+// 0 is the explicit "No package" sentinel and must survive normalization
+// exactly -- NOT get clamped up to the usual minimum of 1. Only a genuinely
+// missing/invalid/negative value falls back to 1; a non-zero value still
+// rounds and floors at 1 the same way it always has.
+function normalizeDurationMonths(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 1;
+  if (n === 0) return 0;
+  return Math.max(1, Math.round(n));
+}
+
+// Payments are manual tracking only -- never validated against a processor,
+// never used to charge anyone. Defensive normalization only, matching the
+// pattern already used for pausedAt/expiresAt: keep a well-formed entry,
+// substitute a safe default for anything else, and NEVER drop the field
+// entirely (that is the exact bug class this feature set has hit twice
+// already -- a field normalizeEntry does not carry through vanishes on the
+// next save).
+function normalizePaymentsByMonth(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const key of Object.keys(raw)) {
+    if (!/^\d{4}-\d{2}$/.test(key)) continue;
+    const entry = raw[key];
+    const amountOwed = Number.isFinite(Number(entry && entry.amountOwed))
+      ? Math.max(0, Number(entry.amountOwed))
+      : 0;
+    out[key] = { amountOwed, paid: !!(entry && entry.paid === true) };
+  }
+  return out;
+}
+
 function normalizeEntry(c) {
   const startDate = String((c && c.startDate) || '').trim();
-  const durationMonths = Math.max(1, Math.round(Number(c && c.durationMonths) || 1));
+  const durationMonths = normalizeDurationMonths(c && c.durationMonths);
   const pausedAt = Number.isFinite(c && c.pausedAt) ? c.pausedAt : null;
   const rawExpiresAt = c && c.expiresAt;
   // An already-finite expiresAt is the normal case: an existing record's
   // expiresAt is already the tracked source of truth, mutated only by
   // renewClient/resumeClient/a fresh admin add. Only compute it fresh when
-  // there is nothing stored yet.
+  // there is nothing stored yet. computeExpiresAt itself handles the
+  // durationMonths === 0 ("No package") case by always returning null.
   const expiresAt = Number.isFinite(rawExpiresAt)
     ? rawExpiresAt
     : (startDate ? computeExpiresAt(startDate, durationMonths) : null);
+  const paymentsByMonth = normalizePaymentsByMonth(c && c.paymentsByMonth);
   return {
     name: String((c && c.name) || '').trim(),
     email: normalizeEmail(c && c.email),
@@ -102,6 +146,7 @@ function normalizeEntry(c) {
     durationMonths,
     pausedAt,
     expiresAt,
+    paymentsByMonth,
   };
 }
 
@@ -135,9 +180,12 @@ function validateClient(entry) {
     errors.push('startDate is required and must be YYYY-MM-DD');
   }
 
+  // 0 is a valid, explicit value -- "No package" (an admin-chosen
+  // ongoing/indefinite client) -- distinct from a missing/negative/NaN value,
+  // which is still rejected.
   const durationMonths = Number(src.durationMonths);
-  if (!Number.isFinite(durationMonths) || durationMonths <= 0) {
-    errors.push('durationMonths is required and must be a positive number');
+  if (!Number.isFinite(durationMonths) || durationMonths < 0) {
+    errors.push('durationMonths is required and must be zero ("No package") or a positive number');
   }
 
   return { ok: errors.length === 0, errors };

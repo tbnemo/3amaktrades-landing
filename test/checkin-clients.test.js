@@ -34,12 +34,12 @@ function spyStub(result) {
 const ALICE = {
   name: 'Alice', email: 'alice@example.com', phone: '+1 (555) 010-0100',
   startDate: '2026-01-01', durationMonths: 3, pausedAt: null,
-  expiresAt: Date.UTC(2026, 3, 1),
+  expiresAt: Date.UTC(2026, 3, 1), paymentsByMonth: {},
 };
 const BOB = {
   name: 'Bob', email: 'bob@example.com', phone: '',
   startDate: '2026-02-15', durationMonths: 1, pausedAt: null,
-  expiresAt: Date.UTC(2026, 2, 15),
+  expiresAt: Date.UTC(2026, 2, 15), paymentsByMonth: {},
 };
 
 test('normalizeEmail trims and lowercases; normalizePhone keeps digits only', () => {
@@ -89,6 +89,7 @@ test('loadClients normalizes entries and drops any with no email', async () => {
     assert.deepEqual(r.clients, [{
       name: 'Alice', email: 'alice@example.com', phone: '555-0100',
       startDate: '', durationMonths: 1, pausedAt: null, expiresAt: null,
+      paymentsByMonth: {},
     }]);
   });
 });
@@ -201,8 +202,10 @@ test('validateClient requires startDate as YYYY-MM-DD and durationMonths as a po
   assert.equal(noDuration.ok, false);
   assert.ok(noDuration.errors.some(e => /durationMonths/i.test(e)));
 
+  // durationMonths === 0 is the explicit "No package" sentinel (an
+  // admin-chosen ongoing/indefinite client), not an invalid value.
   const zeroDuration = cc.validateClient({ ...base, startDate: '2026-01-01', durationMonths: 0 });
-  assert.equal(zeroDuration.ok, false);
+  assert.deepEqual(zeroDuration, { ok: true, errors: [] });
 
   const negDuration = cc.validateClient({ ...base, startDate: '2026-01-01', durationMonths: -1 });
   assert.equal(negDuration.ok, false);
@@ -220,6 +223,7 @@ test('upsertClient appends a new entry, normalized', () => {
   assert.deepEqual(out[1], {
     name: 'Bob', email: 'bob@example.com', phone: '555-0199',
     startDate: '', durationMonths: 1, pausedAt: null, expiresAt: null,
+    paymentsByMonth: {},
   });
 });
 
@@ -350,4 +354,97 @@ test('isAccessActive covers active, paused, expired, and legacy null-expiresAt s
   assert.equal(cc.isAccessActive({ pausedAt: null, expiresAt: 5000 }, nowMs), false, 'expired');
   assert.equal(cc.isAccessActive({ pausedAt: null, expiresAt: null }, nowMs), true, 'legacy null expiresAt means active, not expired');
   assert.equal(cc.isAccessActive(null, nowMs), false, 'no client at all is never active');
+});
+
+// ===========================================================================
+// durationMonths === 0 ("No package"): an explicit, admin-chosen
+// ongoing/indefinite client -- distinct from the legacy null-expiresAt
+// migration case, but it must behave identically for isAccessActive's
+// purposes (always active unless paused).
+// ===========================================================================
+
+test('computeExpiresAt returns null for durationMonths === 0 regardless of startDate', () => {
+  assert.equal(cc.computeExpiresAt('2026-01-01', 0), null);
+  assert.equal(cc.computeExpiresAt('', 0), null);
+  assert.equal(cc.computeExpiresAt('not-a-date', 0), null);
+});
+
+test('normalizeEntry (via upsertClient) preserves durationMonths === 0 exactly -- it is never clamped up to 1', () => {
+  const out = cc.upsertClient([], {
+    name: 'Omar', email: 'omar@example.com', startDate: '2026-01-01', durationMonths: 0,
+  });
+  assert.equal(out[0].durationMonths, 0);
+  assert.equal(out[0].expiresAt, null, 'a "No package" client always normalizes to a null expiresAt');
+});
+
+test('isAccessActive treats a durationMonths:0 / expiresAt:null client the same as the legacy null-expiresAt case: always active unless paused', () => {
+  const nowMs = 10000;
+  assert.equal(cc.isAccessActive({ durationMonths: 0, pausedAt: null, expiresAt: null }, nowMs), true);
+  assert.equal(cc.isAccessActive({ durationMonths: 0, pausedAt: 5000, expiresAt: null }, nowMs), false,
+    'pause still wins outright over a "No package" client');
+});
+
+test('validateClient accepts durationMonths === 0 but still rejects negative/NaN/missing values', () => {
+  const base = { name: 'A', email: 'a@b.co', startDate: '2026-01-01' };
+  assert.deepEqual(cc.validateClient({ ...base, durationMonths: 0 }), { ok: true, errors: [] });
+  assert.equal(cc.validateClient({ ...base, durationMonths: -1 }).ok, false);
+  assert.equal(cc.validateClient({ ...base, durationMonths: NaN }).ok, false);
+  assert.equal(cc.validateClient({ ...base }).ok, false, 'durationMonths is still required');
+});
+
+test('renewClient is a no-op (same reference) for a durationMonths === 0 client', () => {
+  const client = {
+    name: 'Omar', email: 'omar@example.com', startDate: '2026-01-01',
+    durationMonths: 0, pausedAt: null, expiresAt: null, paymentsByMonth: {},
+  };
+  const renewed = cc.renewClient(client, Date.UTC(2026, 5, 1));
+  assert.equal(renewed, client, 'renewing a "No package" client must be a true no-op');
+});
+
+// ===========================================================================
+// paymentsByMonth: manual payment tracking, keyed by "YYYY-MM".
+// ===========================================================================
+
+test('normalizeEntry defaults paymentsByMonth to {} when absent', () => {
+  const out = cc.upsertClient([], { name: 'Omar', email: 'omar@example.com' });
+  assert.deepEqual(out[0].paymentsByMonth, {});
+});
+
+test('normalizeEntry round-trips a well-formed paymentsByMonth through save/reload (upsertClient then loadClients-style re-normalization)', () => {
+  const withPayments = cc.upsertClient([], {
+    name: 'Omar', email: 'omar@example.com',
+    paymentsByMonth: { '2026-01': { amountOwed: 250, paid: true }, '2026-02': { amountOwed: 100, paid: false } },
+  });
+  assert.deepEqual(withPayments[0].paymentsByMonth, {
+    '2026-01': { amountOwed: 250, paid: true },
+    '2026-02': { amountOwed: 100, paid: false },
+  });
+
+  // Simulate a reload: loadClients re-normalizes every stored entry, so the
+  // field must survive a second pass through normalizeEntry unchanged --
+  // this is the exact round-trip a save-then-reload performs in production.
+  const reloaded = cc.upsertClient([], withPayments[0]);
+  assert.deepEqual(reloaded[0].paymentsByMonth, withPayments[0].paymentsByMonth);
+});
+
+test('normalizeEntry sanitizes a malformed paymentsByMonth rather than dropping the whole field', () => {
+  const out = cc.upsertClient([], {
+    name: 'Omar', email: 'omar@example.com',
+    paymentsByMonth: {
+      '2026-01': { amountOwed: -50, paid: 'yes' }, // negative amount, non-boolean paid
+      'not-a-month': { amountOwed: 10, paid: true }, // malformed key, dropped
+      '2026-03': 'garbage', // non-object entry
+    },
+  });
+  assert.deepEqual(out[0].paymentsByMonth, {
+    '2026-01': { amountOwed: 0, paid: false },
+    '2026-03': { amountOwed: 0, paid: false },
+  });
+});
+
+test('upsertClient editing an existing client preserves paymentsByMonth when the edit body carries it through', () => {
+  const withPayments = cc.upsertClient([ALICE], {
+    ...ALICE, paymentsByMonth: { '2026-01': { amountOwed: 500, paid: true } },
+  });
+  assert.deepEqual(withPayments[0].paymentsByMonth, { '2026-01': { amountOwed: 500, paid: true } });
 });

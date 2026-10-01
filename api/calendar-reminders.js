@@ -10,7 +10,7 @@ const guard = require('./_booking-guard');
 const email = require('./_email');
 const { loadTemplate } = require('./_load-template');
 const { makeBookingToken } = require('./_booking-token');
-const { safeEqual } = require('./_admin-auth');
+const { safeEqual, verifySession } = require('./_admin-auth');
 // Whole module objects, not destructured -- so a test's monkey-patch of a
 // property (`slack.postSystemAlert = spy`) is visible here at call time
 // instead of being frozen to whatever the property held at require() time.
@@ -48,16 +48,22 @@ function wouldRemind(startMs, nowMs) {
   return startMs >= timeMinMs && startMs <= timeMaxMs;
 }
 
+// Two independent ways in, both sufficient on their own: Vercel's own cron
+// carries the CRON_SECRET bearer token (unchanged, below); an admin's browser
+// carries their own signed session cookie instead, via the "Send Check-In
+// Reminders Now" catch-up button on admin.html -- recovering from a day the
+// once-daily cron missed entirely, without exposing CRON_SECRET to the client.
+// Checked in this order purely because the bearer check is the cheaper one
+// (no HMAC verify) when it is present; neither check's success or failure
+// affects the other.
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
-  // Fail closed: without a secret this endpoint would let anyone trigger a mail
-  // run against every upcoming booking.
-  if (!secret) return false;
   const header = (req.headers && req.headers.authorization) || '';
   // Constant-time, matching how this codebase compares every other secret against
   // attacker-supplied input. safeEqual length-checks before timingSafeEqual, which
   // throws on a length mismatch.
-  return safeEqual(header, `Bearer ${secret}`);
+  if (secret && safeEqual(header, `Bearer ${secret}`)) return true;
+  return verifySession(req);
 }
 
 async function handler(req, res) {

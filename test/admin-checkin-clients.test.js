@@ -64,12 +64,12 @@ function authedReq(method, body) {
 const ALICE = {
   name: 'Alice', email: 'alice@example.com', phone: '5550100100',
   startDate: '2026-01-01', durationMonths: 3, pausedAt: null,
-  expiresAt: Date.UTC(2026, 3, 1),
+  expiresAt: Date.UTC(2026, 3, 1), paymentsByMonth: {},
 };
 const BOB = {
   name: 'Bob', email: 'bob@example.com', phone: '',
   startDate: '2026-02-15', durationMonths: 1, pausedAt: null,
-  expiresAt: Date.UTC(2026, 2, 15),
+  expiresAt: Date.UTC(2026, 2, 15), paymentsByMonth: {},
 };
 
 test('GET with no session -> 401, and loadClients is NOT called', async () => {
@@ -161,7 +161,7 @@ test('authenticated POST with a valid client -> 200 and saveClients called once 
     assert.deepEqual(written[1], {
       name: 'Bob', email: 'bob@example.com', phone: '555-0199',
       startDate: '2026-03-01', durationMonths: 2, pausedAt: null,
-      expiresAt: cc.computeExpiresAt('2026-03-01', 2),
+      expiresAt: cc.computeExpiresAt('2026-03-01', 2), paymentsByMonth: {},
     });
     // The response echoes the saved list so the page never needs a second GET.
     assert.deepEqual(res._json.clients, written);
@@ -186,6 +186,79 @@ test('authenticated POST with an email already on the list REPLACES it instead o
     assert.equal(written[0].name, 'Alice Renamed');
     assert.equal(written[0].phone, '5559999999');
     assert.equal(written[1].email, 'bob@example.com');
+  });
+});
+
+// Payments persist through the SAME whole-roster-upsert mechanism every other
+// client field already uses -- no new endpoint. This proves a client carrying
+// paymentsByMonth round-trips through add-then-edit without the field being
+// silently dropped (the exact bug class normalizeEntry must guard against).
+test('authenticated POST with a paymentsByMonth-bearing client round-trips it through add and a later edit', async () => {
+  envSetup();
+  const saveSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [], usedDefault: true }) },
+    { obj: cc, key: 'saveClients', value: saveSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { client: {
+      name: 'Payer', email: 'payer@example.com', startDate: '2026-01-01', durationMonths: 1,
+      paymentsByMonth: { '2026-01': { amountOwed: 300, paid: true } },
+    } }), res);
+    assert.equal(res._status, 200);
+    const written = saveSpy.calls[0][0];
+    assert.deepEqual(written[0].paymentsByMonth, { '2026-01': { amountOwed: 300, paid: true } });
+    assert.deepEqual(res._json.clients[0].paymentsByMonth, { '2026-01': { amountOwed: 300, paid: true } });
+  });
+
+  // A later edit (e.g. the Payments tab toggling Paid for a new month) must
+  // not drop the month already on record -- the client posts its FULL current
+  // paymentsByMonth object each time, which is exactly what this simulates.
+  const saveSpy2 = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [{
+      name: 'Payer', email: 'payer@example.com', startDate: '2026-01-01', durationMonths: 1,
+      pausedAt: null, expiresAt: cc.computeExpiresAt('2026-01-01', 1),
+      paymentsByMonth: { '2026-01': { amountOwed: 300, paid: true } },
+    }], usedDefault: false }) },
+    { obj: cc, key: 'saveClients', value: saveSpy2 },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { client: {
+      name: 'Payer', email: 'payer@example.com', startDate: '2026-01-01', durationMonths: 1,
+      paymentsByMonth: {
+        '2026-01': { amountOwed: 300, paid: true },
+        '2026-02': { amountOwed: 300, paid: false },
+      },
+    } }), res);
+    assert.equal(res._status, 200);
+    const written = saveSpy2.calls[0][0];
+    assert.deepEqual(written[0].paymentsByMonth, {
+      '2026-01': { amountOwed: 300, paid: true },
+      '2026-02': { amountOwed: 300, paid: false },
+    });
+  });
+});
+
+// A client added with durationMonths:0 ("No package") must be accepted (not
+// 400'd) and must normalize to a null expiresAt, proving the validation and
+// normalization fix lands correctly through the real POST path, not just the
+// unit-level cc.* helpers.
+test('authenticated POST with durationMonths:0 ("No package") is accepted and normalizes to a null expiresAt', async () => {
+  envSetup();
+  const saveSpy = spyStub({ ok: true });
+  await withStubs([
+    { obj: cc, key: 'loadClients', value: async () => ({ ok: true, clients: [], usedDefault: true }) },
+    { obj: cc, key: 'saveClients', value: saveSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(authedReq('POST', { client: {
+      name: 'Ongoing', email: 'ongoing@example.com', startDate: '2026-01-01', durationMonths: 0,
+    } }), res);
+    assert.equal(res._status, 200);
+    const written = saveSpy.calls[0][0];
+    assert.equal(written[0].durationMonths, 0);
+    assert.equal(written[0].expiresAt, null);
   });
 });
 
@@ -244,7 +317,7 @@ test('authenticated POST with no phone is accepted -- phone is optional', async 
     assert.deepEqual(saveSpy.calls[0][0], [{
       name: 'Solo', email: 'solo@example.com', phone: '',
       startDate: '2026-01-01', durationMonths: 1, pausedAt: null,
-      expiresAt: cc.computeExpiresAt('2026-01-01', 1),
+      expiresAt: cc.computeExpiresAt('2026-01-01', 1), paymentsByMonth: {},
     }]);
   });
 });

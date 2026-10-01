@@ -253,7 +253,17 @@
     .client-remove:focus-visible, .client-action:focus-visible{
       outline:2px solid var(--gold);outline-offset:2px;
     }
+    .client-action:disabled{opacity:.4;cursor:not-allowed;}
+    .client-action:disabled:hover{color:var(--dim);}
     #clientsEmpty{color:var(--dim);font-size:14px;margin:0 0 24px;}
+    .clients-toolbar{
+      display:flex; justify-content:space-between; align-items:flex-end;
+      gap:20px; flex-wrap:wrap; margin-block-end:20px;
+    }
+    #clientSearchField{max-width:260px;margin-block-end:0;flex:1 1 220px;}
+    .reminders-catchup{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+    .reminders-catchup .btn-primary{padding:10px 18px;font-size:13px;}
+    #sendRemindersStatus{margin:0;max-width:280px;}
     .clients-add-row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;}
     /* Bug fix: a flex item's default min-width is `auto`, which resolves to
        its content's intrinsic width -- so a long typed name/email was
@@ -333,6 +343,40 @@
     .client-status.is-active{color:var(--gold);}
     .client-status.is-paused, .client-status.is-expired{color:var(--dim);}
 
+    /* ══ payments tab ══ */
+    .pay-month-row{display:flex;align-items:center;gap:14px;margin-block-end:20px;flex-wrap:wrap;}
+    .pay-month-row .date-picker-label{min-width:140px;text-align:center;}
+    .pay-summary{display:flex;gap:20px;margin-block-end:24px;flex-wrap:wrap;}
+    .pay-stat{background:var(--slab);padding:14px 20px;min-width:140px;}
+    .pay-stat-label{
+      font-size:11px;font-weight:600;letter-spacing:.08em;
+      text-transform:uppercase;color:var(--dim);margin-block-end:6px;
+    }
+    .pay-stat-value{font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:22px;color:var(--gold);}
+    .pay-row{
+      display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+      padding-block:12px;border-block-end:1px solid #241D08;
+    }
+    .pay-row:last-child{border-block-end:none;}
+    .pay-name{flex:1 1 160px;font-weight:600;color:var(--bone);}
+    .pay-status{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;}
+    .pay-status.is-paid{color:var(--gold);}
+    .pay-status.is-not-set{color:var(--dim);}
+    .pay-status.is-not-paid{color:var(--bone);}
+    .pay-amount-input{
+      width:110px;background:transparent;color:var(--bone);font-family:inherit;
+      font-size:14px;font-weight:600;border:0;border-block-end:1px solid var(--gold-lo);
+      border-radius:0;padding:8px 2px;outline:none;transition:border-color .15s ease;
+    }
+    .pay-amount-input:focus{border-block-end-color:var(--gold);}
+    .pay-toggle{
+      background:transparent;color:var(--dim);border:1px solid var(--gold-lo);
+      padding:8px 14px;font-size:12px;letter-spacing:.05em;
+    }
+    .pay-toggle:hover{border-color:var(--gold);color:var(--gold);}
+    .pay-toggle.is-paid{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+    #paymentsEmpty{color:var(--dim);font-size:14px;margin:0;}
+
     [hidden]{display:none !important;}
   </style>
 </head>
@@ -392,6 +436,8 @@
                 aria-selected="false" aria-controls="panelCheckins">Check-In Hours</button>
         <button type="button" class="tab-btn" id="tabClients" role="tab"
                 aria-selected="false" aria-controls="panelClients">Clients</button>
+        <button type="button" class="tab-btn" id="tabPayments" role="tab"
+                aria-selected="false" aria-controls="panelPayments">Payments</button>
       </div>
 
       <div id="panelApplicants" role="tabpanel" aria-labelledby="tabApplicants">
@@ -507,6 +553,18 @@
             saved. Create it (Storage → Create Database → Blob) and redeploy.
           </div>
 
+          <div class="clients-toolbar">
+            <div class="field" id="clientSearchField">
+              <label for="clientSearchInput">Search clients</label>
+              <input class="input" type="text" id="clientSearchInput"
+                     placeholder="Name or email" autocomplete="off" />
+            </div>
+            <div class="reminders-catchup">
+              <button type="button" class="btn-primary" id="sendRemindersNowBtn">Send Check-In Reminders Now</button>
+              <span id="sendRemindersStatus" class="field-hint"></span>
+            </div>
+          </div>
+
           <div class="clients-table-scroll">
             <table class="clients-table">
               <thead>
@@ -565,6 +623,7 @@
                 <label for="clientDurationMonths">Package length, months (required)</label>
                 <select class="input" id="clientDurationMonths" required>
                   <option value="" disabled selected hidden>Select months</option>
+                  <option value="0">No package</option>
                   <option value="1">1 month</option>
                   <option value="2">2 months</option>
                   <option value="3">3 months</option>
@@ -582,6 +641,30 @@
               <button type="submit" class="btn-primary">Add Client</button>
             </div>
           </form>
+        </section>
+      </div>
+
+      <div id="panelPayments" role="tabpanel" aria-labelledby="tabPayments" hidden>
+        <section class="panel" id="paymentsPanel">
+          <h2>Payments</h2>
+          <p style="color:var(--dim);font-size:13px;margin:0 0 18px;">
+            Manual tracking only -- nothing here charges anyone or talks to a
+            payment processor. One row per client whose package overlaps the
+            selected month; enter what they owe and flip the toggle once paid.
+          </p>
+
+          <div class="pay-month-row">
+            <button type="button" class="date-nav-btn" id="paymentsPrevMonth" aria-label="Previous month">‹</button>
+            <span class="date-picker-label" id="paymentsMonthLabel"></span>
+            <button type="button" class="date-nav-btn" id="paymentsNextMonth" aria-label="Next month">›</button>
+            <button type="button" class="date-picker-link" id="paymentsThisMonth">This month</button>
+          </div>
+
+          <div class="pay-summary" id="paymentsSummary"></div>
+
+          <div id="paymentsRows"></div>
+          <p id="paymentsEmpty" hidden>No active clients this month.</p>
+          <div class="note-error" id="paymentsErrorNote" hidden></div>
         </section>
       </div>
     </div>
@@ -912,9 +995,14 @@
       $('tabApplicants').setAttribute('aria-selected', which === 'applicants' ? 'true' : 'false');
       $('tabCheckins').setAttribute('aria-selected', which === 'checkins' ? 'true' : 'false');
       $('tabClients').setAttribute('aria-selected', which === 'clients' ? 'true' : 'false');
+      $('tabPayments').setAttribute('aria-selected', which === 'payments' ? 'true' : 'false');
       $('panelApplicants').hidden = which !== 'applicants';
       $('panelCheckins').hidden = which !== 'checkins';
       $('panelClients').hidden = which !== 'clients';
+      $('panelPayments').hidden = which !== 'payments';
+      // Cheap to redraw every time the tab is opened -- it is a pure
+      // client-side filter/sum over the already-loaded roster, no new fetch.
+      if (which === 'payments') renderPaymentsTab();
     }
 
     // ── custom date picker (Start Date, Clients tab) ───────────────────────
@@ -1154,7 +1242,10 @@
     // number input this replaced had no upper bound either. So a client can
     // already exist (created before this dropdown shipped, or via the API
     // directly) with a durationMonths that matches none of the six presets.
-    const DURATION_MONTH_PRESETS = [1, 2, 3, 6, 9, 12];
+    // 0 ("No package") is a real preset option in the <select> above, not a
+    // non-preset value ensureDurationOption() needs to inject -- it must be
+    // included here so that check short-circuits correctly for it too.
+    const DURATION_MONTH_PRESETS = [0, 1, 2, 3, 6, 9, 12];
     const CUSTOM_DURATION_OPTION_ID = 'clientDurationMonthsCustomOption';
 
     // Removes the one-off <option> ensureDurationOption() may have injected,
@@ -1276,6 +1367,15 @@
         renewBtn.className = 'client-action client-renew';
         renewBtn.textContent = 'Renew';
         renewBtn.dataset.email = c.email;
+        // A durationMonths:0 ("No package") client has nothing to renew --
+        // renewClient (api/_checkin-clients.js) is already a no-op for one,
+        // so disabling the button here is the least-surprising choice: a
+        // click that visibly does nothing is worse than a control that
+        // cannot be clicked at all.
+        if (c.durationMonths === 0) {
+          renewBtn.disabled = true;
+          renewBtn.title = 'No package to renew';
+        }
         actionsTd.appendChild(renewBtn);
 
         const removeBtn = document.createElement('button');
@@ -1288,6 +1388,33 @@
 
         tr.append(nameTd, emailTd, phoneTd, statusTd, expiresTd, actionsTd);
         body.appendChild(tr);
+      }
+
+      // Re-applied after every render (including an Add/Edit/Renew/
+      // Pause/Resume/Remove, each of which rebuilds this table from
+      // scratch) so an in-progress search stays in effect instead of
+      // silently resetting to "show everyone".
+      filterClientRows();
+
+      // The Payments tab reads from the SAME roster, via clientsByEmail --
+      // keeping it in sync here means every action that changes a client
+      // (Add/Edit/Renew/Pause/Resume/Remove) also keeps Payments current,
+      // without a second fetch or a separate render trigger.
+      renderPaymentsTab();
+    }
+
+    // Live, case-insensitive substring match on name or email -- client-side
+    // only, filtering the already-rendered rows rather than a new request.
+    function filterClientRows() {
+      const input = $('clientSearchInput');
+      const body = $('clientsTableBody');
+      if (!input || !body) return;
+      const q = input.value.trim().toLowerCase();
+      for (const row of body.querySelectorAll('tr')) {
+        if (!q) { row.hidden = false; continue; }
+        const name = (row.children[0] && row.children[0].textContent || '').toLowerCase();
+        const email = (row.children[1] && row.children[1].textContent || '').toLowerCase();
+        row.hidden = !(name.includes(q) || email.includes(q));
       }
     }
 
@@ -1340,8 +1467,11 @@
           showClientErrors(['Start date is required.']);
           return;
         }
-        if (!Number.isFinite(client.durationMonths) || client.durationMonths <= 0) {
-          showClientErrors(['Package length (months) is required and must be a positive number.']);
+        // 0 ("No package") is legitimate -- mirrors validateClient's `< 0`
+        // check (api/_checkin-clients.js) so this never rejects what the
+        // server would accept.
+        if (!Number.isFinite(client.durationMonths) || client.durationMonths < 0) {
+          showClientErrors(['Package length (months) is required and must be zero ("No package") or a positive number.']);
           return;
         }
 
@@ -1460,7 +1590,14 @@
           // FIRST, so the assignment below actually lands on that value
           // instead of silently deselecting everything.
           ensureDurationOption(c.durationMonths);
-          $('clientDurationMonths').value = c.durationMonths || '';
+          // NOT `c.durationMonths || ''` -- durationMonths === 0 ("No
+          // package") is a legitimate, explicitly-chosen value, and `0 || ''`
+          // would silently fall through to the blank placeholder for exactly
+          // that client, deselecting the select the same way the stale-option
+          // bug this function's sibling (ensureDurationOption) already fixes
+          // did. Number.isFinite distinguishes a real (possibly-zero) stored
+          // value from a genuinely missing one.
+          $('clientDurationMonths').value = Number.isFinite(c.durationMonths) ? String(c.durationMonths) : '';
           // Stash a snapshot of the CURRENT record so the submit handler can
           // carry expiresAt/pausedAt through unchanged -- see the comment on
           // editingSnapshot's declaration for why this matters, and why
@@ -1527,6 +1664,249 @@
       });
     }
 
+    // ── payments tab ────────────────────────────────────────────────────────
+    // Manual tracking only -- numbers and a toggle, nothing here ever charges
+    // anyone or talks to a payment processor. Reuses the SAME whole-roster
+    // upsert mechanism every other client edit already goes through (the
+    // default POST branch of clientsHandler in api/admin/checkin.js) -- no
+    // new endpoint. Reads its client list from clientsByEmail, which
+    // renderClients() keeps current on every Add/Edit/Renew/Pause/Resume/
+    // Remove, so there is no separate fetch for this tab.
+
+    let paymentsMonth = currentYm();
+
+    function currentYm(d) {
+      const now = d || new Date();
+      return `${now.getFullYear()}`.padStart(4, '0') + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    }
+
+    function formatYmLabel(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      return `${DP_MONTH_NAMES[m - 1]} ${y}`;
+    }
+
+    function shiftYm(ym, delta) {
+      const [y, m] = ym.split('-').map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      return `${d.getFullYear()}`.padStart(4, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    function monthStartMs(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      return Date.UTC(y, m - 1, 1);
+    }
+
+    // Adapted from Built By Stones' own clientActiveInMonth, but 3AMAK tracks
+    // expiry as expiresAt (an epoch-ms instant, set by computeExpiresAt/
+    // renewClient/resumeClient in api/_checkin-clients.js), not BBS's
+    // expiresOn (a YMD string) -- so this compares instants, not string
+    // slices. A client with no startDate, or a durationMonths:0 ("No
+    // package") client (whose expiresAt is always null), is open-ended and
+    // never excluded by either check below.
+    function clientActiveInMonth(c, ym) {
+      const nextMonthStart = monthStartMs(shiftYm(ym, 1));
+      if (c.startDate) {
+        const parsed = dpParseISO(c.startDate);
+        if (parsed && Date.UTC(parsed.y, parsed.m - 1, parsed.d) >= nextMonthStart) return false;
+      }
+      const monthStart = monthStartMs(ym);
+      if (typeof c.expiresAt === 'number' && c.expiresAt <= monthStart) return false;
+      return true;
+    }
+
+    // A client with no record at all for this month reads the same as one
+    // explicitly recorded at $0/unpaid -- there is nothing to distinguish.
+    function paymentEntryFor(client, ym) {
+      const entry = client.paymentsByMonth && client.paymentsByMonth[ym];
+      return entry || { amountOwed: 0, paid: false };
+    }
+
+    // "Not set" (no amount entered yet) is distinct from "Not Paid" (an
+    // amount was entered and it has not been marked paid) -- entering $0 (or
+    // never entering anything) must never read as "paid nothing owed".
+    function paymentStatusOf(entry) {
+      if (!entry.amountOwed) return 'not-set';
+      return entry.paid ? 'paid' : 'not-paid';
+    }
+
+    function money(n) {
+      return '$' + (Number(n) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function renderPaymentsTab() {
+      const ym = paymentsMonth;
+      $('paymentsMonthLabel').textContent = formatYmLabel(ym);
+
+      const clients = Array.from(clientsByEmail.values()).filter(c => clientActiveInMonth(c, ym));
+
+      let collected = 0, overdue = 0;
+      for (const c of clients) {
+        const entry = paymentEntryFor(c, ym);
+        if (entry.paid) collected += entry.amountOwed || 0;
+        else overdue += entry.amountOwed || 0;
+      }
+      $('paymentsSummary').innerHTML =
+        '<div class="pay-stat"><div class="pay-stat-label">Collected</div><div class="pay-stat-value">' + money(collected) + '</div></div>' +
+        '<div class="pay-stat"><div class="pay-stat-label">Overdue</div><div class="pay-stat-value">' + money(overdue) + '</div></div>';
+
+      const container = $('paymentsRows');
+      container.innerHTML = '';
+      $('paymentsEmpty').hidden = clients.length > 0;
+
+      for (const c of clients) {
+        const entry = paymentEntryFor(c, ym);
+        const status = paymentStatusOf(entry);
+
+        const row = document.createElement('div');
+        row.className = 'pay-row';
+        row.dataset.email = c.email;
+
+        // textContent, never innerHTML -- a client's own name is data.
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'pay-name';
+        nameSpan.textContent = c.name || c.email;
+
+        const statusSpan = document.createElement('span');
+        statusSpan.className = `pay-status is-${status}`;
+        statusSpan.textContent = status === 'paid' ? 'Paid' : status === 'not-paid' ? 'Not Paid' : 'Not Set';
+
+        const amountInput = document.createElement('input');
+        amountInput.type = 'number';
+        amountInput.min = '0';
+        amountInput.step = '0.01';
+        amountInput.className = 'pay-amount-input';
+        amountInput.placeholder = '0';
+        amountInput.value = entry.amountOwed || '';
+        amountInput.dataset.email = c.email;
+
+        // A plain toggle, not a one-way "mark paid" action -- clicking it
+        // again flips straight back to Not Paid.
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'pay-toggle' + (entry.paid ? ' is-paid' : '');
+        toggleBtn.textContent = entry.paid ? 'Paid' : 'Not Paid';
+        toggleBtn.dataset.email = c.email;
+
+        row.append(nameSpan, statusSpan, amountInput, toggleBtn);
+        container.appendChild(row);
+      }
+    }
+
+    // Persists via the SAME endpoint/upsert mechanism as every other client
+    // edit -- the posted client carries every field clientsByEmail already
+    // has for it (name/email/phone/startDate/durationMonths/pausedAt/
+    // expiresAt), with only paymentsByMonth changed, so normalizeEntry's
+    // "already-finite expiresAt -> keep it" branch fires and nothing else
+    // about the client is altered by a payment edit.
+    async function savePaymentsFor(client, paymentsByMonth) {
+      const optimistic = { ...client, paymentsByMonth };
+      clientsByEmail.set(optimistic.email, optimistic);
+      renderPaymentsTab();
+
+      $('paymentsErrorNote').hidden = true;
+      let res, data;
+      try {
+        res = await fetch('/api/admin/checkin-clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client: optimistic }),
+        });
+        data = await res.json().catch(() => ({}));
+      } catch (err) {
+        $('paymentsErrorNote').textContent = 'Network error -- try again.';
+        $('paymentsErrorNote').hidden = false;
+        return;
+      }
+
+      if (res.status === 401) { showGate(); return; }
+
+      if (res.status === 200 && data.ok) {
+        // Reconcile with the server's own normalized values without a full
+        // renderClients() -- that would also tear down the Clients tab's
+        // table (and any open Edit) for an action that only touched Payments.
+        for (const c of data.clients) clientsByEmail.set(c.email, c);
+        renderPaymentsTab();
+        return;
+      }
+      $('paymentsErrorNote').textContent = (Array.isArray(data.errors) && data.errors[0])
+        || `Save failed (status ${res.status})`;
+      $('paymentsErrorNote').hidden = false;
+    }
+
+    function wirePaymentsTab() {
+      $('paymentsPrevMonth').addEventListener('click', () => {
+        paymentsMonth = shiftYm(paymentsMonth, -1);
+        renderPaymentsTab();
+      });
+      $('paymentsNextMonth').addEventListener('click', () => {
+        paymentsMonth = shiftYm(paymentsMonth, 1);
+        renderPaymentsTab();
+      });
+      $('paymentsThisMonth').addEventListener('click', () => {
+        paymentsMonth = currentYm();
+        renderPaymentsTab();
+      });
+
+      // Delegated, since rows are redrawn on every month change or save.
+      $('paymentsRows').addEventListener('change', (e) => {
+        const input = e.target.closest('.pay-amount-input');
+        if (!input) return;
+        const client = clientsByEmail.get(input.dataset.email);
+        if (!client) return;
+        const paymentsByMonth = { ...(client.paymentsByMonth || {}) };
+        const entry = { ...paymentEntryFor(client, paymentsMonth) };
+        entry.amountOwed = Math.max(0, parseFloat(input.value) || 0);
+        paymentsByMonth[paymentsMonth] = entry;
+        savePaymentsFor(client, paymentsByMonth);
+      });
+
+      $('paymentsRows').addEventListener('click', (e) => {
+        const btn = e.target.closest('.pay-toggle');
+        if (!btn) return;
+        const client = clientsByEmail.get(btn.dataset.email);
+        if (!client) return;
+        const paymentsByMonth = { ...(client.paymentsByMonth || {}) };
+        const entry = { ...paymentEntryFor(client, paymentsMonth) };
+        entry.paid = !entry.paid;
+        paymentsByMonth[paymentsMonth] = entry;
+        savePaymentsFor(client, paymentsByMonth);
+      });
+    }
+
+    // ── manual reminder catch-up ────────────────────────────────────────────
+    // Recovers from a day the once-daily Vercel cron missed entirely, by
+    // hitting the EXACT SAME handler cron uses (api/calendar-reminders.js),
+    // authenticated via the admin's own session cookie instead of
+    // CRON_SECRET (see authorized() there -- the two checks are independent
+    // and additive; this never weakens or replaces the real cron's auth).
+    function wireRemindersCatchup() {
+      $('sendRemindersNowBtn').addEventListener('click', async () => {
+        const btn = $('sendRemindersNowBtn');
+        const statusEl = $('sendRemindersStatus');
+        btn.disabled = true;
+        statusEl.textContent = 'Sending…';
+
+        let res, data;
+        try {
+          res = await fetch('/api/calendar-reminders');
+          data = await res.json().catch(() => ({}));
+        } catch (err) {
+          statusEl.textContent = 'Network error -- try again.';
+          btn.disabled = false;
+          return;
+        }
+        btn.disabled = false;
+
+        if (res.status === 401) { showGate(); return; }
+
+        if (res.status === 200 && data.ok) {
+          statusEl.textContent = `Sent ${data.sent}, skipped ${data.skipped} (considered ${data.considered}).`;
+          return;
+        }
+        statusEl.textContent = data.error || data.message || `Failed (status ${res.status}).`;
+      });
+    }
+
     async function loadAllPanels() {
       await loadAvailabilityInto(PREFIX_APPLICANTS, '/api/admin/availability', 'storageMissingNote');
       await loadAvailabilityInto(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');
@@ -1548,11 +1928,15 @@
       $('tabApplicants').addEventListener('click', () => selectTab('applicants'));
       $('tabCheckins').addEventListener('click', () => selectTab('checkins'));
       $('tabClients').addEventListener('click', () => selectTab('clients'));
+      $('tabPayments').addEventListener('click', () => selectTab('payments'));
 
       wireAvailabilityForm(PREFIX_APPLICANTS, '/api/admin/availability', 'storageMissingNote');
       wireAvailabilityForm(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');
       clientStartDatePicker = initDatePicker('clientStartDate');
       wireClientManager();
+      $('clientSearchInput').addEventListener('input', filterClientRows);
+      wirePaymentsTab();
+      wireRemindersCatchup();
 
       const authed = await loadStatus();
       if (authed) await loadAllPanels();
