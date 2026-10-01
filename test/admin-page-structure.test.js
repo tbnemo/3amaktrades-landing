@@ -259,7 +259,10 @@ test('Edit stashes the row\'s current expiresAt/pausedAt, and the submit handler
   // does not inherit someone else's package state.
   const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
   assert.ok(submitIdx !== -1, 'the clientAddForm submit handler was not found');
-  const submitWindow = html.slice(submitIdx, submitIdx + 3000);
+  // Widened: the handler now also builds `client` by spreading the full
+  // stored record (the systemic paymentsByMonth-preservation fix) before
+  // reaching this snapshot-gated block, pushing it further from the start.
+  const submitWindow = html.slice(submitIdx, submitIdx + 6000);
 
   assert.match(submitWindow, /editingSnapshot\s*&&/,
     'the submit handler must check editingSnapshot before trusting it');
@@ -274,6 +277,117 @@ test('Edit stashes the row\'s current expiresAt/pausedAt, and the submit handler
   const fetchAt = submitWindow.indexOf("fetch('/api/admin/checkin-clients'");
   assert.ok(guardAt !== -1 && fetchAt !== -1 && guardAt < fetchAt,
     'the editingSnapshot guard must run before the client object is POSTed');
+});
+
+// CRITICAL regression (code review, 3rd occurrence of this bug class): the
+// submit handler used to build `client` as a bare literal of the five
+// VISIBLE form fields, so any field not on that list -- paymentsByMonth
+// being the latest casualty -- was silently wiped on every edit, even one
+// that only touched an unrelated field like phone. The two existing tests
+// that were supposed to catch this (test/checkin-clients.test.js's
+// paymentsByMonth round-trip, and the admin POST test) both missed it
+// because they hand-wrote a body that already included the field, instead
+// of exercising the real client-side construction logic. This test
+// extracts the ACTUAL client-construction expression out of admin.html and
+// EXECUTES it against a fixture, rather than asserting against a
+// hand-written body -- so it fails the same way the real bug did if the
+// spread is ever reverted to a field-by-field literal.
+test('the submit handler\'s REAL client-construction expression, executed against a fixture, preserves fields the form never touches', () => {
+  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
+  assert.ok(submitIdx !== -1);
+  const submitWindow = html.slice(submitIdx, submitIdx + 2000);
+
+  const EXPR = '{ ...(stored || {}), name, email, phone, startDate, durationMonths }';
+  const LINE = 'const client = ' + EXPR + ';';
+  assert.ok(submitWindow.includes(LINE),
+    'client must be built by spreading the full stored record first, then overlaying only the ' +
+    'fields this form edits -- not a field-by-field literal (the systemic fix, not a one-field patch)');
+
+  // Actually RUN that exact expression against a fixture where `stored`
+  // carries fields the form's five visible inputs know nothing about --
+  // including one this test file has never heard of, proving the fix is
+  // systemic rather than a paymentsByMonth-specific patch.
+  const buildClient = new Function('stored', 'name', 'email', 'phone', 'startDate', 'durationMonths',
+    'return ' + EXPR + ';');
+  const stored = {
+    name: 'Old Name', email: 'x@example.com', phone: '5550000000',
+    startDate: '2026-01-01', durationMonths: 3, pausedAt: null, expiresAt: 123456,
+    paymentsByMonth: { '2026-01': { amountOwed: 300, paid: true } },
+    someFutureField: 'must survive too',
+  };
+  // Simulates an Edit that only corrects the phone number -- every other
+  // form field resubmits what is already on the row, exactly like a real
+  // Edit would.
+  const client = buildClient(
+    stored, stored.name, stored.email, '5559999999', stored.startDate, stored.durationMonths,
+  );
+
+  assert.deepEqual(client.paymentsByMonth, stored.paymentsByMonth,
+    'paymentsByMonth must survive an edit that only touches phone');
+  assert.equal(client.someFutureField, 'must survive too',
+    'a field this test has never heard of must ALSO survive -- proving the fix is systemic');
+  assert.equal(client.phone, '5559999999', 'the field the form DID edit must still win over the spread');
+  assert.equal(client.name, 'Old Name');
+
+  // And the inverse: a brand-new client (no stored record at all) must not
+  // crash or inherit anything spurious.
+  const fresh = buildClient(null, 'New', 'new@example.com', '555', '2026-02-01', 1);
+  assert.equal(fresh.paymentsByMonth, undefined);
+  assert.equal(fresh.name, 'New');
+});
+
+// Companion to the spread fix above: spreading `stored` also carries its OLD
+// expiresAt forward, which is correct only when startDate/durationMonths are
+// unchanged. This proves the submit handler clears it when they differ --
+// executed against a fixture, same technique as above -- independent of
+// whether editingSnapshot was ever set (covers "type an already-listed email
+// directly into Add Client" too, not just an explicit Edit click).
+test('the submit handler clears a stale spread-in expiresAt when startDate/durationMonths differ from what is actually stored', () => {
+  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
+  const submitWindow = html.slice(submitIdx, submitIdx + 3500);
+
+  // Built from pieces rather than one CRLF-sensitive literal -- admin.html's
+  // line endings vary by platform/checkout, and this must match either way.
+  const CLEAR_EXPR_LINES = [
+    'if (stored && (client.startDate !== stored.startDate || client.durationMonths !== stored.durationMonths)) {',
+    'delete client.expiresAt;',
+    '}',
+  ];
+  const clearBlockRe = new RegExp(CLEAR_EXPR_LINES.map(l => l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*'));
+  const clearMatch = submitWindow.match(clearBlockRe);
+  assert.ok(clearMatch, 'expected the stale-expiresAt clearing block');
+  const CLEAR_EXPR = clearMatch[0];
+
+  // It must run BEFORE the editingSnapshot block (which may re-assign
+  // expiresAt for the unchanged-dates case) -- order matters.
+  const clearAt = submitWindow.indexOf(CLEAR_EXPR);
+  const snapshotGuardAt = submitWindow.search(/editingSnapshot\s*&&/);
+  assert.ok(clearAt !== -1 && snapshotGuardAt !== -1 && clearAt < snapshotGuardAt,
+    'the stale-expiresAt clear must run before the editingSnapshot block');
+
+  function run(stored, client) {
+    const fn = new Function('stored', 'client', CLEAR_EXPR + '\nreturn client;');
+    return fn(stored, client);
+  }
+
+  // Dates unchanged -> expiresAt (from the spread) stays.
+  const unchanged = run(
+    { startDate: '2026-01-01', durationMonths: 3 },
+    { startDate: '2026-01-01', durationMonths: 3, expiresAt: 999 },
+  );
+  assert.equal(unchanged.expiresAt, 999);
+
+  // durationMonths changed -> the stale expiresAt must be cleared.
+  const changedDuration = run(
+    { startDate: '2026-01-01', durationMonths: 3 },
+    { startDate: '2026-01-01', durationMonths: 6, expiresAt: 999 },
+  );
+  assert.equal(changedDuration.expiresAt, undefined);
+
+  // No stored record at all (brand-new Add) -> nothing to compare against,
+  // left untouched either way.
+  const noStored = run(null, { startDate: '2026-01-01', durationMonths: 3 });
+  assert.equal(noStored.expiresAt, undefined);
 });
 
 // CRITICAL regression check: editingSnapshot as first shipped was cleared
@@ -326,7 +440,8 @@ test('renderClients invalidates a stale editingSnapshot on every re-render, and 
 test('the submit handler only preserves expiresAt when startDate/durationMonths are unchanged from the snapshot; pausedAt always carries through', () => {
   const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
   assert.ok(submitIdx !== -1, 'the clientAddForm submit handler was not found');
-  const submitWindow = html.slice(submitIdx, submitIdx + 3000);
+  // Widened for the same reason as the test above.
+  const submitWindow = html.slice(submitIdx, submitIdx + 6000);
 
   assert.match(submitWindow, /client\.startDate\s*===\s*editingSnapshot\.startDate/,
     'the submit handler must compare the form\'s current startDate against the snapshot');
@@ -543,10 +658,12 @@ test('#clientStartDate stays the hidden value-holding input behind the custom wi
   assert.ok(startInput, 'clientStartDate input not found');
   assert.match(startInput[0], /type="hidden"/);
 
-  // The submit handler still reads it by the same id/contract.
+  // The submit handler still reads it by the same id/contract -- now into a
+  // local `const startDate` (spread into `client` below) rather than an
+  // object-literal field directly, so this matches either style.
   const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
-  const submitWindow = html.slice(submitIdx, submitIdx + 4000);
-  assert.match(submitWindow, /startDate:\s*\$\('clientStartDate'\)\.value\.trim\(\)/,
+  const submitWindow = html.slice(submitIdx, submitIdx + 6000);
+  assert.match(submitWindow, /startDate\s*=\s*\$\('clientStartDate'\)\.value\.trim\(\)/,
     'the submit handler must still read #clientStartDate.value as a plain string');
 
   // The post-submit reset still clears it by the same id, and must also
@@ -632,10 +749,11 @@ test('Package Length is a <select> offering the 1/2/3/6/9/12-month presets, and 
   }
 
   // The submit handler still reads it the same way (Number(...) of .value),
-  // and the reset/Edit-populate call sites are untouched in shape.
+  // now into a local `const durationMonths` (spread into `client` below)
+  // rather than an object-literal field directly.
   const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
   const submitWindow = html.slice(submitIdx, submitIdx + 1200);
-  assert.match(submitWindow, /durationMonths:\s*Number\(\$\('clientDurationMonths'\)\.value\)/);
+  assert.match(submitWindow, /durationMonths\s*=\s*Number\(\$\('clientDurationMonths'\)\.value\)/);
 });
 
 // CRITICAL fix (code review): the six presets are a UI convenience only --
@@ -692,7 +810,7 @@ test('the injected custom duration option is cleared on every ensureDurationOpti
     'this is what cleans up a stale option left behind by a DIFFERENT client\'s Edit');
 
   const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
-  const submitWindow = html.slice(submitIdx, submitIdx + 4000);
+  const submitWindow = html.slice(submitIdx, submitIdx + 6000);
   assert.match(submitWindow, /clearCustomDurationOption\(\)/,
     'the post-submit form reset must also clear any injected custom duration option');
 });
@@ -742,16 +860,58 @@ test('Payments tab has a month selector, a Collected/Overdue summary, and a rows
 test('renderPaymentsTab computes a Paid/Not Paid/Not Set status distinguishing a missing amount from an unpaid one', () => {
   const idx = html.indexOf('function paymentStatusOf');
   assert.ok(idx !== -1, 'paymentStatusOf not found');
-  const fnWindow = html.slice(idx, idx + 300);
+  const fnWindow = html.slice(idx, idx + 500);
   assert.match(fnWindow, /not-set/);
   assert.match(fnWindow, /entry\.amountOwed/);
   assert.match(fnWindow, /entry\.paid/);
 
   const renderIdx = html.indexOf('function renderPaymentsTab');
   assert.ok(renderIdx !== -1, 'renderPaymentsTab not found');
-  const renderWindow = html.slice(renderIdx, renderIdx + 3000);
+  const renderWindow = html.slice(renderIdx, renderIdx + 4000);
   assert.match(renderWindow, /pay-toggle/);
   assert.match(renderWindow, /pay-amount-input/);
+});
+
+// Code review (minor, cheap while already in this code): a legacy client
+// with no startDate on file is "active" per clientActiveInMonth (open-ended),
+// but validateClient requires startDate on every write -- so an amount/
+// toggle edit for one would 400 the moment it's touched. Must be excluded
+// with a clear note instead of an unsaveable row.
+test('renderPaymentsTab excludes a legacy no-startDate client from the row list, with a visible note', () => {
+  const ids = new Set(idsIn(html));
+  assert.ok(ids.has('paymentsMissingStartDateNote'), 'missing paymentsMissingStartDateNote element');
+
+  const idx = html.indexOf('function renderPaymentsTab');
+  assert.ok(idx !== -1);
+  const fnWindow = html.slice(idx, idx + 1200);
+  assert.match(fnWindow, /c\.startDate/);
+  assert.match(fnWindow, /paymentsMissingStartDateNote/);
+});
+
+// Code review (minor): paid === true must read as Paid regardless of
+// amount -- otherwise a {amountOwed:0, paid:true} entry showed "Not Set"
+// right next to a toggle that says "Paid", a visible contradiction.
+// Extracted and executed against fixtures, same technique as the submit
+// handler's own regression tests above.
+test('paymentStatusOf: paid === true always wins, even when amountOwed is 0', () => {
+  const idx = html.indexOf('function paymentStatusOf');
+  assert.ok(idx !== -1);
+  // Brace-depth matching, not a naive indexOf('}') -- robust regardless of
+  // whether the body's own if-statements happen to use braces.
+  const bodyStart = html.indexOf('{', idx);
+  let depth = 0, bodyEnd = bodyStart;
+  for (let i = bodyStart; i < html.length; i++) {
+    if (html[i] === '{') depth++;
+    else if (html[i] === '}') { depth--; if (depth === 0) { bodyEnd = i; break; } }
+  }
+  const body = html.slice(bodyStart + 1, bodyEnd);
+  const paymentStatusOf = new Function('entry', body);
+
+  assert.equal(paymentStatusOf({ amountOwed: 0, paid: true }), 'paid',
+    'paid:true must win even with no amount entered -- no contradiction with the toggle');
+  assert.equal(paymentStatusOf({ amountOwed: 300, paid: true }), 'paid');
+  assert.equal(paymentStatusOf({ amountOwed: 0, paid: false }), 'not-set');
+  assert.equal(paymentStatusOf({ amountOwed: 300, paid: false }), 'not-paid');
 });
 
 // Adapted from Built By Stones' own clientActiveInMonth, but 3AMAK tracks
@@ -834,7 +994,7 @@ test('Edit-populate does not use a falsy fallback that would misfire on duration
 test('the submit handler\'s client-side durationMonths pre-check accepts 0 ("No package")', () => {
   const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
   assert.ok(submitIdx !== -1);
-  const submitWindow = html.slice(submitIdx, submitIdx + 1500);
+  const submitWindow = html.slice(submitIdx, submitIdx + 3000);
   const checkMatch = submitWindow.match(/if\s*\(!Number\.isFinite\(client\.durationMonths\)\s*\|\|\s*client\.durationMonths\s*(<=?)\s*0\)/);
   assert.ok(checkMatch, 'expected the durationMonths pre-check');
   assert.equal(checkMatch[1], '<', 'the pre-check must use < 0, not <= 0, so 0 is accepted client-side too');
@@ -865,19 +1025,39 @@ test('a client search input exists above the clients table and filters rows live
     'renderClients must re-apply the search filter after rebuilding the table');
 });
 
-test('a "Send Check-In Reminders Now" button exists with a status line, and posts to /api/calendar-reminders', () => {
+// Code review: the button's label previously undersold what it actually
+// sends (the cron reminds BOTH applicant and check-in bookings, not just
+// check-ins) -- relabeled, and the catch-up is now POST (CSRF finding) with
+// a confirmation step before firing, matching how Remove already confirms a
+// far less consequential action.
+test('a "Send Due Reminders Now" button exists with a status line, confirms before firing, and POSTs to /api/calendar-reminders', () => {
   const ids = new Set(idsIn(html));
   for (const id of ['sendRemindersNowBtn', 'sendRemindersStatus']) {
     assert.ok(ids.has(id), `missing reminders catch-up element "${id}"`);
   }
   const btn = html.match(/<button[^>]*id="sendRemindersNowBtn"[^>]*>([^<]*)</);
   assert.ok(btn, 'sendRemindersNowBtn must be a <button>');
-  assert.match(btn[1], /Send Check-In Reminders Now/i);
+  assert.match(btn[1], /Send Due Reminders Now/i);
+  // The label must own up to reminding BOTH audiences, not just check-ins.
+  assert.match(btn[1], /applicants/i);
+  assert.match(btn[1], /check-ins/i);
 
   const idx = html.indexOf('function wireRemindersCatchup');
   assert.ok(idx !== -1, 'wireRemindersCatchup not found');
-  const fnWindow = html.slice(idx, idx + 1200);
-  assert.match(fnWindow, /fetch\('\/api\/calendar-reminders'\)/);
+  const fnWindow = html.slice(idx, idx + 1800);
+
+  // A confirmation step BEFORE the fetch -- this sends real email.
+  const confirmAt = fnWindow.search(/window\.confirm\(/);
+  const fetchAt = fnWindow.indexOf("fetch('/api/calendar-reminders'");
+  assert.ok(confirmAt !== -1, 'must confirm before sending real reminder email');
+  assert.ok(fetchAt !== -1 && confirmAt < fetchAt, 'the confirm must run BEFORE the fetch');
+
+  // POST with a JSON content-type -- CSRF fix: a GET would ride along on
+  // the SameSite=Lax session cookie during a cross-site navigation.
+  const postWindow = fnWindow.slice(fetchAt, fetchAt + 200);
+  assert.match(postWindow, /method:\s*'POST'/, 'the catch-up must POST, not GET (CSRF)');
+  assert.match(postWindow, /'Content-Type':\s*'application\/json'/);
+
   assert.match(fnWindow, /data\.sent/);
   assert.match(fnWindow, /data\.skipped/);
 });

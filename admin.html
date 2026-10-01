@@ -560,7 +560,7 @@
                      placeholder="Name or email" autocomplete="off" />
             </div>
             <div class="reminders-catchup">
-              <button type="button" class="btn-primary" id="sendRemindersNowBtn">Send Check-In Reminders Now</button>
+              <button type="button" class="btn-primary" id="sendRemindersNowBtn">Send Due Reminders Now (applicants + check-ins)</button>
               <span id="sendRemindersStatus" class="field-hint"></span>
             </div>
           </div>
@@ -662,6 +662,7 @@
 
           <div class="pay-summary" id="paymentsSummary"></div>
 
+          <p id="paymentsMissingStartDateNote" class="field-hint" hidden></p>
           <div id="paymentsRows"></div>
           <p id="paymentsEmpty" hidden>No active clients this month.</p>
           <div class="note-error" id="paymentsErrorNote" hidden></div>
@@ -1450,13 +1451,28 @@
         $('clientErrors').hidden = true;
         $('clientSuccess').hidden = true;
 
-        const client = {
-          name: $('clientName').value.trim(),
-          email: $('clientEmail').value.trim(),
-          phone: $('clientPhone').value.trim(),
-          startDate: $('clientStartDate').value.trim(),
-          durationMonths: Number($('clientDurationMonths').value),
-        };
+        const name = $('clientName').value.trim();
+        const email = $('clientEmail').value.trim();
+        const phone = $('clientPhone').value.trim();
+        const startDate = $('clientStartDate').value.trim();
+        const durationMonths = Number($('clientDurationMonths').value);
+
+        // SYSTEMIC FIX (code review, 3rd occurrence of this bug class):
+        // spread the full stored record FIRST, then overlay only the fields
+        // this form actually edits -- not a field-by-field literal. This is
+        // what `savePaymentsFor` already does correctly; building `client`
+        // as a bare literal of just the visible fields is what silently
+        // wiped paymentsByMonth (and, before that, required two separate
+        // hand-threaded fixes for expiresAt/pausedAt) on every edit. Any
+        // field this form doesn't know about -- today's paymentsByMonth,
+        // whatever gets added next -- now survives an edit by default.
+        // Looked up by email so this also covers typing an already-listed
+        // email directly into Add Client (no Edit click), per this panel's
+        // own description ("Adding an email that is already listed updates
+        // that entry").
+        const stored = clientsByEmail.get(email.toLowerCase()) || null;
+        const client = { ...(stored || {}), name, email, phone, startDate, durationMonths };
+
         // The server validates too -- this is only so the obvious case does not
         // need a round trip.
         if (!client.email) {
@@ -1473,6 +1489,17 @@
         if (!Number.isFinite(client.durationMonths) || client.durationMonths < 0) {
           showClientErrors(['Package length (months) is required and must be zero ("No package") or a positive number.']);
           return;
+        }
+
+        // The spread above just carried the OLD expiresAt forward from
+        // `stored` -- correct when nothing package-related changed, stale
+        // the moment startDate/durationMonths did. Clear it whenever they
+        // differ from what's actually on file, so the server recomputes
+        // fresh (same as a brand-new Add) instead of silently leaving a
+        // package-length correction with no effect. Independent of
+        // editingSnapshot below, so it also covers the no-Edit-click path.
+        if (stored && (client.startDate !== stored.startDate || client.durationMonths !== stored.durationMonths)) {
+          delete client.expiresAt;
         }
 
         // This is an EDIT of the same client the snapshot was captured from
@@ -1725,8 +1752,12 @@
     // amount was entered and it has not been marked paid) -- entering $0 (or
     // never entering anything) must never read as "paid nothing owed".
     function paymentStatusOf(entry) {
+      // paid === true always reads as Paid, regardless of amount -- checked
+      // FIRST, so a $0-but-marked-paid entry never contradicts the toggle
+      // sitting right next to it (which already shows "Paid" in that case).
+      if (entry.paid) return 'paid';
       if (!entry.amountOwed) return 'not-set';
-      return entry.paid ? 'paid' : 'not-paid';
+      return 'not-paid';
     }
 
     function money(n) {
@@ -1737,7 +1768,20 @@
       const ym = paymentsMonth;
       $('paymentsMonthLabel').textContent = formatYmLabel(ym);
 
-      const clients = Array.from(clientsByEmail.values()).filter(c => clientActiveInMonth(c, ym));
+      const activeInMonth = Array.from(clientsByEmail.values()).filter(c => clientActiveInMonth(c, ym));
+      // A client with no startDate on file (true legacy data -- startDate
+      // has been a required field on every write since before this tab
+      // existed) cannot actually be saved from here: validateClient
+      // (api/_checkin-clients.js) requires startDate on every write, so an
+      // amount/toggle edit for one would 400. Exclude them with a clear
+      // note instead of a row that fails the moment it's touched.
+      const clients = activeInMonth.filter(c => !!c.startDate);
+      const missingStartDateCount = activeInMonth.length - clients.length;
+      $('paymentsMissingStartDateNote').hidden = missingStartDateCount === 0;
+      if (missingStartDateCount > 0) {
+        $('paymentsMissingStartDateNote').textContent =
+          `${missingStartDateCount} client(s) with no start date on file are not shown here -- set a start date (via Edit) first.`;
+      }
 
       let collected = 0, overdue = 0;
       for (const c of clients) {
@@ -1879,8 +1923,23 @@
     // authenticated via the admin's own session cookie instead of
     // CRON_SECRET (see authorized() there -- the two checks are independent
     // and additive; this never weakens or replaces the real cron's auth).
+    //
+    // POST, not GET (code review, CSRF finding): the session cookie is
+    // SameSite=Lax, which rides along on a top-level cross-site GET (a
+    // link, a redirect, window.open) -- a logged-in admin visiting a
+    // hostile page could otherwise be made to trigger a real send. POST
+    // forces the SAME preflight every other admin endpoint's
+    // Content-Type:application/json fetch already requires; a plain
+    // cross-site navigation cannot replicate it.
     function wireRemindersCatchup() {
       $('sendRemindersNowBtn').addEventListener('click', async () => {
+        // This sends REAL email (and Slack alerts on failure) to real
+        // people -- confirmed the same way Remove already confirms a far
+        // less consequential action.
+        if (!window.confirm('Send reminder emails now to every applicant and check-in booking due soon that has not been reminded yet? This sends real email.')) {
+          return;
+        }
+
         const btn = $('sendRemindersNowBtn');
         const statusEl = $('sendRemindersStatus');
         btn.disabled = true;
@@ -1888,7 +1947,11 @@
 
         let res, data;
         try {
-          res = await fetch('/api/calendar-reminders');
+          res = await fetch('/api/calendar-reminders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          });
           data = await res.json().catch(() => ({}));
         } catch (err) {
           statusEl.textContent = 'Network error -- try again.';
