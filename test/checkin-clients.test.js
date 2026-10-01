@@ -392,6 +392,26 @@ test('validateClient accepts durationMonths === 0 but still rejects negative/NaN
   assert.equal(cc.validateClient({ ...base }).ok, false, 'durationMonths is still required');
 });
 
+// CRITICAL regression (code review): Number(null) === 0, Number(false) === 0,
+// and Number([]) === 0 -- without an explicit type check BEFORE that
+// coercion, every one of these would have silently qualified as the new "No
+// package" sentinel and granted indefinite booking access, on the one field
+// that controls it, where they previously (correctly) 400'd.
+test('validateClient rejects null/\'\'/false/[]/objects for durationMonths rather than letting them coerce to 0', () => {
+  const base = { name: 'A', email: 'a@b.co', startDate: '2026-01-01' };
+  for (const bad of [null, '', false, true, [], {}, [0], { a: 1 }]) {
+    const r = cc.validateClient({ ...base, durationMonths: bad });
+    assert.equal(r.ok, false, `durationMonths: ${JSON.stringify(bad)} must be rejected`);
+    assert.ok(r.errors.some(e => /durationMonths/i.test(e)));
+  }
+  // A whitespace-only string must not slip through as blank-coerces-to-0 either.
+  assert.equal(cc.validateClient({ ...base, durationMonths: '   ' }).ok, false);
+
+  // A genuine numeric string must still work (Number("0") === 0, Number("3") === 3).
+  assert.deepEqual(cc.validateClient({ ...base, durationMonths: '0' }), { ok: true, errors: [] });
+  assert.deepEqual(cc.validateClient({ ...base, durationMonths: '3' }), { ok: true, errors: [] });
+});
+
 test('renewClient is a no-op (same reference) for a durationMonths === 0 client', () => {
   const client = {
     name: 'Omar', email: 'omar@example.com', startDate: '2026-01-01',

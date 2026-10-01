@@ -182,10 +182,23 @@ function validateClient(entry) {
 
   // 0 is a valid, explicit value -- "No package" (an admin-chosen
   // ongoing/indefinite client) -- distinct from a missing/negative/NaN value,
-  // which is still rejected.
-  const durationMonths = Number(src.durationMonths);
-  if (!Number.isFinite(durationMonths) || durationMonths < 0) {
+  // which is still rejected. Checked BEFORE the Number(...) coercion below:
+  // Number(null) === 0, Number(false) === 0, and Number([]) === 0, so without
+  // this guard null/''/false/[] would all silently coerce into the "No
+  // package" sentinel and grant indefinite booking access -- the one field
+  // that controls it -- instead of correctly 400ing like they always have.
+  const rawDuration = src.durationMonths;
+  const durationLooksInvalidType = rawDuration === null
+    || (typeof rawDuration === 'string' && rawDuration.trim() === '')
+    || typeof rawDuration === 'boolean'
+    || typeof rawDuration === 'object';
+  if (durationLooksInvalidType) {
     errors.push('durationMonths is required and must be zero ("No package") or a positive number');
+  } else {
+    const durationMonths = Number(rawDuration);
+    if (!Number.isFinite(durationMonths) || durationMonths < 0) {
+      errors.push('durationMonths is required and must be zero ("No package") or a positive number');
+    }
   }
 
   return { ok: errors.length === 0, errors };
