@@ -257,6 +257,11 @@
        contain its own overflow instead. Scoped to .clients-add-row only --
        the New Applicants and Check-In Hours forms are untouched. */
     .clients-add-row .field{flex:1 1 180px;margin-block-end:0;min-width:0;}
+    /* Name and email routinely run longer than a phone number, a date, or a
+       package length -- give them more room up front so a typical value is
+       readable without the input having to scroll its own text to show the
+       end of what was typed. */
+    .clients-add-row .field.field-wide{flex-basis:260px;}
     .clients-add-row .input, .clients-add-row select.input{min-width:0;}
 
     /* ══ custom date picker (Start Date, Clients tab only) ══
@@ -505,11 +510,11 @@
 
           <form id="clientAddForm">
             <div class="clients-add-row">
-              <div class="field">
+              <div class="field field-wide">
                 <label for="clientName">Name</label>
                 <input class="input" type="text" id="clientName" autocomplete="off" />
               </div>
-              <div class="field">
+              <div class="field field-wide">
                 <label for="clientEmail">Email (required)</label>
                 <input class="input" type="email" id="clientEmail" autocomplete="off" required />
               </div>
