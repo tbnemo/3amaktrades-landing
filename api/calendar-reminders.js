@@ -18,6 +18,9 @@ const slack = require('./_slack');
 const cemail = require('./_checkin-email');
 const { isCheckinEvent } = require('./_checkin-audience');
 const checkinTemplateMod = require('./_load-checkin-template');
+// Only used by bulkCancelAll, below -- not needed for the reminder path.
+const bslack = require('./_booking-slack');
+const cslack = require('./_checkin-slack');
 
 // How far apart two cron ticks are. ONE source of truth for a number the entire
 // delivery guarantee is measured against: Vercel's Hobby plan caps crons at once
@@ -121,11 +124,103 @@ function authorized(req) {
   return req.method === 'POST' && verifySession(req);
 }
 
+// TEMPORARY, one-off admin tool -- added to clear every currently-booked
+// call in one pass (both audiences), not a feature meant to stay. Reuses
+// the exact cancel/notify/Slack primitives the real single-booking cancel
+// handlers (calendar-cancel.js, calendar-checkin.js's cancelHandler) use,
+// so a bulk-cancelled visitor gets the identical real cancellation email
+// and calendar removal a normal cancel would send -- this is NOT a quiet
+// cleanup, every affected person is notified for real. Gated by an exact
+// confirm string (not just the same admin session as the reminder path
+// above) so a stray or automated POST can never trigger it by accident.
+async function bulkCancelAll(req, res) {
+  if (req.body.confirm !== 'CANCEL ALL BOOKINGS') {
+    return res.status(400).json({ ok: false, error: 'CONFIRM_REQUIRED',
+      message: 'POST { bulkCancel: true, confirm: "CANCEL ALL BOOKINGS" } to actually run this.' });
+  }
+
+  const now = Date.now();
+  // "Every upcoming booking" has no natural end -- 2 years out is far enough
+  // that nothing real books that far ahead, so this is effectively unbounded
+  // without actually passing Infinity to a Date.
+  const farFutureMs = now + 2 * 365 * 24 * 60 * 60 * 1000;
+
+  const listed = await gcal.listEvents({
+    timeMinIso: new Date(now).toISOString(),
+    timeMaxIso: new Date(farFutureMs).toISOString(),
+    privateExtendedProperty: `bookingSource=${guard.EVENT_MARKER}`,
+  });
+  if (!listed.ok) {
+    const notConnected = listed.reason === gcal.NOT_CONNECTED;
+    return res.status(notConnected ? 503 : 502).json({
+      ok: false, error: notConnected ? 'CALENDAR_NOT_CONNECTED' : 'UPSTREAM',
+      message: listed.reason,
+    });
+  }
+
+  const tplRes = await loadTemplate();
+  const checkinTplRes = await checkinTemplateMod.loadCheckinTemplate();
+  let cancelled = 0, failed = 0;
+  const results = [];
+
+  for (const event of listed.events) {
+    const meta = (event.extendedProperties && event.extendedProperties.private) || {};
+    const startMs = Date.parse(event.start && event.start.dateTime);
+    const endMs = Date.parse(event.end && event.end.dateTime) || startMs;
+    const isCheckin = isCheckinEvent(meta);
+    const templateTimeZone = isCheckin ? checkinTplRes.template.timezone : tplRes.template.timezone;
+
+    const booking = {
+      eventId: event.id, name: meta.visitorName || '—', email: meta.visitorEmail || '',
+      phone: meta.visitorPhone || '', startMs, endMs,
+      visitorTimeZone: meta.visitorTimeZone || 'UTC', templateTimeZone,
+      manageToken: '', meetLink: '', lang: meta.lang || 'en',
+    };
+
+    try {
+      // notifyGuests: true -- same as every real cancel path; this is what
+      // actually sends the attendee a cancellation on their own calendar.
+      const deleted = await gcal.deleteEvent(event.id, { notifyGuests: true });
+      if (!deleted.ok) {
+        failed++;
+        results.push({ eventId: event.id, ok: false, reason: deleted.reason });
+        continue;
+      }
+
+      // Slack and email are best-effort, exactly like the real cancel
+      // handlers -- a notification failure must not make this item look
+      // uncancelled when the calendar deletion already succeeded.
+      try {
+        if (isCheckin) await cslack.postCheckinBookingChanged(booking, 'cancelled', meta.slackTs || null);
+        else await bslack.postBookingChanged(booking, 'cancelled', meta.slackTs || null);
+      } catch (e) { console.error('bulk-cancel slack failed:', event.id, e.message); }
+
+      try {
+        if (isCheckin) await cemail.sendCheckinCancellationNotice(booking);
+        else await email.sendCancellationNotice(booking);
+      } catch (e) { console.error('bulk-cancel email failed:', event.id, e.message); }
+
+      cancelled++;
+      results.push({ eventId: event.id, ok: true, email: booking.email, startMs, isCheckin });
+    } catch (e) {
+      failed++;
+      results.push({ eventId: event.id, ok: false, reason: e.message });
+    }
+  }
+
+  return res.status(200).json({ ok: true, considered: listed.events.length, cancelled, failed, results });
+}
+
 async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).end();
   if (!authorized(req)) {
     return res.status(401).json({ ok: false,
       error: process.env.CRON_SECRET ? 'unauthorized' : 'CRON_SECRET not set' });
+  }
+  // Only reachable via the same admin-session POST path as the reminder
+  // catch-up button -- never via the cron's bearer-token GET.
+  if (req.method === 'POST' && req.body && req.body.bulkCancel === true) {
+    return bulkCancelAll(req, res);
   }
 
   const now = Date.now();
@@ -235,3 +330,6 @@ module.exports.wouldRemind = wouldRemind;
 // guarantee drifting apart.
 module.exports.CRON_PERIOD_HOURS = CRON_PERIOD_HOURS;
 module.exports.needsImmediateReminder = needsImmediateReminder;
+// Temporary -- see bulkCancelAll's own comment. Exported for the same reason
+// everything else here is: so a test can exercise it directly.
+module.exports.bulkCancelAll = bulkCancelAll;

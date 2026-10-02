@@ -236,7 +236,14 @@
        than squeeze every column until something like "ACTIVE" wraps mid-word,
        let the table scroll horizontally on its own and keep every column at
        a readable width. */
-    .clients-table-scroll{overflow-x:auto;margin-block-end:24px;}
+    .clients-table-scroll{
+      overflow-x:auto;margin-block-end:24px;
+      scrollbar-width:thin;scrollbar-color:var(--gold-lo) transparent;
+    }
+    .clients-table-scroll::-webkit-scrollbar{height:8px;}
+    .clients-table-scroll::-webkit-scrollbar-track{background:transparent;}
+    .clients-table-scroll::-webkit-scrollbar-thumb{background:var(--gold-lo);border-radius:0;}
+    .clients-table-scroll::-webkit-scrollbar-thumb:hover{background:var(--gold);}
     .clients-table-scroll .clients-table{margin-block-end:0;}
     .clients-table{
       width:100%; border-collapse:collapse; margin-block-end:24px; font-size:14px;

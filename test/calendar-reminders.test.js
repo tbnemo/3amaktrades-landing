@@ -9,6 +9,8 @@ const auth = require('../api/_admin-auth');
 const cemail = require('../api/_checkin-email');
 const loadCheckinMod = require('../api/_load-checkin-template');
 const av = require('../api/_availability');
+const bslack = require('../api/_booking-slack');
+const cslack = require('../api/_checkin-slack');
 
 function makeRes() {
   return {
@@ -944,5 +946,159 @@ test('a failing check-in template read still reminds both audiences', async () =
     assert.equal(res._status, 200);
     assert.equal(res._json.sent, 2);
     assert.equal(ciSpy.calls[0][0].templateTimeZone, 'America/Toronto');
+  });
+});
+
+// ===========================================================================
+// bulkCancelAll -- the TEMPORARY one-off bulk-cancel tool. See its own
+// comment in api/calendar-reminders.js: reuses the exact per-booking
+// cancel/notify primitives the real single-booking cancel handlers use.
+// ===========================================================================
+
+function reqBulkCancel(body, cookie) {
+  return {
+    method: 'POST',
+    headers: cookie ? { cookie } : { authorization: `Bearer ${SECRET}` },
+    body: body === undefined ? { bulkCancel: true, confirm: 'CANCEL ALL BOOKINGS' } : body,
+  };
+}
+
+test('bulkCancelAll: refuses without the exact confirm string, and never calls listEvents', async () => {
+  envSetup();
+  const listSpy = spyStub({ ok: true, events: [] });
+  await withStubs([{ obj: gcal, key: 'listEvents', value: listSpy }], async () => {
+    const res = makeRes();
+    await handler(reqBulkCancel({ bulkCancel: true }), res);
+    assert.equal(res._status, 400);
+    assert.equal(res._json.error, 'CONFIRM_REQUIRED');
+    assert.equal(listSpy.calls.length, 0, 'must not touch the calendar without the exact confirm string');
+  });
+
+  const res2 = makeRes();
+  await withStubs([{ obj: gcal, key: 'listEvents', value: listSpy }], async () => {
+    await handler(reqBulkCancel({ bulkCancel: true, confirm: 'cancel all bookings' }), res2);
+  });
+  assert.equal(res2._status, 400, 'the confirm string is case-sensitive, not fuzzy-matched');
+});
+
+test('bulkCancelAll: cancels an applicant AND a check-in booking in one pass, each via its own Slack/email senders', async () => {
+  envSetup();
+  const deleteSpy = spyStub({ ok: true });
+  const appSlackSpy = spyStub({ ts: null });
+  const ciSlackSpy = spyStub({ ts: null });
+  const appEmailSpy = spyStub({ ok: true });
+  const ciEmailSpy = spyStub({ ok: true });
+
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeEvent({ id: 'evt-app', startMs: futureMs(2) }),
+        makeCheckinEvent({ id: 'evt-ci', startMs: futureMs(3) }),
+      ] }) },
+    { obj: gcal, key: 'deleteEvent', value: deleteSpy },
+    { obj: bslack, key: 'postBookingChanged', value: appSlackSpy },
+    { obj: cslack, key: 'postCheckinBookingChanged', value: ciSlackSpy },
+    { obj: email, key: 'sendCancellationNotice', value: appEmailSpy },
+    { obj: cemail, key: 'sendCheckinCancellationNotice', value: ciEmailSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqBulkCancel(), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.considered, 2);
+    assert.equal(res._json.cancelled, 2);
+    assert.equal(res._json.failed, 0);
+
+    assert.equal(deleteSpy.calls.length, 2);
+    for (const call of deleteSpy.calls) {
+      assert.equal(call[1].notifyGuests, true, 'every cancellation must notify the real guest, same as a real cancel');
+    }
+
+    assert.equal(appSlackSpy.calls.length, 1);
+    assert.equal(appSlackSpy.calls[0][1], 'cancelled');
+    assert.equal(ciSlackSpy.calls.length, 1);
+    assert.equal(ciSlackSpy.calls[0][1], 'cancelled');
+    assert.equal(appEmailSpy.calls.length, 1);
+    assert.equal(ciEmailSpy.calls.length, 1);
+  });
+});
+
+test('bulkCancelAll: a failed delete is counted as failed and does not stop the rest of the batch', async () => {
+  envSetup();
+  const deleteSpy = async (eventId) => (eventId === 'evt-bad' ? { ok: false, reason: 'Google 500' } : { ok: true });
+  const appSlackSpy = spyStub({ ts: null });
+  const appEmailSpy = spyStub({ ok: true });
+
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeEvent({ id: 'evt-bad', startMs: futureMs(2) }),
+        makeEvent({ id: 'evt-ok', startMs: futureMs(4) }),
+      ] }) },
+    { obj: gcal, key: 'deleteEvent', value: deleteSpy },
+    { obj: bslack, key: 'postBookingChanged', value: appSlackSpy },
+    { obj: email, key: 'sendCancellationNotice', value: appEmailSpy },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqBulkCancel(), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.considered, 2);
+    assert.equal(res._json.cancelled, 1);
+    assert.equal(res._json.failed, 1);
+    assert.equal(appSlackSpy.calls.length, 1);
+    assert.equal(appEmailSpy.calls.length, 1);
+    const failedResult = res._json.results.find(r => r.eventId === 'evt-bad');
+    assert.equal(failedResult.ok, false);
+  });
+});
+
+test('bulkCancelAll: a throwing Slack/email sender is swallowed -- the event still counts as cancelled', async () => {
+  envSetup();
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [
+        makeEvent({ id: 'evt-app', startMs: futureMs(2) }),
+      ] }) },
+    { obj: gcal, key: 'deleteEvent', value: async () => ({ ok: true }) },
+    { obj: bslack, key: 'postBookingChanged', value: async () => { throw new Error('slack down'); } },
+    { obj: email, key: 'sendCancellationNotice', value: async () => { throw new Error('resend down'); } },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqBulkCancel(), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.cancelled, 1, 'the calendar deletion is what counts -- best-effort notification failures must not undo that');
+    assert.equal(res._json.failed, 0);
+  });
+});
+
+test('bulkCancelAll: is reachable via the same admin session cookie as the reminder catch-up button', async () => {
+  envSetup();
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: true, events: [] }) },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqBulkCancel(undefined, cookieValueOf(auth.issueSessionCookie())), res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.cancelled, 0);
+  });
+});
+
+test('bulkCancelAll: listEvents failing surfaces as an error, same shape as the reminder path', async () => {
+  envSetup();
+  await withStubs([
+    { obj: gcal, key: 'listEvents', value: async () => ({ ok: false, reason: gcal.NOT_CONNECTED }) },
+  ], async () => {
+    const res = makeRes();
+    await handler(reqBulkCancel(), res);
+    assert.equal(res._status, 503);
+    assert.equal(res._json.error, 'CALENDAR_NOT_CONNECTED');
+  });
+});
+
+test('bulkCancelAll: a GET can never trigger it, even with bulkCancel somehow present', async () => {
+  envSetup();
+  const listSpy = spyStub({ ok: true, events: [] });
+  await withStubs([{ obj: gcal, key: 'listEvents', value: listSpy }], async () => {
+    const res = makeRes();
+    await handler({ method: 'GET', headers: { authorization: `Bearer ${SECRET}` },
+      body: { bulkCancel: true, confirm: 'CANCEL ALL BOOKINGS' } }, res);
+    assert.equal(res._status, 200);
+    assert.equal(res._json.cancelled, undefined, 'must not be routed to bulkCancelAll on a GET');
   });
 });
