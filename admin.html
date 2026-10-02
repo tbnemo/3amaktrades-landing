@@ -298,6 +298,61 @@
       width:264px; max-width:calc(100vw - 40px); background:var(--band);
       border:1px solid var(--gold-lo); padding:14px; z-index:20;
     }
+    .modal-overlay{
+      position:fixed; inset:0; background:rgba(10,8,2,.75);
+      display:flex; align-items:center; justify-content:center;
+      padding:20px; z-index:50;
+    }
+    .modal-overlay[hidden]{display:none;}
+    .modal-box{
+      width:100%; max-width:600px; max-height:calc(100vh - 40px); overflow-y:auto;
+      background:var(--band-2); border:1px solid var(--gold-lo); padding:24px;
+    }
+    .modal-head{
+      display:flex; align-items:center; justify-content:space-between;
+      margin-block-end:18px; gap:12px;
+    }
+    .modal-head h3{
+      font-family:'Big Shoulders Display',sans-serif; font-weight:800;
+      text-transform:uppercase; letter-spacing:.04em; font-size:18px; color:var(--bone); margin:0;
+    }
+    .modal-close-btn{
+      flex:0 0 auto; width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+      background:transparent; border:1px solid var(--gold-lo); color:var(--bone);
+      cursor:pointer; font-size:14px; line-height:1;
+    }
+    .modal-close-btn:hover{border-color:var(--gold);color:var(--gold);}
+    .modal-close-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+    .time-field{display:flex;align-items:center;gap:4px;}
+    .time-field .input.hhmm{flex:1 1 auto;min-width:0;}
+    .time-trigger-btn{
+      flex:0 0 auto; width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+      background:transparent; border:1px solid var(--gold-lo); color:var(--dim);
+      cursor:pointer; padding:0;
+    }
+    .time-trigger-btn:hover{border-color:var(--gold);color:var(--gold);}
+    .time-trigger-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+    .time-picker-panel{
+      position:fixed; background:var(--band); border:1px solid var(--gold-lo);
+      padding:6px; z-index:60; width:104px;
+    }
+    .time-picker-panel[hidden]{display:none;}
+    .time-picker-list{
+      max-height:220px; overflow-y:auto; display:flex; flex-direction:column;
+      scrollbar-width:thin; scrollbar-color:var(--gold-lo) transparent;
+    }
+    .time-picker-list::-webkit-scrollbar{width:4px;}
+    .time-picker-list::-webkit-scrollbar-track{background:transparent;}
+    .time-picker-list::-webkit-scrollbar-thumb{background:var(--gold-lo);border-radius:0;}
+    .time-picker-list::-webkit-scrollbar-thumb:hover{background:var(--gold);}
+    .time-picker-opt{
+      background:transparent; border:0; color:var(--bone); text-align:start;
+      padding:6px 8px; cursor:pointer; font-size:13px; font-variant-numeric:tabular-nums;
+      width:100%;
+    }
+    .time-picker-opt:hover{background:var(--band-2);color:var(--gold);}
+    .time-picker-opt.is-selected{background:var(--gold);color:var(--ink);}
     .date-picker-head{display:flex;align-items:center;justify-content:space-between;margin-block-end:10px;}
     .date-picker-label{
       font-family:'Big Shoulders Display',sans-serif; font-weight:800;
@@ -405,21 +460,10 @@
       </header>
 
       <!--
-        Readiness and Connect Calendar deliberately sit ABOVE the tab bar: there
-        is one Blob store, one OAuth connection and one Resend key for the whole
-        system, so scoping them inside an audience tab would misrepresent them.
+        Connect Calendar deliberately sits ABOVE the tab bar: there is one
+        OAuth connection for the whole system, so scoping it inside an
+        audience tab would misrepresent it.
       -->
-      <section class="panel" id="readinessPanel">
-        <h2>Readiness</h2>
-        <dl class="status-grid">
-          <dt>Blob storage configured</dt><dd id="blobConfigured">—</dd>
-          <dt>Calendar connected</dt><dd id="calendarConnected">—</dd>
-          <dt>Email (Resend) configured</dt><dd id="resendConfigured">—</dd>
-          <dt>OAuth redirect URI</dt><dd id="redirectUri" class="redirect-uri">—</dd>
-        </dl>
-        <ul class="plain-list" id="blockersList"></ul>
-      </section>
-
       <section class="panel" id="connectPanel">
         <h2>Connect Calendar</h2>
         <div id="connectSuccess" class="note-success" hidden>
@@ -575,72 +619,89 @@
           </div>
           <p id="clientsEmpty" hidden>No clients yet. Add the first one below.</p>
 
-          <form id="clientAddForm">
-            <div class="clients-add-row">
-              <div class="field field-wide">
-                <label for="clientName">Name</label>
-                <input class="input" type="text" id="clientName" autocomplete="off" />
+          <div class="form-actions" style="margin-block-start:16px;">
+            <button type="button" class="btn-primary" id="openAddClientBtn">+ Add Client</button>
+          </div>
+
+          <!-- A real modal, not the inline form this used to be -- opened fresh
+               for Add, or pre-populated for Edit, so the save action always
+               happens in one focused place instead of an easy-to-miss row
+               further down the (often long, scrolled) client table. -->
+          <div class="modal-overlay" id="clientModalOverlay" hidden>
+            <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="clientModalTitle">
+              <div class="modal-head">
+                <h3 id="clientModalTitle">Add Client</h3>
+                <button type="button" class="modal-close-btn" id="clientModalCloseBtn" aria-label="Close">✕</button>
               </div>
-              <div class="field field-wide">
-                <label for="clientEmail">Email (required)</label>
-                <input class="input" type="email" id="clientEmail" autocomplete="off" required />
-              </div>
-              <div class="field">
-                <label for="clientPhone">Phone (optional)</label>
-                <input class="input" type="tel" id="clientPhone" autocomplete="off" />
-              </div>
-              <div class="field date-field">
-                <label for="clientStartDateTrigger">Start date (required)</label>
-                <button type="button" class="input date-trigger" id="clientStartDateTrigger"
-                        aria-haspopup="true" aria-expanded="false" aria-controls="clientStartDatePanel">
-                  <span class="date-trigger-text is-placeholder" id="clientStartDateDisplay">mm/dd/yyyy</span>
-                  <span class="date-trigger-caret" aria-hidden="true">▾</span>
-                </button>
-                <!-- The real value-holding element every existing read/write
-                     site (submit, post-submit reset, Edit-populate) already
-                     addresses as #clientStartDate -- kept as a plain hidden
-                     input carrying the "YYYY-MM-DD" string so none of those
-                     sites needed to change their value contract, only gain a
-                     .refresh() call where they write it directly. -->
-                <input type="hidden" id="clientStartDate" required />
-                <div class="date-picker-panel" id="clientStartDatePanel" hidden>
-                  <div class="date-picker-head">
-                    <button type="button" class="date-nav-btn" id="clientStartDatePrevMonth" aria-label="Previous month">‹</button>
-                    <span class="date-picker-label" id="clientStartDateMonthLabel"></span>
-                    <button type="button" class="date-nav-btn" id="clientStartDateNextMonth" aria-label="Next month">›</button>
+
+              <form id="clientAddForm">
+                <div class="clients-add-row">
+                  <div class="field field-wide">
+                    <label for="clientName">Name</label>
+                    <input class="input" type="text" id="clientName" autocomplete="off" />
                   </div>
-                  <div class="date-picker-weekdays">
-                    <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+                  <div class="field field-wide">
+                    <label for="clientEmail">Email (required)</label>
+                    <input class="input" type="email" id="clientEmail" autocomplete="off" required />
                   </div>
-                  <div class="date-picker-grid" id="clientStartDateGrid"></div>
-                  <div class="date-picker-foot">
-                    <button type="button" class="date-picker-link" id="clientStartDateTodayBtn">Today</button>
-                    <button type="button" class="date-picker-link" id="clientStartDateClearBtn">Clear</button>
+                  <div class="field">
+                    <label for="clientPhone">Phone (optional)</label>
+                    <input class="input" type="tel" id="clientPhone" autocomplete="off" />
+                  </div>
+                  <div class="field date-field">
+                    <label for="clientStartDateTrigger">Start date (required)</label>
+                    <button type="button" class="input date-trigger" id="clientStartDateTrigger"
+                            aria-haspopup="true" aria-expanded="false" aria-controls="clientStartDatePanel">
+                      <span class="date-trigger-text is-placeholder" id="clientStartDateDisplay">mm/dd/yyyy</span>
+                      <span class="date-trigger-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <!-- The real value-holding element every existing read/write
+                         site (submit, post-submit reset, Edit-populate) already
+                         addresses as #clientStartDate -- kept as a plain hidden
+                         input carrying the "YYYY-MM-DD" string so none of those
+                         sites needed to change their value contract, only gain a
+                         .refresh() call where they write it directly. -->
+                    <input type="hidden" id="clientStartDate" required />
+                    <div class="date-picker-panel" id="clientStartDatePanel" hidden>
+                      <div class="date-picker-head">
+                        <button type="button" class="date-nav-btn" id="clientStartDatePrevMonth" aria-label="Previous month">‹</button>
+                        <span class="date-picker-label" id="clientStartDateMonthLabel"></span>
+                        <button type="button" class="date-nav-btn" id="clientStartDateNextMonth" aria-label="Next month">›</button>
+                      </div>
+                      <div class="date-picker-weekdays">
+                        <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+                      </div>
+                      <div class="date-picker-grid" id="clientStartDateGrid"></div>
+                      <div class="date-picker-foot">
+                        <button type="button" class="date-picker-link" id="clientStartDateTodayBtn">Today</button>
+                        <button type="button" class="date-picker-link" id="clientStartDateClearBtn">Clear</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="clientDurationMonths">Package length, months (required)</label>
+                    <select class="input" id="clientDurationMonths" required>
+                      <option value="" disabled selected hidden>Select months</option>
+                      <option value="0">No package</option>
+                      <option value="1">1 month</option>
+                      <option value="2">2 months</option>
+                      <option value="3">3 months</option>
+                      <option value="6">6 months</option>
+                      <option value="9">9 months</option>
+                      <option value="12">12 months</option>
+                    </select>
                   </div>
                 </div>
-              </div>
-              <div class="field">
-                <label for="clientDurationMonths">Package length, months (required)</label>
-                <select class="input" id="clientDurationMonths" required>
-                  <option value="" disabled selected hidden>Select months</option>
-                  <option value="0">No package</option>
-                  <option value="1">1 month</option>
-                  <option value="2">2 months</option>
-                  <option value="3">3 months</option>
-                  <option value="6">6 months</option>
-                  <option value="9">9 months</option>
-                  <option value="12">12 months</option>
-                </select>
-              </div>
-            </div>
 
-            <ul class="error-list" id="clientErrors" hidden></ul>
-            <div class="note-success" id="clientSuccess" hidden>Saved.</div>
+                <ul class="error-list" id="clientErrors" hidden></ul>
+                <div class="note-success" id="clientSuccess" hidden>Saved.</div>
 
-            <div class="form-actions">
-              <button type="submit" class="btn-primary">Add Client</button>
+                <div class="form-actions">
+                  <button type="submit" class="btn-primary">Add Client</button>
+                </div>
+              </form>
             </div>
-          </form>
+          </div>
         </section>
       </div>
 
@@ -669,6 +730,14 @@
         </section>
       </div>
     </div>
+
+    <!-- One shared popup, reused by every day-hours start/end field in both
+         tabs (28 fields total) -- repositioned via getBoundingClientRect()
+         against whichever trigger was clicked, rather than one instance per
+         field. See wireTimePicker(). -->
+    <div class="time-picker-panel" id="timePickerPanel" hidden>
+      <div class="time-picker-list" id="timePickerList"></div>
+    </div>
   </div>
 
   <script>
@@ -684,10 +753,20 @@
       fri: 'Friday', sat: 'Saturday', sun: 'Sunday',
     };
 
-    // Used only if the runtime has no Intl.supportedValuesOf('timeZone').
-    const FALLBACK_TIMEZONES = [
-      'America/Toronto', 'Europe/Istanbul', 'America/New_York',
-      'America/Vancouver', 'Europe/London', 'Asia/Riyadh', 'Asia/Dubai', 'UTC',
+    // A curated list, not the full ~400-zone IANA set Intl.supportedValuesOf()
+    // would otherwise return -- that list is too long to be useful in a
+    // dropdown. The field stays a free-text input (list=), so typing any
+    // other valid IANA zone name still works; this only curates what's
+    // offered to click.
+    const COMMON_TIMEZONES = [
+      'America/Toronto', 'America/New_York', 'America/Chicago', 'America/Denver',
+      'America/Los_Angeles', 'America/Vancouver', 'America/Mexico_City',
+      'America/Sao_Paulo', 'UTC', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
+      'Europe/Istanbul', 'Europe/Moscow', 'Africa/Cairo', 'Africa/Johannesburg',
+      'Asia/Riyadh', 'Asia/Dubai', 'Asia/Karachi', 'Asia/Kolkata', 'Asia/Dhaka',
+      'Asia/Bangkok', 'Asia/Singapore', 'Asia/Hong_Kong', 'Asia/Shanghai',
+      'Asia/Tokyo', 'Asia/Seoul', 'Australia/Sydney', 'Australia/Perth',
+      'Pacific/Auckland',
     ];
 
     function $(id) { return document.getElementById(id); }
@@ -723,9 +802,19 @@
             <input type="checkbox" id="${prefix}day-${key}-enabled" />
             <span>${DAY_LABELS[key]}</span>
           </label>
-          <input class="input hhmm" type="text" id="${prefix}day-${key}-start" placeholder="09:00" maxlength="5" inputmode="numeric" />
+          <div class="time-field">
+            <input class="input hhmm" type="text" id="${prefix}day-${key}-start" placeholder="09:00" maxlength="5" inputmode="numeric" />
+            <button type="button" class="time-trigger-btn" data-for="${prefix}day-${key}-start" aria-label="Pick a time" aria-haspopup="true">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </button>
+          </div>
           <span class="day-to">to</span>
-          <input class="input hhmm" type="text" id="${prefix}day-${key}-end" placeholder="17:00" maxlength="5" inputmode="numeric" />
+          <div class="time-field">
+            <input class="input hhmm" type="text" id="${prefix}day-${key}-end" placeholder="17:00" maxlength="5" inputmode="numeric" />
+            <button type="button" class="time-trigger-btn" data-for="${prefix}day-${key}-end" aria-label="Pick a time" aria-haspopup="true">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            </button>
+          </div>
         `;
         wrap.appendChild(row);
       }
@@ -745,16 +834,7 @@
     function buildTimezoneList(prefix) {
       const list = $(`${prefix}tzList`);
       list.innerHTML = '';
-      let zones = null;
-      try {
-        if (typeof Intl.supportedValuesOf === 'function') {
-          zones = Intl.supportedValuesOf('timeZone');
-        }
-      } catch (e) {
-        zones = null;
-      }
-      if (!Array.isArray(zones) || zones.length === 0) zones = FALLBACK_TIMEZONES;
-      for (const z of zones) {
+      for (const z of COMMON_TIMEZONES) {
         const opt = document.createElement('option');
         opt.value = z;
         list.appendChild(opt);
@@ -843,25 +923,6 @@
     function showApp() { $('gate').hidden = true; $('app').hidden = false; }
 
     function renderStatus(status) {
-      $('blobConfigured').textContent = status.blobConfigured ? 'Yes' : 'No';
-      $('calendarConnected').textContent = status.calendarConnected ? 'Yes' : 'No';
-      $('resendConfigured').textContent = status.resendConfigured ? 'Yes' : 'No';
-      $('redirectUri').textContent = status.redirectUri || '(not available)';
-
-      const list = $('blockersList');
-      list.innerHTML = '';
-      if (Array.isArray(status.blockers) && status.blockers.length > 0) {
-        for (const b of status.blockers) {
-          const li = document.createElement('li');
-          li.textContent = b;
-          list.appendChild(li);
-        }
-      } else {
-        const li = document.createElement('li');
-        li.textContent = 'Nothing blocking -- fully configured.';
-        list.appendChild(li);
-      }
-
       $('connectState').textContent = status.calendarConnected
         ? `Connected. Calendar: ${status.calendarId || 'primary'}`
         : 'Not connected yet.';
@@ -1052,6 +1113,106 @@
     // 0=Sun..6=Sat; shifted so the grid's week starts on Monday).
     function dpFirstWeekdayMon0(y, m) {
       return (new Date(y, m - 1, 1).getDay() + 6) % 7;
+    }
+
+    // Every half-hour of the day, "00:00".."23:30" -- a fixed, small enough
+    // list to just click through, while the input stays a plain free-text
+    // field so a value like "09:15" can still be typed directly.
+    const TIME_PICKER_OPTIONS = (() => {
+      const out = [];
+      for (let h = 0; h < 24; h++) {
+        for (const m of [0, 30]) out.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+      }
+      return out;
+    })();
+
+    // The input currently bound to the ONE shared popup (null when closed).
+    // Shared rather than one instance per field because there are 28 of
+    // these (7 days x start/end x 2 audiences) and they're never open at
+    // the same time.
+    let timePickerBoundInput = null;
+
+    function buildTimePickerList() {
+      const list = $('timePickerList');
+      list.innerHTML = '';
+      for (const t of TIME_PICKER_OPTIONS) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'time-picker-opt';
+        btn.textContent = t;
+        btn.dataset.value = t;
+        list.appendChild(btn);
+      }
+    }
+
+    function openTimePickerFor(input, triggerBtn) {
+      timePickerBoundInput = input;
+      const panel = $('timePickerPanel');
+      // position:fixed, so these are viewport coordinates computed fresh at
+      // open time -- no positioned ancestor required anywhere in the markup.
+      const rect = triggerBtn.getBoundingClientRect();
+      panel.style.left = `${Math.round(rect.left)}px`;
+      panel.style.top = `${Math.round(rect.bottom + 4)}px`;
+      panel.hidden = false;
+
+      const current = input.value.trim();
+      for (const opt of $('timePickerList').children) {
+        opt.classList.toggle('is-selected', opt.dataset.value === current);
+      }
+      const selected = $('timePickerList').querySelector('.is-selected');
+      if (selected) selected.scrollIntoView({ block: 'nearest' });
+    }
+
+    function closeTimePicker() {
+      $('timePickerPanel').hidden = true;
+      timePickerBoundInput = null;
+    }
+
+    function wireTimePicker() {
+      buildTimePickerList();
+
+      // One delegated listener handles opening (click on any .time-trigger-btn),
+      // picking (click on any .time-picker-opt), AND closing on outside click --
+      // the trigger/option branches return early, so a click that opened or
+      // picked never also falls through to the outside-click close below.
+      document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('.time-trigger-btn');
+        if (trigger) {
+          const input = $(trigger.dataset.for);
+          if (!input) return;
+          if (timePickerBoundInput === input && !$('timePickerPanel').hidden) {
+            closeTimePicker();
+          } else {
+            openTimePickerFor(input, trigger);
+          }
+          return;
+        }
+        const opt = e.target.closest('.time-picker-opt');
+        if (opt && timePickerBoundInput) {
+          timePickerBoundInput.value = opt.dataset.value;
+          timePickerBoundInput.dispatchEvent(new Event('change', { bubbles: true }));
+          closeTimePicker();
+          return;
+        }
+        if (!$('timePickerPanel').hidden && !e.target.closest('#timePickerPanel')) {
+          closeTimePicker();
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !$('timePickerPanel').hidden) closeTimePicker();
+      });
+
+      // The open panel's position was computed once, in viewport coordinates,
+      // at open time -- scrolling or resizing makes that stale, and there is
+      // no cheap way to tell whether the trigger itself moved. Close rather
+      // than track it.
+      window.addEventListener('scroll', () => {
+        if (!$('timePickerPanel').hidden) closeTimePicker();
+      }, true);
+      window.addEventListener('resize', () => {
+        if (!$('timePickerPanel').hidden) closeTimePicker();
+      });
     }
 
     // Wires one trigger+panel date-picker instance. baseId is the id of the
@@ -1445,7 +1606,52 @@
       }
     }
 
+    // Clearing the form is its own function now -- both the "+ Add Client"
+    // button (fresh form) and the post-submit success branch (same reset,
+    // modal closing too) need the exact same steps, and they used to live
+    // only inline in the submit handler's success branch.
+    function resetClientForm() {
+      $('clientName').value = '';
+      $('clientEmail').value = '';
+      $('clientPhone').value = '';
+      $('clientStartDate').value = '';
+      clientStartDatePicker.refresh();
+      clearCustomDurationOption();
+      $('clientDurationMonths').value = '';
+      editingSnapshot = null;
+    }
+
+    function openClientModal(title, submitLabel) {
+      $('clientModalTitle').textContent = title;
+      $('clientAddForm').querySelector('button[type="submit"]').textContent = submitLabel;
+      $('clientErrors').hidden = true;
+      $('clientSuccess').hidden = true;
+      $('clientModalOverlay').hidden = false;
+      $('clientName').focus();
+    }
+
+    function closeClientModal() {
+      $('clientModalOverlay').hidden = true;
+    }
+
     function wireClientManager() {
+      $('openAddClientBtn').addEventListener('click', () => {
+        resetClientForm();
+        openClientModal('Add Client', 'Add Client');
+      });
+      $('clientModalCloseBtn').addEventListener('click', closeClientModal);
+      // Backdrop click closes -- but only a click on the backdrop itself, not
+      // one that bubbled up from inside the modal box (e.g. clicking the date
+      // picker's own panel, which lives outside modal-box's DOM subtree? no --
+      // it's inside -- so checking e.target === overlay is exactly "did the
+      // click land on empty backdrop").
+      $('clientModalOverlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeClientModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !$('clientModalOverlay').hidden) closeClientModal();
+      });
+
       $('clientAddForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         $('clientErrors').hidden = true;
@@ -1546,15 +1752,8 @@
         if (res.status === 200 && data.ok) {
           renderClients(data.clients);
           $('clientsStorageMissingNote').hidden = true;
-          $('clientSuccess').hidden = false;
-          $('clientName').value = '';
-          $('clientEmail').value = '';
-          $('clientPhone').value = '';
-          $('clientStartDate').value = '';
-          clientStartDatePicker.refresh();
-          clearCustomDurationOption();
-          $('clientDurationMonths').value = '';
-          editingSnapshot = null;
+          resetClientForm();
+          closeClientModal();
           return;
         }
         showClientErrors(Array.isArray(data.errors) && data.errors.length > 0
@@ -1633,9 +1832,7 @@
             email: c.email, startDate: c.startDate || '', durationMonths: c.durationMonths,
             expiresAt: c.expiresAt, pausedAt: c.pausedAt,
           };
-          $('clientErrors').hidden = true;
-          $('clientSuccess').hidden = true;
-          $('clientEmail').focus();
+          openClientModal('Edit Client', 'Save Changes');
           return;
         }
 
@@ -1995,6 +2192,7 @@
 
       wireAvailabilityForm(PREFIX_APPLICANTS, '/api/admin/availability', 'storageMissingNote');
       wireAvailabilityForm(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');
+      wireTimePicker();
       clientStartDatePicker = initDatePicker('clientStartDate');
       wireClientManager();
       $('clientSearchInput').addEventListener('input', filterClientRows);

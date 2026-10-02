@@ -30,8 +30,6 @@ test('no id appears twice in admin.html', () => {
 test('the existing applicant ids are all still present and unrenamed', () => {
   const required = [
     'gate', 'gateForm', 'passcodeInput', 'gateError', 'app',
-    'readinessPanel', 'blobConfigured', 'calendarConnected', 'resendConfigured',
-    'redirectUri', 'blockersList',
     'connectPanel', 'connectSuccess', 'connectState', 'connectBtn',
     'availabilityPanel', 'storageMissingNote', 'availabilityForm',
     'daysRows', 'slotMinutes', 'bufferMinutes', 'minNoticeHours',
@@ -57,13 +55,19 @@ test('the tab bar and both panels exist', () => {
   assert.ok(checkinsAt > availAt, 'panelCheckins must come after the applicant panel');
 });
 
-test('Readiness and Connect Calendar sit ABOVE the tab bar, not inside a tab', () => {
-  const readiness = html.indexOf('id="readinessPanel"');
+test('Connect Calendar sits ABOVE the tab bar, not inside a tab', () => {
   const connect = html.indexOf('id="connectPanel"');
   const tabBar = html.indexOf('id="tabBar"');
-  assert.ok(readiness !== -1 && connect !== -1 && tabBar !== -1);
-  assert.ok(readiness < tabBar, 'readinessPanel must precede the tab bar');
+  assert.ok(connect !== -1 && tabBar !== -1);
   assert.ok(connect < tabBar, 'connectPanel must precede the tab bar');
+});
+
+test('the Readiness panel was deliberately removed -- no stray leftovers', () => {
+  const ids = new Set(idsIn(html));
+  for (const id of ['readinessPanel', 'blobConfigured', 'calendarConnected',
+    'resendConfigured', 'redirectUri', 'blockersList']) {
+    assert.ok(!ids.has(id), `"${id}" should have been removed with the Readiness panel`);
+  }
 });
 
 test('the check-in hours form mirrors the applicant one with a chk- prefix on every field', () => {
@@ -668,12 +672,18 @@ test('#clientStartDate stays the hidden value-holding input behind the custom wi
 
   // The post-submit reset still clears it by the same id, and must also
   // refresh the trigger's displayed text -- setting .value directly on a
-  // hidden input fires no event the widget could otherwise react to.
-  const resetAt = submitWindow.indexOf("$('clientStartDate').value = '';");
-  assert.ok(resetAt !== -1, 'the post-submit reset must still clear #clientStartDate.value');
-  const afterReset = submitWindow.slice(resetAt, resetAt + 120);
+  // hidden input fires no event the widget could otherwise react to. This
+  // reset now lives in its own resetClientForm() function (shared with the
+  // "+ Add Client" button's fresh-open path), not inlined in the submit
+  // handler itself.
+  const resetFnIdx = html.indexOf('function resetClientForm()');
+  assert.ok(resetFnIdx !== -1, 'resetClientForm() not found');
+  const resetWindow = html.slice(resetFnIdx, resetFnIdx + 600);
+  const resetAt = resetWindow.indexOf("$('clientStartDate').value = '';");
+  assert.ok(resetAt !== -1, 'resetClientForm must still clear #clientStartDate.value');
+  const afterReset = resetWindow.slice(resetAt, resetAt + 120);
   assert.match(afterReset, /clientStartDatePicker\.refresh\(\)/,
-    'the post-submit reset must refresh the date-picker trigger display after clearing the hidden value');
+    'resetClientForm must refresh the date-picker trigger display after clearing the hidden value');
 
   // Edit-populate still writes #clientStartDate.value from the row's stored
   // startDate, and must likewise refresh the trigger display.
@@ -809,10 +819,13 @@ test('the injected custom duration option is cleared on every ensureDurationOpti
     'ensureDurationOption must clear any previously-injected option first, on every call -- ' +
     'this is what cleans up a stale option left behind by a DIFFERENT client\'s Edit');
 
-  const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
-  const submitWindow = html.slice(submitIdx, submitIdx + 6000);
-  assert.match(submitWindow, /clearCustomDurationOption\(\)/,
-    'the post-submit form reset must also clear any injected custom duration option');
+  // Lives in resetClientForm() now (shared with the "+ Add Client" button's
+  // fresh-open path), not inlined in the submit handler itself.
+  const resetFnIdx = html.indexOf('function resetClientForm()');
+  assert.ok(resetFnIdx !== -1, 'resetClientForm() not found');
+  const resetWindow = html.slice(resetFnIdx, resetFnIdx + 600);
+  assert.match(resetWindow, /clearCustomDurationOption\(\)/,
+    'resetClientForm must also clear any injected custom duration option');
 });
 
 // ══ Payments tab, "No package" option, client search, and the manual ══

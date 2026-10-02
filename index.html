@@ -2051,6 +2051,20 @@ function render() {
         <div class="confirm-icon">✓</div>
         <h3 data-key="confirm_h"></h3>
         <p data-key="confirm_p"></p>
+
+        <!-- Book a Call -- only rendered for the 1k-3k / 3k+ tiers. Shown
+             first, above WhatsApp/Instagram/Discord, so qualified leads see
+             the highest-intent option before the chat alternatives. -->
+        <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_book_label"
+           id="confirmBookLabel" style="display:none"></p>
+        <button type="button" class="cta-btn-wa" id="bookCallBtn" style="display:none">
+          <svg class="cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16"/><path d="M8 3v4M16 3v4M3 11h18"/>
+          </svg>
+          <span data-key="confirm_book_btn"></span>
+        </button>
+        <div id="bookingWidgetHost" style="display:none"></div>
+
         <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_wa_label" id="confirmWaLabel"></p>
         <div class="confirm-btn-row" id="confirmTalkRow">
           <a href="#" id="waConfirmBtn" class="cta-btn-wa" target="_blank" rel="noopener">
@@ -2067,18 +2081,6 @@ function render() {
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.3 5.3A18 18 0 0 0 15.6 4a12.3 12.3 0 0 0-.6 1.2 16.5 16.5 0 0 0-5 0A12.3 12.3 0 0 0 9.4 4a18 18 0 0 0-4.7 1.4C1.9 9.3 1.2 13 1.5 16.6a18 18 0 0 0 5.5 2.7c.4-.6.8-1.3 1.2-2a11.6 11.6 0 0 1-1.9-.9l.5-.4a12.9 12.9 0 0 0 10.4 0l.5.4c-.6.3-1.2.6-1.9.9.3.7.8 1.4 1.2 2a18 18 0 0 0 5.5-2.7c.4-4.2-.7-7.8-2.2-11.3ZM9 14.3c-.8 0-1.5-.8-1.5-1.7S8.1 11 9 11s1.5.8 1.5 1.7-.7 1.6-1.5 1.6Zm6 0c-.8 0-1.5-.8-1.5-1.7S14.2 11 15 11s1.5.8 1.5 1.7-.7 1.6-1.5 1.6Z"/></svg>
           <span data-key="confirm_discord_btn"></span>
         </a>
-
-        <!-- Book a Call -- only rendered for the 1k-3k / 3k+ tiers, shown
-             alongside the WhatsApp/Instagram row rather than replacing it. -->
-        <p class="confirm-wa-label bl-mono bl-mono--gold" data-key="confirm_book_label"
-           id="confirmBookLabel" style="display:none"></p>
-        <button type="button" class="cta-btn-wa" id="bookCallBtn" style="display:none">
-          <svg class="cal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="16"/><path d="M8 3v4M16 3v4M3 11h18"/>
-          </svg>
-          <span data-key="confirm_book_btn"></span>
-        </button>
-        <div id="bookingWidgetHost" style="display:none"></div>
       </div>
 
     </div><!-- end form-box -->
