@@ -63,12 +63,12 @@ function authedReq(method, body) {
 // why expiresAt is precomputed to match normalizeEntry's own derivation).
 const ALICE = {
   name: 'Alice', email: 'alice@example.com', phone: '5550100100',
-  startDate: '2026-01-01', durationMonths: 3, pausedAt: null,
+  startDate: '2026-01-01', durationMonths: 3, customEndDate: '', pausedAt: null,
   expiresAt: Date.UTC(2026, 3, 1), paymentsByMonth: {},
 };
 const BOB = {
   name: 'Bob', email: 'bob@example.com', phone: '',
-  startDate: '2026-02-15', durationMonths: 1, pausedAt: null,
+  startDate: '2026-02-15', durationMonths: 1, customEndDate: '', pausedAt: null,
   expiresAt: Date.UTC(2026, 2, 15), paymentsByMonth: {},
 };
 
@@ -160,7 +160,7 @@ test('authenticated POST with a valid client -> 200 and saveClients called once 
     assert.equal(written.length, 2);
     assert.deepEqual(written[1], {
       name: 'Bob', email: 'bob@example.com', phone: '555-0199',
-      startDate: '2026-03-01', durationMonths: 2, pausedAt: null,
+      startDate: '2026-03-01', durationMonths: 2, customEndDate: '', pausedAt: null,
       expiresAt: cc.computeExpiresAt('2026-03-01', 2), paymentsByMonth: {},
     });
     // The response echoes the saved list so the page never needs a second GET.
@@ -316,7 +316,7 @@ test('authenticated POST with no phone is accepted -- phone is optional', async 
     assert.equal(res._status, 200);
     assert.deepEqual(saveSpy.calls[0][0], [{
       name: 'Solo', email: 'solo@example.com', phone: '',
-      startDate: '2026-01-01', durationMonths: 1, pausedAt: null,
+      startDate: '2026-01-01', durationMonths: 1, customEndDate: '', pausedAt: null,
       expiresAt: cc.computeExpiresAt('2026-01-01', 1), paymentsByMonth: {},
     }]);
   });

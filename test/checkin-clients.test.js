@@ -33,12 +33,12 @@ function spyStub(result) {
 // identity-style assertions below (e.g. "carried through unchanged") hold.
 const ALICE = {
   name: 'Alice', email: 'alice@example.com', phone: '+1 (555) 010-0100',
-  startDate: '2026-01-01', durationMonths: 3, pausedAt: null,
+  startDate: '2026-01-01', durationMonths: 3, customEndDate: '', pausedAt: null,
   expiresAt: Date.UTC(2026, 3, 1), paymentsByMonth: {},
 };
 const BOB = {
   name: 'Bob', email: 'bob@example.com', phone: '',
-  startDate: '2026-02-15', durationMonths: 1, pausedAt: null,
+  startDate: '2026-02-15', durationMonths: 1, customEndDate: '', pausedAt: null,
   expiresAt: Date.UTC(2026, 2, 15), paymentsByMonth: {},
 };
 
@@ -88,7 +88,7 @@ test('loadClients normalizes entries and drops any with no email', async () => {
     assert.equal(r.ok, true);
     assert.deepEqual(r.clients, [{
       name: 'Alice', email: 'alice@example.com', phone: '555-0100',
-      startDate: '', durationMonths: 1, pausedAt: null, expiresAt: null,
+      startDate: '', durationMonths: 1, customEndDate: '', pausedAt: null, expiresAt: null,
       paymentsByMonth: {},
     }]);
   });
@@ -222,7 +222,7 @@ test('upsertClient appends a new entry, normalized', () => {
   assert.deepEqual(out[0], ALICE, 'the existing entry is carried through unchanged');
   assert.deepEqual(out[1], {
     name: 'Bob', email: 'bob@example.com', phone: '555-0199',
-    startDate: '', durationMonths: 1, pausedAt: null, expiresAt: null,
+    startDate: '', durationMonths: 1, customEndDate: '', pausedAt: null, expiresAt: null,
     paymentsByMonth: {},
   });
 });
@@ -467,4 +467,85 @@ test('upsertClient editing an existing client preserves paymentsByMonth when the
     ...ALICE, paymentsByMonth: { '2026-01': { amountOwed: 500, paid: true } },
   });
   assert.deepEqual(withPayments[0].paymentsByMonth, { '2026-01': { amountOwed: 500, paid: true } });
+});
+
+// ===========================================================================
+// durationMonths === -1 ("Custom"): the admin picks an exact end date
+// directly instead of a month length. Mirrors the durationMonths === 0
+// ("No package") section above -- same sentinel-preservation discipline,
+// same validateClient branch shape, same renewClient no-op convention.
+// ===========================================================================
+
+test('computeExpiresAt with durationMonths === -1 uses customEndDate directly, ignoring startDate entirely', () => {
+  assert.equal(cc.computeExpiresAt('2026-01-01', -1, '2027-03-29'), Date.UTC(2027, 2, 29));
+  // startDate is irrelevant to the custom path -- even missing/malformed, the
+  // custom end date alone is authoritative.
+  assert.equal(cc.computeExpiresAt('', -1, '2027-03-29'), Date.UTC(2027, 2, 29));
+  assert.equal(cc.computeExpiresAt('not-a-date', -1, '2027-03-29'), Date.UTC(2027, 2, 29));
+});
+
+test('computeExpiresAt with durationMonths === -1 returns null for a malformed or missing customEndDate', () => {
+  assert.equal(cc.computeExpiresAt('2026-01-01', -1, ''), null);
+  assert.equal(cc.computeExpiresAt('2026-01-01', -1, 'not-a-date'), null);
+  assert.equal(cc.computeExpiresAt('2026-01-01', -1, undefined), null);
+});
+
+test('normalizeDurationMonths preserves -1 exactly -- it is never clamped up to 1 like other negatives', () => {
+  const out = cc.upsertClient([], {
+    name: 'Omar', email: 'omar@example.com', startDate: '2026-01-01',
+    durationMonths: -1, customEndDate: '2027-03-29',
+  });
+  assert.equal(out[0].durationMonths, -1);
+  assert.equal(out[0].customEndDate, '2027-03-29');
+  assert.equal(out[0].expiresAt, Date.UTC(2027, 2, 29));
+});
+
+test('normalizeEntry carries customEndDate through even when a different durationMonths is active', () => {
+  // So re-selecting "Custom" on a later Edit has something to populate back
+  // in, the same way startDate survives for a durationMonths:0 client.
+  const out = cc.upsertClient([], {
+    name: 'Omar', email: 'omar@example.com', startDate: '2026-01-01',
+    durationMonths: 3, customEndDate: '2099-01-01',
+  });
+  assert.equal(out[0].durationMonths, 3);
+  assert.equal(out[0].customEndDate, '2099-01-01');
+  // The active duration (3 months) still drives expiresAt, not the inert
+  // customEndDate left over from a prior Custom selection.
+  assert.equal(out[0].expiresAt, Date.UTC(2026, 3, 1));
+});
+
+test('isAccessActive treats an active Custom client the same as any other: compares nowMs to expiresAt', () => {
+  const client = { durationMonths: -1, customEndDate: '2027-03-29', pausedAt: null, expiresAt: Date.UTC(2027, 2, 29) };
+  assert.equal(cc.isAccessActive(client, Date.UTC(2027, 2, 28)), true);
+  assert.equal(cc.isAccessActive(client, Date.UTC(2027, 2, 30)), false);
+  assert.equal(cc.isAccessActive({ ...client, pausedAt: 1 }, Date.UTC(2027, 2, 28)), false,
+    'pause still wins outright over an active Custom client');
+});
+
+test('validateClient requires a well-formed customEndDate when durationMonths === -1, and accepts it otherwise', () => {
+  const base = { name: 'A', email: 'a@b.co', startDate: '2026-01-01' };
+  assert.equal(cc.validateClient({ ...base, durationMonths: -1 }).ok, false, 'no customEndDate at all');
+  assert.equal(cc.validateClient({ ...base, durationMonths: -1, customEndDate: '' }).ok, false, 'blank customEndDate');
+  assert.equal(cc.validateClient({ ...base, durationMonths: -1, customEndDate: '03/29/2027' }).ok, false,
+    'wrong format (not YYYY-MM-DD)');
+  assert.deepEqual(
+    cc.validateClient({ ...base, durationMonths: -1, customEndDate: '2027-03-29' }),
+    { ok: true, errors: [] },
+  );
+  // A numeric-string -1 must work the same as a real number, matching the
+  // existing '0'/'3' string-coercion precedent just above.
+  assert.deepEqual(
+    cc.validateClient({ ...base, durationMonths: '-1', customEndDate: '2027-03-29' }),
+    { ok: true, errors: [] },
+  );
+});
+
+test('renewClient is a no-op (same reference) for a durationMonths === -1 ("Custom") client', () => {
+  const client = {
+    name: 'Omar', email: 'omar@example.com', startDate: '2026-01-01',
+    durationMonths: -1, customEndDate: '2027-03-29',
+    pausedAt: null, expiresAt: Date.UTC(2027, 2, 29), paymentsByMonth: {},
+  };
+  const renewed = cc.renewClient(client, Date.UTC(2026, 5, 1));
+  assert.equal(renewed, client, 'renewing a Custom client must be a true no-op -- there is no month length to re-add');
 });

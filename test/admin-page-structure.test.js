@@ -301,7 +301,7 @@ test('the submit handler\'s REAL client-construction expression, executed agains
   assert.ok(submitIdx !== -1);
   const submitWindow = html.slice(submitIdx, submitIdx + 2000);
 
-  const EXPR = '{ ...(stored || {}), name, email, phone, startDate, durationMonths }';
+  const EXPR = '{ ...(stored || {}), name, email, phone, startDate, durationMonths, customEndDate }';
   const LINE = 'const client = ' + EXPR + ';';
   assert.ok(submitWindow.includes(LINE),
     'client must be built by spreading the full stored record first, then overlaying only the ' +
@@ -311,11 +311,11 @@ test('the submit handler\'s REAL client-construction expression, executed agains
   // carries fields the form's five visible inputs know nothing about --
   // including one this test file has never heard of, proving the fix is
   // systemic rather than a paymentsByMonth-specific patch.
-  const buildClient = new Function('stored', 'name', 'email', 'phone', 'startDate', 'durationMonths',
+  const buildClient = new Function('stored', 'name', 'email', 'phone', 'startDate', 'durationMonths', 'customEndDate',
     'return ' + EXPR + ';');
   const stored = {
     name: 'Old Name', email: 'x@example.com', phone: '5550000000',
-    startDate: '2026-01-01', durationMonths: 3, pausedAt: null, expiresAt: 123456,
+    startDate: '2026-01-01', durationMonths: 3, customEndDate: '', pausedAt: null, expiresAt: 123456,
     paymentsByMonth: { '2026-01': { amountOwed: 300, paid: true } },
     someFutureField: 'must survive too',
   };
@@ -323,7 +323,7 @@ test('the submit handler\'s REAL client-construction expression, executed agains
   // form field resubmits what is already on the row, exactly like a real
   // Edit would.
   const client = buildClient(
-    stored, stored.name, stored.email, '5559999999', stored.startDate, stored.durationMonths,
+    stored, stored.name, stored.email, '5559999999', stored.startDate, stored.durationMonths, stored.customEndDate,
   );
 
   assert.deepEqual(client.paymentsByMonth, stored.paymentsByMonth,
@@ -348,12 +348,13 @@ test('the submit handler\'s REAL client-construction expression, executed agains
 // directly into Add Client" too, not just an explicit Edit click).
 test('the submit handler clears a stale spread-in expiresAt when startDate/durationMonths differ from what is actually stored', () => {
   const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
-  const submitWindow = html.slice(submitIdx, submitIdx + 3500);
+  const submitWindow = html.slice(submitIdx, submitIdx + 4500);
 
   // Built from pieces rather than one CRLF-sensitive literal -- admin.html's
   // line endings vary by platform/checkout, and this must match either way.
   const CLEAR_EXPR_LINES = [
-    'if (stored && (client.startDate !== stored.startDate || client.durationMonths !== stored.durationMonths)) {',
+    'if (stored && (client.startDate !== stored.startDate || client.durationMonths !== stored.durationMonths',
+    '|| client.customEndDate !== (stored.customEndDate || \'\'))) {',
     'delete client.expiresAt;',
     '}',
   ];
@@ -376,21 +377,30 @@ test('the submit handler clears a stale spread-in expiresAt when startDate/durat
 
   // Dates unchanged -> expiresAt (from the spread) stays.
   const unchanged = run(
-    { startDate: '2026-01-01', durationMonths: 3 },
-    { startDate: '2026-01-01', durationMonths: 3, expiresAt: 999 },
+    { startDate: '2026-01-01', durationMonths: 3, customEndDate: '' },
+    { startDate: '2026-01-01', durationMonths: 3, customEndDate: '', expiresAt: 999 },
   );
   assert.equal(unchanged.expiresAt, 999);
 
   // durationMonths changed -> the stale expiresAt must be cleared.
   const changedDuration = run(
-    { startDate: '2026-01-01', durationMonths: 3 },
-    { startDate: '2026-01-01', durationMonths: 6, expiresAt: 999 },
+    { startDate: '2026-01-01', durationMonths: 3, customEndDate: '' },
+    { startDate: '2026-01-01', durationMonths: 6, customEndDate: '', expiresAt: 999 },
   );
   assert.equal(changedDuration.expiresAt, undefined);
 
+  // customEndDate changed (a Custom client's end date was corrected) -> the
+  // stale expiresAt must be cleared too, even with startDate/durationMonths
+  // both unchanged.
+  const changedEndDate = run(
+    { startDate: '2026-01-01', durationMonths: -1, customEndDate: '2027-01-01' },
+    { startDate: '2026-01-01', durationMonths: -1, customEndDate: '2027-06-01', expiresAt: 999 },
+  );
+  assert.equal(changedEndDate.expiresAt, undefined);
+
   // No stored record at all (brand-new Add) -> nothing to compare against,
   // left untouched either way.
-  const noStored = run(null, { startDate: '2026-01-01', durationMonths: 3 });
+  const noStored = run(null, { startDate: '2026-01-01', durationMonths: 3, customEndDate: '' });
   assert.equal(noStored.expiresAt, undefined);
 });
 
@@ -975,6 +985,59 @@ test('"No package" (value 0) is the first option on the existing Package Length 
     '"No package" must come before the 1-month preset');
 });
 
+test('"Custom (pick end date)" (value -1) is the last option on the Package Length select', () => {
+  const idx = html.indexOf('id="clientDurationMonths"');
+  const selectWindow = html.slice(idx, html.indexOf('</select>', idx));
+  assert.match(selectWindow, /<option value="-1">Custom \(pick end date\)<\/option>/);
+  const twelveMonthAt = selectWindow.indexOf('<option value="12">');
+  const customAt = selectWindow.indexOf('<option value="-1">');
+  assert.ok(twelveMonthAt !== -1 && customAt !== -1 && twelveMonthAt < customAt,
+    '"Custom" must come after every numeric preset');
+});
+
+test('a custom end-date field exists, starts hidden, and has its own date-picker instance', () => {
+  const ids = new Set(idsIn(html));
+  for (const id of ['clientEndDateField', 'clientEndDateTrigger', 'clientEndDate', 'clientEndDatePanel']) {
+    assert.ok(ids.has(id), `missing custom end-date id "${id}"`);
+  }
+  const fieldTag = html.match(/<div class="field date-field" id="clientEndDateField"[^>]*>/);
+  assert.ok(fieldTag, 'clientEndDateField not found as a <div>');
+  assert.match(fieldTag[0], /hidden/, 'clientEndDateField must start hidden');
+
+  assert.match(html, /clientEndDatePicker = initDatePicker\('clientEndDate'\)/,
+    'the custom end-date field must get its own initDatePicker instance, mirroring clientStartDatePicker');
+});
+
+test('updateCustomEndDateVisibility toggles the field on the Package Length select\'s value, and is wired to its change event', () => {
+  const fnIdx = html.indexOf('function updateCustomEndDateVisibility');
+  assert.ok(fnIdx !== -1, 'updateCustomEndDateVisibility not found');
+  const fnWindow = html.slice(fnIdx, fnIdx + 300);
+  assert.match(fnWindow, /clientEndDateField['"]?\)\.hidden\s*=/);
+  assert.match(fnWindow, /clientDurationMonths['"]?\)\.value\s*!==\s*['"]-1['"]/,
+    'visibility must key off the Package Length select\'s value being exactly "-1"');
+
+  assert.match(html, /clientDurationMonths'\)\.addEventListener\('change',\s*updateCustomEndDateVisibility\)/,
+    'must be wired to the select\'s change event, not just called once at load');
+});
+
+test('resetClientForm clears and re-hides the custom end-date field', () => {
+  const fnIdx = html.indexOf('function resetClientForm');
+  assert.ok(fnIdx !== -1);
+  const fnWindow = html.slice(fnIdx, fnIdx + 600);
+  assert.match(fnWindow, /\$\('clientEndDate'\)\.value\s*=\s*''/);
+  assert.match(fnWindow, /clientEndDatePicker\.refresh\(\)/);
+  assert.match(fnWindow, /updateCustomEndDateVisibility\(\)/);
+});
+
+test('Edit-populate sets the custom end-date field from the stored record and refreshes its visibility', () => {
+  const clickIdx = html.indexOf("clientsTableBody').addEventListener('click'");
+  assert.ok(clickIdx !== -1);
+  const clickWindow = html.slice(clickIdx, clickIdx + 3000);
+  assert.match(clickWindow, /\$\('clientEndDate'\)\.value\s*=\s*c\.customEndDate \|\| ''/);
+  assert.match(clickWindow, /clientEndDatePicker\.refresh\(\)/);
+  assert.match(clickWindow, /updateCustomEndDateVisibility\(\)/);
+});
+
 // The Renew button must not be left clickable for a client with nothing to
 // renew -- the least-surprising choice, given renewClient is already a
 // no-op server-side for durationMonths:0.
@@ -984,6 +1047,14 @@ test('the Renew button is disabled for a durationMonths:0 ("No package") client'
   const fnWindow = html.slice(idx, idx + 4500);
   assert.match(fnWindow, /c\.durationMonths\s*===\s*0/);
   assert.match(fnWindow, /renewBtn\.disabled\s*=\s*true/);
+});
+
+test('the Renew button is ALSO disabled for a durationMonths:-1 ("Custom") client', () => {
+  const idx = html.indexOf('function renderClients');
+  assert.ok(idx !== -1, 'renderClients not found');
+  const fnWindow = html.slice(idx, idx + 4500);
+  assert.match(fnWindow, /c\.durationMonths\s*===\s*-1/,
+    'a Custom (exact end date) client has nothing for Renew to extend either -- same no-op as "No package"');
 });
 
 // The Edit-populate falsy-0 bug: `c.durationMonths || ''` silently
@@ -1008,9 +1079,13 @@ test('the submit handler\'s client-side durationMonths pre-check accepts 0 ("No 
   const submitIdx = html.indexOf("clientAddForm').addEventListener('submit'");
   assert.ok(submitIdx !== -1);
   const submitWindow = html.slice(submitIdx, submitIdx + 3000);
-  const checkMatch = submitWindow.match(/if\s*\(!Number\.isFinite\(client\.durationMonths\)\s*\|\|\s*client\.durationMonths\s*(<=?)\s*0\)/);
+  // -1 ("Custom") is also legitimate now, alongside 0 ("No package") -- the
+  // pre-check's floor moved from < 0 to < -1 so it still rejects a genuine
+  // negative (-2, -5, ...) while accepting both sentinels.
+  const checkMatch = submitWindow.match(/if\s*\(!Number\.isFinite\(client\.durationMonths\)\s*\|\|\s*client\.durationMonths\s*(<=?)\s*(-?\d+)\)/);
   assert.ok(checkMatch, 'expected the durationMonths pre-check');
-  assert.equal(checkMatch[1], '<', 'the pre-check must use < 0, not <= 0, so 0 is accepted client-side too');
+  assert.equal(checkMatch[1], '<', 'the pre-check must use a strict <, not <=, so the floor value itself is accepted client-side too');
+  assert.equal(checkMatch[2], '-1', 'the floor must be -1 so both the 0 ("No package") and -1 ("Custom") sentinels pass');
 });
 
 test('a client search input exists above the clients table and filters rows live as the admin types', () => {
@@ -1033,7 +1108,7 @@ test('a client search input exists above the clients table and filters rows live
   // in-progress search survives an Add/Edit/Renew/Pause/Resume/Remove.
   assert.match(html, /clientSearchInput'\)\.addEventListener\('input',\s*filterClientRows\)/);
   const renderIdx = html.indexOf('function renderClients');
-  const renderWindow = html.slice(renderIdx, renderIdx + 4500);
+  const renderWindow = html.slice(renderIdx, renderIdx + 5200);
   assert.match(renderWindow, /filterClientRows\(\)/,
     'renderClients must re-apply the search filter after rebuilding the table');
 });

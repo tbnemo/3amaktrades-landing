@@ -706,7 +706,36 @@
                       <option value="6">6 months</option>
                       <option value="9">9 months</option>
                       <option value="12">12 months</option>
+                      <option value="-1">Custom (pick end date)</option>
                     </select>
+                  </div>
+                  <!-- Only shown when Package Length is "Custom" -- see
+                       updateCustomEndDateVisibility(). Same trigger+hidden-input+
+                       panel shape as the start-date field above, a second
+                       initDatePicker('clientEndDate') instance. -->
+                  <div class="field date-field" id="clientEndDateField" hidden>
+                    <label for="clientEndDateTrigger">Custom end date (required)</label>
+                    <button type="button" class="input date-trigger" id="clientEndDateTrigger"
+                            aria-haspopup="true" aria-expanded="false" aria-controls="clientEndDatePanel">
+                      <span class="date-trigger-text is-placeholder" id="clientEndDateDisplay">mm/dd/yyyy</span>
+                      <span class="date-trigger-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <input type="hidden" id="clientEndDate" />
+                    <div class="date-picker-panel" id="clientEndDatePanel" hidden>
+                      <div class="date-picker-head">
+                        <button type="button" class="date-nav-btn" id="clientEndDatePrevMonth" aria-label="Previous month">‹</button>
+                        <span class="date-picker-label" id="clientEndDateMonthLabel"></span>
+                        <button type="button" class="date-nav-btn" id="clientEndDateNextMonth" aria-label="Next month">›</button>
+                      </div>
+                      <div class="date-picker-weekdays">
+                        <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+                      </div>
+                      <div class="date-picker-grid" id="clientEndDateGrid"></div>
+                      <div class="date-picker-foot">
+                        <button type="button" class="date-picker-link" id="clientEndDateTodayBtn">Today</button>
+                        <button type="button" class="date-picker-link" id="clientEndDateClearBtn">Clear</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1426,6 +1455,11 @@
     // directly (the post-submit reset and Edit-populate, below) must also
     // call clientStartDatePicker.refresh() -- see initDatePicker's comment.
     let clientStartDatePicker = null;
+    // Same contract as clientStartDatePicker, for the "Custom (pick end
+    // date)" field -- only relevant while that field is visible, but kept
+    // initialized unconditionally since reset/Edit-populate call .refresh()
+    // on it regardless of which Package Length option is selected.
+    let clientEndDatePicker = null;
 
     // The 1/2/3/6/9/12 options on #clientDurationMonths are a UI convenience,
     // not a backend restriction -- validateClient in api/_checkin-clients.js
@@ -1433,10 +1467,12 @@
     // number input this replaced had no upper bound either. So a client can
     // already exist (created before this dropdown shipped, or via the API
     // directly) with a durationMonths that matches none of the six presets.
-    // 0 ("No package") is a real preset option in the <select> above, not a
-    // non-preset value ensureDurationOption() needs to inject -- it must be
-    // included here so that check short-circuits correctly for it too.
-    const DURATION_MONTH_PRESETS = [0, 1, 2, 3, 6, 9, 12];
+    // 0 ("No package") and -1 ("Custom", exact end date) are real preset
+    // options in the <select> above, not non-preset values
+    // ensureDurationOption() needs to inject -- included here (and covered by
+    // its own `months <= 0` early-return) so that check short-circuits
+    // correctly for both.
+    const DURATION_MONTH_PRESETS = [0, 1, 2, 3, 6, 9, 12, -1];
     const CUSTOM_DURATION_OPTION_ID = 'clientDurationMonthsCustomOption';
 
     // Removes the one-off <option> ensureDurationOption() may have injected,
@@ -1511,7 +1547,7 @@
         if (editingEmail && emailsMatch(c.email, editingEmail)) {
           editingSnapshot = {
             email: c.email, startDate: c.startDate || '', durationMonths: c.durationMonths,
-            expiresAt: c.expiresAt, pausedAt: c.pausedAt,
+            customEndDate: c.customEndDate || '', expiresAt: c.expiresAt, pausedAt: c.pausedAt,
           };
         }
         const tr = document.createElement('tr');
@@ -1566,6 +1602,9 @@
         if (c.durationMonths === 0) {
           renewBtn.disabled = true;
           renewBtn.title = 'No package to renew';
+        } else if (c.durationMonths === -1) {
+          renewBtn.disabled = true;
+          renewBtn.title = 'Custom plan -- edit the end date directly instead of Renew';
         }
         actionsTd.appendChild(renewBtn);
 
@@ -1647,7 +1686,18 @@
       clientStartDatePicker.refresh();
       clearCustomDurationOption();
       $('clientDurationMonths').value = '';
+      $('clientEndDate').value = '';
+      clientEndDatePicker.refresh();
+      updateCustomEndDateVisibility();
       editingSnapshot = null;
+    }
+
+    // Shows/hides the custom-end-date field to match whatever is CURRENTLY
+    // selected in the Package Length dropdown -- called on every change of
+    // that select, and after every programmatic assignment to its .value
+    // (reset, Edit-populate), none of which fire a 'change' event on their own.
+    function updateCustomEndDateVisibility() {
+      $('clientEndDateField').hidden = $('clientDurationMonths').value !== '-1';
     }
 
     function openClientModal(title, submitLabel) {
@@ -1680,6 +1730,7 @@
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !$('clientModalOverlay').hidden) closeClientModal();
       });
+      $('clientDurationMonths').addEventListener('change', updateCustomEndDateVisibility);
 
       $('clientAddForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1691,6 +1742,7 @@
         const phone = $('clientPhone').value.trim();
         const startDate = $('clientStartDate').value.trim();
         const durationMonths = Number($('clientDurationMonths').value);
+        const customEndDate = $('clientEndDate').value.trim();
 
         // SYSTEMIC FIX (code review, 3rd occurrence of this bug class):
         // spread the full stored record FIRST, then overlay only the fields
@@ -1706,7 +1758,7 @@
         // own description ("Adding an email that is already listed updates
         // that entry").
         const stored = clientsByEmail.get(email.toLowerCase()) || null;
-        const client = { ...(stored || {}), name, email, phone, startDate, durationMonths };
+        const client = { ...(stored || {}), name, email, phone, startDate, durationMonths, customEndDate };
 
         // The server validates too -- this is only so the obvious case does not
         // need a round trip.
@@ -1721,8 +1773,15 @@
         // 0 ("No package") is legitimate -- mirrors validateClient's `< 0`
         // check (api/_checkin-clients.js) so this never rejects what the
         // server would accept.
-        if (!Number.isFinite(client.durationMonths) || client.durationMonths < 0) {
+        // -1 ("Custom") is also legitimate -- mirrors validateClient's own
+        // `=== -1` branch, which requires customEndDate instead of treating
+        // it as an invalid duration.
+        if (!Number.isFinite(client.durationMonths) || client.durationMonths < -1) {
           showClientErrors(['Package length (months) is required and must be zero ("No package") or a positive number.']);
+          return;
+        }
+        if (client.durationMonths === -1 && !client.customEndDate) {
+          showClientErrors(['A custom end date is required when Package Length is "Custom".']);
           return;
         }
 
@@ -1733,7 +1792,8 @@
         // fresh (same as a brand-new Add) instead of silently leaving a
         // package-length correction with no effect. Independent of
         // editingSnapshot below, so it also covers the no-Edit-click path.
-        if (stored && (client.startDate !== stored.startDate || client.durationMonths !== stored.durationMonths)) {
+        if (stored && (client.startDate !== stored.startDate || client.durationMonths !== stored.durationMonths
+            || client.customEndDate !== (stored.customEndDate || ''))) {
           delete client.expiresAt;
         }
 
@@ -1752,7 +1812,8 @@
           // remains the only action that extends expiry without touching
           // these fields.
           const datesUnchanged = client.startDate === editingSnapshot.startDate
-            && client.durationMonths === editingSnapshot.durationMonths;
+            && client.durationMonths === editingSnapshot.durationMonths
+            && client.customEndDate === (editingSnapshot.customEndDate || '');
           if (datesUnchanged) {
             client.expiresAt = editingSnapshot.expiresAt;
           }
@@ -1853,13 +1914,16 @@
           // did. Number.isFinite distinguishes a real (possibly-zero) stored
           // value from a genuinely missing one.
           $('clientDurationMonths').value = Number.isFinite(c.durationMonths) ? String(c.durationMonths) : '';
+          $('clientEndDate').value = c.customEndDate || '';
+          clientEndDatePicker.refresh();
+          updateCustomEndDateVisibility();
           // Stash a snapshot of the CURRENT record so the submit handler can
           // carry expiresAt/pausedAt through unchanged -- see the comment on
           // editingSnapshot's declaration for why this matters, and why
           // renderClients() keeps this fresh rather than letting it go stale.
           editingSnapshot = {
             email: c.email, startDate: c.startDate || '', durationMonths: c.durationMonths,
-            expiresAt: c.expiresAt, pausedAt: c.pausedAt,
+            customEndDate: c.customEndDate || '', expiresAt: c.expiresAt, pausedAt: c.pausedAt,
           };
           openClientModal('Edit Client', 'Save Changes');
           return;
@@ -2223,6 +2287,7 @@
       wireAvailabilityForm(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');
       wireTimePicker();
       clientStartDatePicker = initDatePicker('clientStartDate');
+      clientEndDatePicker = initDatePicker('clientEndDate');
       wireClientManager();
       $('clientSearchInput').addEventListener('input', filterClientRows);
       wirePaymentsTab();

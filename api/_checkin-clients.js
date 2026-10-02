@@ -35,17 +35,33 @@ function addMonths(ms, months) {
   return d.getTime();
 }
 
+// "YYYY-MM-DD" -> the epoch-ms instant it marks (midnight UTC of that day),
+// or null if malformed. The one date-parsing primitive both branches of
+// computeExpiresAt reduce to.
+function parseYmdToUtcMs(dateStr) {
+  const parts = String(dateStr || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
+  const [y, m, d] = parts;
+  return Date.UTC(y, m - 1, d);
+}
+
 // "YYYY-MM-DD" + a package length -> the epoch-ms instant it expires.
 // durationMonths === 0 is the explicit "No package" sentinel (an admin-chosen
 // ongoing/indefinite client) -- it ALWAYS expires at null, regardless of
 // startDate, rather than at addMonths(start, 0) which would just equal start
 // itself and read as "expired on day one."
-function computeExpiresAt(startDate, durationMonths) {
+//
+// durationMonths === -1 is "Custom" -- the admin picked an exact end date
+// directly instead of a month length, so customEndDate is authoritative and
+// no month-math applies at all. Interpreted with the exact same convention as
+// every duration-based expiry (midnight UTC of the given calendar date), so
+// the "Expires" column means the same thing regardless of which path set it.
+function computeExpiresAt(startDate, durationMonths, customEndDate) {
   if (Number(durationMonths) === 0) return null;
-  const parts = String(startDate || '').split('-').map(Number);
-  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
-  const [y, m, d] = parts;
-  return addMonths(Date.UTC(y, m - 1, d), durationMonths);
+  if (Number(durationMonths) === -1) return parseYmdToUtcMs(customEndDate);
+  const startMs = parseYmdToUtcMs(startDate);
+  if (startMs == null) return null;
+  return addMonths(startMs, durationMonths);
 }
 
 // Extends from whichever is LATER: their current expiry, or right now. This
@@ -55,9 +71,11 @@ function computeExpiresAt(startDate, durationMonths) {
 //
 // A durationMonths === 0 ("No package") client has nothing to renew -- a
 // no-op, same reference, matching pauseClient/resumeClient's own no-op
-// convention for an action that does not apply.
+// convention for an action that does not apply. Same for -1 ("Custom"): a
+// fixed, exact end date the admin chose has no month-length to re-add: the
+// admin extends one by editing the end date directly, not by Renew.
 function renewClient(client, nowMs = Date.now()) {
-  if (Number(client.durationMonths) === 0) return client;
+  if (Number(client.durationMonths) === 0 || Number(client.durationMonths) === -1) return client;
   const base = Math.max(client.expiresAt || 0, nowMs);
   return { ...client, expiresAt: addMonths(base, client.durationMonths) };
 }
@@ -92,14 +110,16 @@ function isAccessActive(client, nowMs = Date.now()) {
   return nowMs < client.expiresAt;
 }
 
-// 0 is the explicit "No package" sentinel and must survive normalization
-// exactly -- NOT get clamped up to the usual minimum of 1. Only a genuinely
-// missing/invalid/negative value falls back to 1; a non-zero value still
-// rounds and floors at 1 the same way it always has.
+// 0 ("No package") and -1 ("Custom", exact end date) are explicit sentinels
+// and must survive normalization exactly -- NOT get clamped up to the usual
+// minimum of 1. Only a genuinely missing/invalid/other-negative value falls
+// back to 1; a non-zero, non-(-1) value still rounds and floors at 1 the
+// same way it always has.
 function normalizeDurationMonths(raw) {
   const n = Number(raw);
   if (!Number.isFinite(n)) return 1;
   if (n === 0) return 0;
+  if (n === -1) return -1;
   return Math.max(1, Math.round(n));
 }
 
@@ -127,6 +147,11 @@ function normalizePaymentsByMonth(raw) {
 function normalizeEntry(c) {
   const startDate = String((c && c.startDate) || '').trim();
   const durationMonths = normalizeDurationMonths(c && c.durationMonths);
+  // Only meaningful when durationMonths === -1 ("Custom") -- kept on the
+  // record regardless of durationMonths so re-selecting "Custom" on a later
+  // Edit has something to populate back into the field, the same way
+  // startDate survives even for a "No package" (0) client.
+  const customEndDate = String((c && c.customEndDate) || '').trim();
   const pausedAt = Number.isFinite(c && c.pausedAt) ? c.pausedAt : null;
   const rawExpiresAt = c && c.expiresAt;
   // An already-finite expiresAt is the normal case: an existing record's
@@ -136,7 +161,7 @@ function normalizeEntry(c) {
   // durationMonths === 0 ("No package") case by always returning null.
   const expiresAt = Number.isFinite(rawExpiresAt)
     ? rawExpiresAt
-    : (startDate ? computeExpiresAt(startDate, durationMonths) : null);
+    : ((startDate || customEndDate) ? computeExpiresAt(startDate, durationMonths, customEndDate) : null);
   const paymentsByMonth = normalizePaymentsByMonth(c && c.paymentsByMonth);
   return {
     name: String((c && c.name) || '').trim(),
@@ -144,6 +169,7 @@ function normalizeEntry(c) {
     phone: String((c && c.phone) || '').trim(),
     startDate,
     durationMonths,
+    customEndDate,
     pausedAt,
     expiresAt,
     paymentsByMonth,
@@ -193,11 +219,16 @@ function validateClient(entry) {
     || typeof rawDuration === 'boolean'
     || typeof rawDuration === 'object';
   if (durationLooksInvalidType) {
-    errors.push('durationMonths is required and must be zero ("No package") or a positive number');
+    errors.push('durationMonths is required and must be zero ("No package"), -1 ("Custom"), or a positive number');
   } else {
     const durationMonths = Number(rawDuration);
-    if (!Number.isFinite(durationMonths) || durationMonths < 0) {
-      errors.push('durationMonths is required and must be zero ("No package") or a positive number');
+    if (!Number.isFinite(durationMonths) || (durationMonths < 0 && durationMonths !== -1)) {
+      errors.push('durationMonths is required and must be zero ("No package"), -1 ("Custom"), or a positive number');
+    } else if (durationMonths === -1) {
+      const customEndDate = String(src.customEndDate || '').trim();
+      if (!customEndDate || !START_DATE_RE.test(customEndDate)) {
+        errors.push('customEndDate is required and must be YYYY-MM-DD when durationMonths is -1 ("Custom")');
+      }
     }
   }
 
