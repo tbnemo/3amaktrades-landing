@@ -1126,11 +1126,12 @@
       return out;
     })();
 
-    // The input currently bound to the ONE shared popup (null when closed).
-    // Shared rather than one instance per field because there are 28 of
-    // these (7 days x start/end x 2 audiences) and they're never open at
-    // the same time.
+    // The input/trigger currently bound to the ONE shared popup (null when
+    // closed). Shared rather than one instance per field because there are
+    // 28 of these (7 days x start/end x 2 audiences) and they're never open
+    // at the same time.
     let timePickerBoundInput = null;
+    let timePickerBoundTrigger = null;
 
     function buildTimePickerList() {
       const list = $('timePickerList');
@@ -1145,15 +1146,22 @@
       }
     }
 
-    function openTimePickerFor(input, triggerBtn) {
-      timePickerBoundInput = input;
+    // position:fixed, so these are viewport coordinates -- recomputed from
+    // the bound trigger's CURRENT position, not just once at open time (see
+    // the scroll/resize handlers below, which call this instead of closing).
+    function repositionTimePicker() {
+      if (!timePickerBoundTrigger) return;
+      const rect = timePickerBoundTrigger.getBoundingClientRect();
       const panel = $('timePickerPanel');
-      // position:fixed, so these are viewport coordinates computed fresh at
-      // open time -- no positioned ancestor required anywhere in the markup.
-      const rect = triggerBtn.getBoundingClientRect();
       panel.style.left = `${Math.round(rect.left)}px`;
       panel.style.top = `${Math.round(rect.bottom + 4)}px`;
-      panel.hidden = false;
+    }
+
+    function openTimePickerFor(input, triggerBtn) {
+      timePickerBoundInput = input;
+      timePickerBoundTrigger = triggerBtn;
+      $('timePickerPanel').hidden = false;
+      repositionTimePicker();
 
       const current = input.value.trim();
       for (const opt of $('timePickerList').children) {
@@ -1166,6 +1174,7 @@
     function closeTimePicker() {
       $('timePickerPanel').hidden = true;
       timePickerBoundInput = null;
+      timePickerBoundTrigger = null;
     }
 
     function wireTimePicker() {
@@ -1203,16 +1212,14 @@
         if (e.key === 'Escape' && !$('timePickerPanel').hidden) closeTimePicker();
       });
 
-      // The open panel's position was computed once, in viewport coordinates,
-      // at open time -- scrolling or resizing makes that stale, and there is
-      // no cheap way to tell whether the trigger itself moved. Close rather
-      // than track it.
-      window.addEventListener('scroll', () => {
-        if (!$('timePickerPanel').hidden) closeTimePicker();
-      }, true);
-      window.addEventListener('resize', () => {
-        if (!$('timePickerPanel').hidden) closeTimePicker();
-      });
+      // Reposition rather than close -- a trigger scrolling INTO view as
+      // part of its own click (e.g. a long tab scrolled down, or keyboard
+      // navigation) fires a scroll event immediately after opening, and
+      // closing on that would make the picker impossible to open reliably.
+      // Capture phase so this still fires for a scroll inside a scrollable
+      // ancestor (e.g. the modal box), not only window-level scrolling.
+      window.addEventListener('scroll', repositionTimePicker, true);
+      window.addEventListener('resize', repositionTimePicker);
     }
 
     // Wires one trigger+panel date-picker instance. baseId is the id of the
