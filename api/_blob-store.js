@@ -29,6 +29,11 @@ const CHECKIN_CLIENTS_BLOB = 'checkin-clients.json';
 // identifier, not a single global counter (see Global Constraints for why).
 const CHECKIN_VERIFY_ATTEMPTS_BLOB = 'checkin-verify-attempts.json';
 
+// Full (non-partial) application-form submissions. Lets a resubmission with
+// the same email or phone update the existing record instead of silently
+// becoming a second one -- see api/_applicants.js.
+const APPLICANTS_BLOB = 'applicants.json';
+
 let client = { get: vercelBlob.get, put: vercelBlob.put };
 
 // Tests inject a fake so the suite never needs a real Blob store.
@@ -74,4 +79,5 @@ module.exports = {
   readJson, writeJson, isConfigured, __setClientForTests,
   BLOB_NOT_CONFIGURED, AVAILABILITY_BLOB, OAUTH_BLOB, LOGIN_ATTEMPTS_BLOB,
   CHECKIN_AVAILABILITY_BLOB, CHECKIN_CLIENTS_BLOB, CHECKIN_VERIFY_ATTEMPTS_BLOB,
+  APPLICANTS_BLOB,
 };

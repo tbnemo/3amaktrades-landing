@@ -28,24 +28,6 @@ async function getPermalink(channelId, messageTs) {
   return data.permalink;
 }
 
-// Checks the last ~200 messages in a channel for this phone number, so a
-// repeat application can be flagged instead of looking like a fresh lead.
-async function isRepeatSubmission(channelId, phone) {
-  const BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
-  if (!BOT_TOKEN || !phone || phone === '—') return false;
-  try {
-    const res = await fetch(`https://slack.com/api/conversations.history?channel=${channelId}&limit=200`, {
-      headers: { Authorization: `Bearer ${BOT_TOKEN}` },
-    });
-    const data = await res.json();
-    if (!data.ok) { console.error('Slack conversations.history error:', data.error); return false; }
-    return data.messages.some(m => m.text && m.text.includes(phone));
-  } catch (e) {
-    console.error('isRepeatSubmission threw:', e.message);
-    return false;
-  }
-}
-
 // Posts to Slack via the bot token (chat.postMessage) so any channel can be
 // targeted by ID without needing a separate Incoming Webhook per channel.
 // If the bot token is missing OR fails for any reason (revoked, rate-limited,
@@ -109,7 +91,7 @@ async function postSystemAlert(text) {
 }
 
 module.exports = {
-  postToSlack, getPermalink, isRepeatSubmission, postSystemAlert,
+  postToSlack, getPermalink, postSystemAlert,
   CHANNEL_NEW_APPLICATIONS, CHANNEL_INCOMPLETE_LEADS, CHANNEL_WARM_LEADS,
   CHANNEL_NEW_CALLS_BOOKED, CHANNEL_RESCHEDULED_CALLS, CHANNEL_CANCELLED_CALLS, CHANNEL_SYSTEM_ALERTS,
   CHANNEL_CHECKIN_BOOKED, CHANNEL_CHECKIN_RESCHEDULED, CHANNEL_CHECKIN_CANCELLED,

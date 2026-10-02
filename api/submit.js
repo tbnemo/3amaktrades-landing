@@ -15,11 +15,13 @@
 const {
   postToSlack,
   getPermalink,
-  isRepeatSubmission,
+  postSystemAlert,
   CHANNEL_NEW_APPLICATIONS,
   CHANNEL_INCOMPLETE_LEADS,
   CHANNEL_WARM_LEADS,
 } = require('./_slack');
+const applicants = require('./_applicants');
+const store = require('./_blob-store');
 const { resolveAction } = require('./_route-action');
 
 // Honeypot: real users never see or fill this field. Any value means a bot filled the form.
@@ -43,14 +45,45 @@ async function submitHandler(req, res) {
   const { name, country, experience, budget, budgetCode, looking, goal, phone, email, lang, partial } = req.body;
 
   const footer = `Sent by <https://3amaktrades-landing.vercel.app|3AMAK Bot> · ${new Date().toUTCString()}`;
-  const isRepeat = await isRepeatSubmission(CHANNEL_NEW_APPLICATIONS, phone);
-  const repeatTag = isRepeat ? '🔁 ' : '';
+
+  // A resubmission with the same email OR phone (current or previously used)
+  // updates the one stored record instead of becoming a second one -- see
+  // api/_applicants.js. Partial (incomplete) submissions are a different
+  // concept entirely (an abandoned form, handled by the separate
+  // abandoned-form capture flow) and are never written here.
+  let isUpdate = false;
+  let submissionCount = 1;
+  if (!partial) {
+    const read = await applicants.loadApplicants();
+    // Fail OPEN: a Blob hiccup (or the store not being configured yet) must
+    // never drop a real application just because the dedup check couldn't
+    // run. Worst case on a failure here is a false "New Application" label
+    // on a genuine resubmission -- not a lost lead.
+    if (read.ok) {
+      const result = applicants.upsertApplicant(read.applicants, {
+        name, country, experience, budget, budgetCode, looking, goal, phone, email, lang,
+      });
+      isUpdate = result.isUpdate;
+      submissionCount = result.record.submissionCount;
+      const written = await applicants.saveApplicants(result.applicants);
+      if (!written.ok && written.reason !== store.BLOB_NOT_CONFIGURED) {
+        console.error('applicants save failed:', written.reason);
+        await postSystemAlert(`*Applicant store write failed* for \`${email}\`: ${written.reason}. `
+          + `The Slack post still went out; the dedup record just didn't save this time.`);
+      }
+    } else if (read.reason !== store.BLOB_NOT_CONFIGURED) {
+      console.error('applicants load failed:', read.reason);
+      await postSystemAlert(`*Applicant store read failed* for \`${email}\`: ${read.reason}. `
+        + `The Slack post still went out; this submission could not be checked against past ones.`);
+    }
+  }
+  const updateTag = isUpdate ? `🔁 Updated (${submissionCount}x) — ` : '';
 
   const message = partial ? {
     username: '3AMAK Bot',
     icon_emoji: ':bar_chart:',
     blocks: [
-      { type: 'header', text: { type: 'plain_text', text: `${repeatTag}Lead Captured — Incomplete`, emoji: true } },
+      { type: 'header', text: { type: 'plain_text', text: 'Lead Captured — Incomplete', emoji: true } },
       {
         type: 'section',
         text: { type: 'mrkdwn', text: `*Name:* ${name}\n*Phone:* ${phone}\n*Email:* ${email}` }
@@ -61,7 +94,7 @@ async function submitHandler(req, res) {
     username: '3AMAK Bot',
     icon_emoji: ':bar_chart:',
     blocks: [
-      { type: 'header', text: { type: 'plain_text', text: `${repeatTag}${priorityTag(budgetCode)}New Application`, emoji: true } },
+      { type: 'header', text: { type: 'plain_text', text: `${updateTag}${priorityTag(budgetCode)}New Application`, emoji: true } },
       {
         type: 'section',
         text: { type: 'mrkdwn', text: `*Name:* ${name}\n*Phone:* ${phone}\n*Email:* ${email}\n*Country:* ${country}\n*Experience:* ${experience}\n*Budget:* ${budget}\n*Looking for:* ${looking}\n*Goal:* ${goal}\n*Language:* ${lang}` }
