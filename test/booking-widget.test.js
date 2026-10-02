@@ -180,14 +180,40 @@ test('getTimezoneOptions: an already-curated detected zone is moved to the front
   assert.equal(list.length, h.FALLBACK_TIMEZONES.length);
 });
 
-test('getTimezoneLabel: only the detected zone gets the suffix', () => {
-  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', '(your location)'),
-    'America/Toronto (your location)');
-  assert.equal(h.getTimezoneLabel('Europe/London', 'America/Toronto', '(your location)'), 'Europe/London');
-  // No suffix text provided (texts.tz_detected_suffix missing/empty) -- must not
-  // render a dangling trailing space.
-  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', ''), 'America/Toronto');
-  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', undefined), 'America/Toronto');
+// Pinned instants, one per side of a US DST boundary, so EST vs EDT (etc.)
+// is asserted against a fixed date rather than "whatever today happens to
+// be" -- the whole point of resolving this live instead of hardcoding one
+// abbreviation per zone.
+const SUMMER = new Date('2026-07-15T12:00:00Z'); // DST in effect
+const WINTER = new Date('2026-01-15T12:00:00Z'); // DST not in effect
+
+test('getTimezoneLabel: resolves the live abbreviation, which flips with DST', () => {
+  assert.equal(h.getTimezoneLabel('America/New_York', null, '', SUMMER), 'America/New_York (EDT)');
+  assert.equal(h.getTimezoneLabel('America/New_York', null, '', WINTER), 'America/New_York (EST)');
+  assert.equal(h.getTimezoneLabel('America/Chicago', null, '', SUMMER), 'America/Chicago (CDT)');
+  assert.equal(h.getTimezoneLabel('America/Chicago', null, '', WINTER), 'America/Chicago (CST)');
+});
+
+test('getTimezoneLabel: only the detected zone gets the suffix, alongside its abbreviation', () => {
+  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', 'your location', SUMMER),
+    'America/Toronto (EDT, your location)');
+  assert.equal(h.getTimezoneLabel('America/New_York', 'America/Toronto', 'your location', SUMMER),
+    'America/New_York (EDT)', 'a different zone than the detected one must not get the suffix');
+});
+
+test('getTimezoneLabel: no dangling suffix when texts.tz_detected_suffix is missing/empty', () => {
+  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', '', SUMMER), 'America/Toronto (EDT)');
+  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', undefined, SUMMER), 'America/Toronto (EDT)');
+});
+
+test('getTimezoneLabel: an unresolvable zone falls back to the bare name, suffix still intact', () => {
+  // Intl throws on a bogus zone name -- getTimezoneAbbrev swallows that and
+  // returns '', so the label must fall back to the plain name (plus the
+  // suffix alone, if this was the detected entry) rather than throwing or
+  // rendering an empty "()".
+  assert.equal(h.getTimezoneLabel('Not/ARealZone', null, '', SUMMER), 'Not/ARealZone');
+  assert.equal(h.getTimezoneLabel('Not/ARealZone', 'Not/ARealZone', 'your location', SUMMER),
+    'Not/ARealZone (your location)');
 });
 
 // ---------------------------------------------------------------------

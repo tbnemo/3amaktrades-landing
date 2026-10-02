@@ -112,11 +112,38 @@
     return list;
   }
 
-  // "America/New_York" -> "America/New_York (detected)" for the one entry
-  // that came from the visitor's own browser, so it reads as the specific,
-  // auto-detected zone rather than just another item in a list of cities.
-  function getTimezoneLabel(tzName, detectedTz, detectedSuffix) {
-    return tzName === detectedTz && detectedSuffix ? (tzName + ' ' + detectedSuffix) : tzName;
+  // The IANA name alone ("America/New_York") doesn't tell a visitor what
+  // that actually means in familiar terms -- this resolves the short
+  // abbreviation Americans actually recognize (EST/EDT/CST/CDT/etc.), live
+  // for the given instant, since DST flips WHICH abbreviation is correct
+  // for the same zone depending on the date. atDate defaults to now but is
+  // overridable so tests can pin a specific DST regime instead of being at
+  // the mercy of whatever day the suite happens to run on.
+  function getTimezoneAbbrev(tzName, atDate) {
+    try {
+      var parts = new Intl.DateTimeFormat('en-US', { timeZone: tzName, timeZoneName: 'short' })
+        .formatToParts(atDate || new Date());
+      var found = null;
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i].type === 'timeZoneName') { found = parts[i].value; break; }
+      }
+      return found || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  // "America/New_York" -> "America/New_York (EDT)", and for the one entry
+  // that came from the visitor's own browser (the closest this can get to
+  // "their IP"), "America/New_York (EDT, your location)" -- both the
+  // familiar abbreviation and which one is specifically theirs.
+  function getTimezoneLabel(tzName, detectedTz, detectedSuffix, atDate) {
+    var abbr = getTimezoneAbbrev(tzName, atDate);
+    var isDetected = tzName === detectedTz && !!detectedSuffix;
+    if (!abbr) return isDetected ? (tzName + ' (' + detectedSuffix + ')') : tzName;
+    return isDetected
+      ? (tzName + ' (' + abbr + ', ' + detectedSuffix + ')')
+      : (tzName + ' (' + abbr + ')');
   }
 
   function escapeHtml(s) {
@@ -713,6 +740,7 @@
         dayLabelParts: dayLabelParts,
         localDateKey: localDateKey,
         getTimezoneOptions: getTimezoneOptions,
+        getTimezoneAbbrev: getTimezoneAbbrev,
         getTimezoneLabel: getTimezoneLabel,
         escapeHtml: escapeHtml,
         FALLBACK_TIMEZONES: FALLBACK_TIMEZONES,
