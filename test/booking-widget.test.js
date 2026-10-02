@@ -136,8 +136,10 @@ test('localDateKey: defaults to "now" when no Date is passed', () => {
 // ---------------------------------------------------------------------
 // getTimezoneOptions -- seeds the visitor timezone <select>. Must always
 // include the detected zone (first, if it wasn't already present), and
-// must fall back to a short curated list when Intl.supportedValuesOf is
-// unavailable in the running engine.
+// must ALWAYS use the short curated list -- never the full ~400-zone IANA
+// set from Intl.supportedValuesOf, even when the running engine supports
+// it (every modern one does, which is exactly why that used to be the
+// default and visitors got hundreds of options instead of a handful).
 // ---------------------------------------------------------------------
 
 test('getTimezoneOptions: includes the detected zone even if missing from every list', () => {
@@ -152,25 +154,40 @@ test('getTimezoneOptions: a detected zone already present in the list is not dup
   assert.equal(list.filter((z) => z === 'UTC').length, 1);
 });
 
-test('getTimezoneOptions: falls back to the curated short list when Intl.supportedValuesOf is unavailable', () => {
+test('getTimezoneOptions: uses the curated short list regardless of Intl.supportedValuesOf support', () => {
   const orig = Intl.supportedValuesOf;
   try {
-    // Simulate an engine without Intl.supportedValuesOf (not every engine has it).
     delete Intl.supportedValuesOf;
-    const list = h.getTimezoneOptions('America/Toronto');
-    // America/Toronto is already in FALLBACK_TIMEZONES, so it should appear
-    // exactly once, and the list should be the short curated fallback length.
-    assert.equal(list.filter((z) => z === 'America/Toronto').length, 1);
-    assert.equal(list.length, h.FALLBACK_TIMEZONES.length);
+    const withoutSupport = h.getTimezoneOptions('America/Toronto');
+    assert.equal(withoutSupport.length, h.FALLBACK_TIMEZONES.length);
+    assert.equal(withoutSupport.filter((z) => z === 'America/Toronto').length, 1);
   } finally {
     Intl.supportedValuesOf = orig; // restore for every later test in this process
   }
+
+  if (typeof Intl.supportedValuesOf !== 'function') return; // nothing more to assert on this engine
+  const withSupport = h.getTimezoneOptions('America/Toronto');
+  assert.equal(withSupport.length, h.FALLBACK_TIMEZONES.length,
+    'must stay the short curated list even when the full IANA set is available -- this is the bug being fixed');
 });
 
-test('getTimezoneOptions: prefers the full IANA list over the fallback when available', () => {
-  if (typeof Intl.supportedValuesOf !== 'function') return; // nothing to assert on this engine
-  const list = h.getTimezoneOptions('America/Toronto');
-  assert.ok(list.length > h.FALLBACK_TIMEZONES.length, 'the real IANA list is much larger than the curated fallback');
+test('getTimezoneOptions: an already-curated detected zone is moved to the front, not left wherever it sat', () => {
+  // America/New_York is in FALLBACK_TIMEZONES but not first -- confirms the
+  // "move to front" branch, not just the "prepend if missing" one.
+  const list = h.getTimezoneOptions('America/New_York');
+  assert.equal(list[0], 'America/New_York');
+  assert.equal(list.filter((z) => z === 'America/New_York').length, 1);
+  assert.equal(list.length, h.FALLBACK_TIMEZONES.length);
+});
+
+test('getTimezoneLabel: only the detected zone gets the suffix', () => {
+  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', '(your location)'),
+    'America/Toronto (your location)');
+  assert.equal(h.getTimezoneLabel('Europe/London', 'America/Toronto', '(your location)'), 'Europe/London');
+  // No suffix text provided (texts.tz_detected_suffix missing/empty) -- must not
+  // render a dangling trailing space.
+  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', ''), 'America/Toronto');
+  assert.equal(h.getTimezoneLabel('America/Toronto', 'America/Toronto', undefined), 'America/Toronto');
 });
 
 // ---------------------------------------------------------------------

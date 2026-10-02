@@ -93,24 +93,30 @@
     'Asia/Tokyo', 'Australia/Sydney',
   ];
 
-  // Seeds the timezone <select>. Prefers the full IANA list via
-  // Intl.supportedValuesOf (not available in every engine), falls back to a
-  // short curated list, and always guarantees the detected zone is present
-  // (and first) even if it's missing from whichever list won.
+  // Seeds the timezone <select>. Always the short curated list -- the full
+  // ~400-zone IANA set via Intl.supportedValuesOf is technically available in
+  // every modern engine, which is exactly the problem: visitors got that
+  // whole list instead of a handful of major zones to pick from. The
+  // auto-detected zone (resolved from the visitor's own browser/OS, the
+  // closest this can get to "their IP") is always present and first,
+  // distinguished from the rest of the list by getTimezoneLabel below rather
+  // than silently sitting wherever it happens to fall alphabetically.
   function getTimezoneOptions(detectedTz) {
-    var list = null;
-    try {
-      if (typeof Intl.supportedValuesOf === 'function') {
-        list = Intl.supportedValuesOf('timeZone');
-      }
-    } catch (e) {
-      list = null;
-    }
-    list = (list && list.length) ? list.slice() : FALLBACK_TIMEZONES.slice();
+    var list = FALLBACK_TIMEZONES.slice();
     if (detectedTz && list.indexOf(detectedTz) === -1) {
       list = [detectedTz].concat(list);
+    } else if (detectedTz) {
+      list.splice(list.indexOf(detectedTz), 1);
+      list.unshift(detectedTz);
     }
     return list;
+  }
+
+  // "America/New_York" -> "America/New_York (detected)" for the one entry
+  // that came from the visitor's own browser, so it reads as the specific,
+  // auto-detected zone rather than just another item in a list of cities.
+  function getTimezoneLabel(tzName, detectedTz, detectedSuffix) {
+    return tzName === detectedTz && detectedSuffix ? (tzName + ' ' + detectedSuffix) : tzName;
   }
 
   function escapeHtml(s) {
@@ -199,7 +205,12 @@
     '.bw-slot:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }',
     '.bw-slot-time { unicode-bidi: isolate; }',
     '',
-    '.bw-tz-row { margin-block: 4px 22px; }',
+    // display:flex + gap, not a margin on the <label> -- a <label> is an
+    // INLINE element by default, so a bottom margin on it (the .bw-heading
+    // rule's margin: 0 0 10px) has no effect on the gap to its next sibling.
+    // Every other .bw-heading use is an <h4> (block by default), which is why
+    // only this row rendered with the label and the <select> touching.
+    '.bw-tz-row { display: flex; flex-direction: column; gap: 8px; margin-block: 4px 22px; }',
     '.bw-tz-select {',
     '  background: var(--void); color: var(--bone); border: 1px solid var(--gold-lo);',
     '  border-radius: 0; padding: 8px 10px; font-size: 13px; width: 100%; max-width: 320px;',
@@ -398,7 +409,8 @@
       for (var i = 0; i < options.length; i++) {
         var tzName = options[i];
         var sel = tzName === state.visitorTz;
-        out += '<option value="' + escapeHtml(tzName) + '"' + (sel ? ' selected' : '') + '>' + escapeHtml(tzName) + '</option>';
+        var label = getTimezoneLabel(tzName, detectedTz, texts.tz_detected_suffix);
+        out += '<option value="' + escapeHtml(tzName) + '"' + (sel ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
       }
       out += '</select></div>';
       return out;
@@ -701,6 +713,7 @@
         dayLabelParts: dayLabelParts,
         localDateKey: localDateKey,
         getTimezoneOptions: getTimezoneOptions,
+        getTimezoneLabel: getTimezoneLabel,
         escapeHtml: escapeHtml,
         FALLBACK_TIMEZONES: FALLBACK_TIMEZONES,
       },
