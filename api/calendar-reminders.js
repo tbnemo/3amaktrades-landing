@@ -19,6 +19,22 @@ const cemail = require('./_checkin-email');
 const { isCheckinEvent } = require('./_checkin-audience');
 const checkinTemplateMod = require('./_load-checkin-template');
 
+// How far apart two cron ticks are. ONE source of truth for a number the entire
+// delivery guarantee is measured against: Vercel's Hobby plan caps crons at once
+// per day, so vercel.json schedules this endpoint "0 0 * * *" and ticks land 24h
+// apart. Until now that 24 existed only as prose in three comments and a helper
+// inside one test file, which is no use to the booking handlers -- they have to
+// reason about the same number to know whether the cron can be relied on at all.
+//
+// This constant does NOT set the period -- vercel.json's schedule does. It is
+// what the code BELIEVES the period to be, and a belief that runs behind reality
+// is the dangerous case: if the real cron ever ticked less often than this says,
+// every booking in between would be left to a run that is not coming.
+// test/reminder-delivery-guarantee.test.js parses the live schedule and asserts
+// the two agree, so neither a plan upgrade nor a schedule edit can leave this
+// stale quietly.
+const CRON_PERIOD_HOURS = 24;
+
 // Read per call rather than captured once at module load. This single number, the
 // cron period, and the template's minNoticeHours are the three things the whole
 // delivery guarantee rests on (see test/reminder-delivery-guarantee.test.js), and
@@ -46,6 +62,37 @@ function wouldRemind(startMs, nowMs) {
   if (!Number.isFinite(startMs)) return false;
   const { timeMinMs, timeMaxMs } = reminderWindow(nowMs);
   return startMs >= timeMinMs && startMs <= timeMaxMs;
+}
+
+// Can the once-daily cron be RELIED ON to remind a booking being made right now
+// (nowMs) for a call starting at startMs? If not, the booking handler sends the
+// reminder itself, immediately, instead of trusting a tick that may never come.
+//
+// A booking made at B for a call at S is caught by the cron iff some tick lands
+// in [max(B, S - lead), S] -- a closed interval exactly min(S - B, lead) long.
+// Ticks are CRON_PERIOD_HOURS apart and their phase relative to any one booking
+// is arbitrary, so an interval is guaranteed to contain a tick FOR EVERY PHASE
+// only once it is at least a full period long. Shorter than that, the booking
+// might still get lucky -- but "might" is not delivery, and the failure mode is
+// a visitor who simply never hears from us again about a call they scheduled,
+// with no log line and no trace. So anything short of a full period counts as
+// "the cron cannot be trusted with this one".
+//
+// This is deliberately the SAME quantity -- min(notice, lead) against the cron
+// period -- that api/_availability.js's minNoticeHours comment and
+// test/reminder-delivery-guarantee.test.js are about. The difference is where it
+// is evaluated: minNoticeHours is a floor on the whole template, which an admin
+// can lower to allow same-day booking, whereas this runs per booking against the
+// notice that booking ACTUALLY had. That is what makes lowering the floor safe:
+// the bookings the floor used to forbid are precisely the ones this catches.
+function needsImmediateReminder(startMs, nowMs) {
+  if (!Number.isFinite(startMs) || !Number.isFinite(nowMs)) return false;
+  const noticeHours = (startMs - nowMs) / (60 * 60 * 1000);
+  // A call that has already started is not this function's problem: wouldRemind
+  // drops it on the lower bound, because reminding someone about a call already
+  // under way is worse than useless. Nothing to rescue, so nothing to send.
+  if (noticeHours < 0) return false;
+  return Math.min(noticeHours, leadHours()) < CRON_PERIOD_HOURS;
 }
 
 // Two independent ways in, both sufficient on their own: Vercel's own cron
@@ -181,3 +228,10 @@ module.exports = handler;
 module.exports.leadHours = leadHours;
 module.exports.reminderWindow = reminderWindow;
 module.exports.wouldRemind = wouldRemind;
+// Exported for the same reason AND for production use: the four booking/
+// reschedule handlers call needsImmediateReminder to decide whether to send the
+// reminder themselves rather than wait for a tick. Keeping it here, beside the
+// window arithmetic it is the complement of, is what stops the two halves of the
+// guarantee drifting apart.
+module.exports.CRON_PERIOD_HOURS = CRON_PERIOD_HOURS;
+module.exports.needsImmediateReminder = needsImmediateReminder;

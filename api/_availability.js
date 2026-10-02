@@ -23,16 +23,30 @@ const DEFAULT_TEMPLATE = {
   },
   slotMinutes: 30,
   bufferMinutes: 15,
-  // 24, not 12, and the reason is reminder delivery rather than scheduling taste.
-  // The reminder cron can only run ONCE A DAY (Vercel Hobby caps cron frequency),
-  // so a booking is reminded only if some daily tick falls inside
-  // [max(bookedAt, start - REMINDER_LEAD_HOURS), start]. That interval is
-  // min(noticeHours, leadHours) long, so a daily tick is guaranteed to land in it
-  // only when min(noticeHours, leadHours) >= 24. At 12 the interval could be 12h
-  // long and miss every tick entirely -- a booking that silently got no reminder
-  // at all. See test/reminder-delivery-guarantee.test.js, which proves the
-  // invariant and re-derives it against the live cron schedule in vercel.json.
-  // Lowering this below 24 reopens that hole; that test is what will say so.
+  // 24, not 12, and the reason was originally reminder delivery rather than
+  // scheduling taste. The reminder cron can only run ONCE A DAY (Vercel Hobby
+  // caps cron frequency), so a booking is reminded BY THE CRON only if some
+  // daily tick falls inside [max(bookedAt, start - REMINDER_LEAD_HOURS), start].
+  // That interval is min(noticeHours, leadHours) long, so a daily tick is
+  // guaranteed to land in it only when min(noticeHours, leadHours) >= 24. At 12
+  // the interval could be 12h long and miss every tick entirely -- a booking
+  // that silently got no reminder at all.
+  //
+  // That hole is now CLOSED independently of this number. A booking made with
+  // less notice than the cron can be relied on for gets its reminder sent at
+  // booking time instead: api/calendar-book.js, api/calendar-reschedule.js and
+  // both check-in handlers call needsImmediateReminder() from
+  // api/calendar-reminders.js and, when it is true, send the reminder themselves
+  // and set reminderSent so the cron skips the event rather than double-sending.
+  // So LOWERING this to allow same-day booking is safe -- which is exactly what
+  // the clamp below has always permitted, and what used to be a silent trap.
+  //
+  // 24 stays the shipped default because it is also a scheduling choice (a day's
+  // warning before a call), and because at 24 every booking takes the plain cron
+  // path with no immediate send at all. See
+  // test/reminder-delivery-guarantee.test.js, which proves delivery for ANY
+  // admin-settable value -- including 1 -- against the live cron schedule in
+  // vercel.json, and pins that the default still needs no immediate sends.
   minNoticeHours: 24,
 };
 

@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
   const startMs = Date.parse(event.start && event.start.dateTime) || Date.now();
   const endMs = Date.parse(event.end && event.end.dateTime) || startMs;
 
-  const deleted = await gcal.deleteEvent(event.id);
+  const deleted = await gcal.deleteEvent(event.id, { notifyGuests: true });
   if (!deleted.ok) {
     return res.status(502).json({ ok: false, error: 'UPSTREAM',
       message: 'Could not cancel the booking.' });

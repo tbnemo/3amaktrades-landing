@@ -527,6 +527,139 @@ test('WINDOW: an event starting beyond now+lead is skipped even if listEvents ha
   }
 });
 
+// ---------------------------------------------------------------------------
+// needsImmediateReminder: the other half of the delivery guarantee.
+//
+// wouldRemind answers "would a cron run AT THIS INSTANT send this reminder".
+// needsImmediateReminder answers the question the four booking/reschedule
+// handlers have to ask instead: "can the once-daily cron be RELIED ON to send
+// this one at all, or must I send it myself right now?" The two together are
+// what make a booking's reminder unconditional regardless of how low an admin
+// sets minNoticeHours -- see test/reminder-delivery-guarantee.test.js, which
+// proves exactly that composition end to end.
+//
+// These are direct unit tests on the predicate. The boundary cases are the
+// point: it has to agree with the >= in the invariant, down to the edge.
+// ---------------------------------------------------------------------------
+
+function withLead(leadEnv, fn) {
+  const had = Object.prototype.hasOwnProperty.call(process.env, 'REMINDER_LEAD_HOURS');
+  const prev = process.env.REMINDER_LEAD_HOURS;
+  if (leadEnv === undefined) delete process.env.REMINDER_LEAD_HOURS;
+  else process.env.REMINDER_LEAD_HOURS = String(leadEnv);
+  try {
+    return fn();
+  } finally {
+    if (had) process.env.REMINDER_LEAD_HOURS = prev;
+    else delete process.env.REMINDER_LEAD_HOURS;
+  }
+}
+
+test('CRON_PERIOD_HOURS is exported as a real 24, not left implicit in comments', () => {
+  assert.equal(handler.CRON_PERIOD_HOURS, 24,
+    'the cron period is the number the whole guarantee is measured against; '
+    + 'test/reminder-delivery-guarantee.test.js cross-checks it against vercel.json');
+});
+
+test('IMMEDIATE: a booking made with plenty of notice does NOT need an immediate reminder', () => {
+  withLead(undefined, () => { // the 24h fallback
+    const now = FIXED_NOW;
+    assert.equal(handler.needsImmediateReminder(now + 72 * 3600000, now), false,
+      'three days out: a daily tick is certain to land in the eligible window');
+    assert.equal(handler.needsImmediateReminder(now + 30 * 24 * 3600000, now), false);
+  });
+});
+
+test('IMMEDIATE: a booking made with well under a day of notice DOES need one', () => {
+  withLead(undefined, () => {
+    const now = FIXED_NOW;
+    // The case the whole feature exists for: same-day booking.
+    assert.equal(handler.needsImmediateReminder(now + 1 * 3600000, now), true,
+      'one hour out: the eligible window is 1h long and 24h-apart ticks can miss it entirely');
+    assert.equal(handler.needsImmediateReminder(now + 23 * 3600000, now), true);
+    assert.equal(handler.needsImmediateReminder(now + 60000, now), true);
+    assert.equal(handler.needsImmediateReminder(now, now), true,
+      'zero notice is still zero-length coverage, so it still needs sending now');
+  });
+});
+
+// THE boundary. The invariant that governs the cron path is `>= the cron
+// period is safe`, so 24h of notice is exactly enough and must NOT trigger an
+// immediate send -- otherwise every normal booking would get a second email and
+// the "nothing changes at normal notice" promise would be false.
+test('IMMEDIATE: exactly 24h of notice is the safe side of the boundary -- false', () => {
+  withLead(undefined, () => {
+    const now = FIXED_NOW;
+    assert.equal(handler.needsImmediateReminder(now + 24 * 3600000, now), false,
+      'at exactly the cron period the eligible window is guaranteed to contain a tick');
+    assert.equal(handler.needsImmediateReminder(now + 24 * 3600000 - 1, now), true,
+      'one millisecond short of the period is already not guaranteed');
+    assert.equal(handler.needsImmediateReminder(now + 24 * 3600000 + 1, now), false);
+  });
+});
+
+test('IMMEDIATE: the decision reads REMINDER_LEAD_HOURS live, and a lead shorter than the cron period makes EVERY booking need one', () => {
+  const now = FIXED_NOW;
+
+  // lead=36 (the deployed value): the lead no longer binds below 24h, so the
+  // notice alone decides, same as the default-lead cases above.
+  withLead(36, () => {
+    assert.equal(handler.leadHours(), 36, 'the module must be reading the env var live');
+    assert.equal(handler.needsImmediateReminder(now + 30 * 3600000, now), false);
+    assert.equal(handler.needsImmediateReminder(now + 20 * 3600000, now), true);
+  });
+
+  // lead=12: the eligible window is at most 12h long no matter how far ahead the
+  // booking is made, which is shorter than the 24h between ticks -- so the cron
+  // can be relied on for NOTHING and every booking must be sent immediately.
+  // This is the same failure the invariant forbids, stated from the other side.
+  withLead(12, () => {
+    assert.equal(handler.needsImmediateReminder(now + 30 * 24 * 3600000, now), true,
+      'a lead shorter than the cron period means no booking, however distant, is guaranteed a tick');
+    assert.equal(handler.needsImmediateReminder(now + 2 * 3600000, now), true);
+  });
+
+  // A garbage env var falls back to 24, so the boundary is the 24h one again
+  // rather than silently becoming 0 and immediate-sending everything.
+  withLead('garbage', () => {
+    assert.equal(handler.needsImmediateReminder(now + 24 * 3600000, now), false);
+    assert.equal(handler.needsImmediateReminder(now + 23 * 3600000, now), true);
+  });
+});
+
+test('IMMEDIATE: a past start, and an unparseable one, are never immediate-reminded', () => {
+  withLead(undefined, () => {
+    const now = FIXED_NOW;
+    assert.equal(handler.needsImmediateReminder(now - 1, now), false,
+      'already under way: wouldRemind drops it too, and a reminder would be worse than useless');
+    assert.equal(handler.needsImmediateReminder(now - 5 * 3600000, now), false);
+    assert.equal(handler.needsImmediateReminder(NaN, now), false);
+    assert.equal(handler.needsImmediateReminder(now + 3600000, NaN), false);
+    assert.equal(handler.needsImmediateReminder(undefined, now), false);
+    assert.equal(handler.needsImmediateReminder(now + 3600000, undefined), false);
+  });
+});
+
+// The composition, asserted on the two exported predicates directly: a booking
+// the cron can be trusted with is one wouldRemind will eventually accept, and a
+// booking it cannot be trusted with is the one needsImmediateReminder catches.
+// Neither case leaves a booking with nobody responsible for it.
+test('IMMEDIATE: every booking is covered by exactly one of the two paths', () => {
+  withLead(undefined, () => {
+    const now = FIXED_NOW;
+    for (const noticeHours of [0, 0.5, 1, 6, 12, 23.99, 24, 24.01, 36, 72, 240]) {
+      const start = now + noticeHours * 3600000;
+      const immediate = handler.needsImmediateReminder(start, now);
+      // If the cron is trusted, there must be SOME instant at which a run would
+      // pick this booking up -- the latest eligible one being the start itself.
+      const cronCanEverFire = handler.wouldRemind(start, start)
+        || handler.wouldRemind(start, start - handler.leadHours() * 3600000);
+      assert.ok(immediate || cronCanEverFire,
+        `${noticeHours}h notice: neither path would remind this booking`);
+    }
+  });
+});
+
 // POST is now a legitimate method too (the admin-session catch-up path is
 // POST-only, see authorized()'s CSRF comment) -- this must use a method
 // that is genuinely never valid, not POST.

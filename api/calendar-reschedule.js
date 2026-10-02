@@ -12,6 +12,9 @@ const { postSystemAlert } = require('./_slack');
 const { makeBookingToken } = require('./_booking-token');
 const { loadTemplate } = require('./_load-template');
 const { loadBooking } = require('./_load-booking');
+// The whole module, not the function, so the short-notice decision is read off
+// the live export at call time.
+const remind = require('./calendar-reminders');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -78,7 +81,7 @@ module.exports = async function handler(req, res) {
     end: { dateTime: new Date(endMs).toISOString(), timeZone: 'UTC' },
     // A moved call needs its reminder again.
     extendedProperties: { private: { reminderSent: '' } },
-  });
+  }, { notifyGuests: true });
   if (!patched.ok) {
     return res.status(502).json({ ok: false, error: 'UPSTREAM',
       message: 'Could not move the booking.' });
@@ -99,7 +102,7 @@ module.exports = async function handler(req, res) {
           // Undo the reminder re-arm too, or a booking that was already reminded
           // gets reminded twice after a lost race.
           extendedProperties: { private: { reminderSent: originalReminderSent } },
-        });
+        }, { notifyGuests: true });
       } else {
         // The booking had no dateTime to begin with -- it was converted to an
         // all-day event in Google Calendar. There is no original time to restore,
@@ -144,6 +147,46 @@ module.exports = async function handler(req, res) {
     console.error('reschedule email failed:', e.message);
     await postSystemAlert(`*Reschedule email failed* for \`${event.id}\` (${meta.visitorEmail}): ${e.message}`);
   }
+
+  // ---- Short-notice reminder ----------------------------------------------
+  // The move just cleared reminderSent so the moved call gets reminded again --
+  // but the once-daily cron can only be RELIED ON to deliver that when
+  // min(notice, REMINDER_LEAD_HOURS) is at least a full cron period (see
+  // needsImmediateReminder in calendar-reminders.js). A visitor moving a call to
+  // this afternoon re-armed a reminder nothing will ever send, which is worse
+  // than the booking path's version of the same hole: here the flag was cleared
+  // deliberately, so the reminder is owed.
+  //
+  // Evaluated against the NEW start, and only on the path where that new time
+  // actually stuck: the rollback branch above returns 409, so a lost race never
+  // reaches here. That is the right split -- after a rollback the booking sits
+  // at its ORIGINAL time, whose own notice was already evaluated when it was
+  // first created, and originalReminderSent has been put back untouched.
+  //
+  // Best-effort, like the reschedule notice above: a move that is already on
+  // the calendar must not be reported as failed because a reminder would not
+  // send.
+  if (remind.needsImmediateReminder(startMs, Date.now())) {
+    try {
+      const sent = await email.sendReminder(booking);
+      if (sent.ok) {
+        // notifyGuests deliberately NOT passed (defaults to off): metadata only,
+        // so Google must not email the attendee a second time about the move.
+        await gcal.patchEvent(event.id, {
+          extendedProperties: { private: { reminderSent: '1' } },
+        });
+      } else {
+        console.error('short-notice reminder failed on reschedule:', sent.reason);
+        await postSystemAlert(`*Short-notice reminder failed* on reschedule for \`${event.id}\` (${meta.visitorEmail}): ${sent.reason}. `
+          + `The new time is too close to rely on the daily cron, so this booking likely gets no reminder at all.`);
+      }
+    } catch (e) {
+      console.error('short-notice reminder threw on reschedule:', e.message);
+      await postSystemAlert(`*Short-notice reminder threw* on reschedule for \`${event.id}\` (${meta.visitorEmail}): ${e.message}. `
+        + `The new time is too close to rely on the daily cron, so this booking likely gets no reminder at all.`);
+    }
+  }
+  // -------------------------------------------------------------------------
 
   return res.status(200).json({ ok: true, eventId: event.id,
     start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString() });

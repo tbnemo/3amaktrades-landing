@@ -183,18 +183,26 @@ async function listEvents({ timeMinIso, timeMaxIso, privateExtendedProperty = nu
 
 // R7: ask for a Google Meet link, but never let conferencing failure cost a
 // booking -- some calendars reject conference creation outright.
-async function insertEvent(event) {
+//
+// `notifyGuests` controls Google's own `sendUpdates` param. Default false
+// (sendUpdates: 'none') for internal metadata writes that have no visible
+// effect on the event (slackTs, reminderSent flags) -- those must never
+// generate a guest-facing "event changed" email. Callers that add/move/remove
+// the client as a real attendee pass `notifyGuests: true` so Google actually
+// emails them the invite/update/cancellation and it lands on their calendar.
+async function insertEvent(event, { notifyGuests = false } = {}) {
+  const sendUpdates = notifyGuests ? 'all' : 'none';
   const path = `/calendars/${encodeURIComponent(calendarId())}/events`;
   const first = await authed(path, {
     method: 'POST', body: event,
-    query: { conferenceDataVersion: event.conferenceData ? 1 : 0, sendUpdates: 'none' },
+    query: { conferenceDataVersion: event.conferenceData ? 1 : 0, sendUpdates },
   });
   if (first.ok) return { ok: true, event: first.data };
   if (event.conferenceData && /conference/i.test(first.reason || '')) {
     const { conferenceData, ...withoutConference } = event;
     const retry = await authed(path, {
       method: 'POST', body: withoutConference,
-      query: { conferenceDataVersion: 0, sendUpdates: 'none' },
+      query: { conferenceDataVersion: 0, sendUpdates },
     });
     if (retry.ok) return { ok: true, event: retry.data };
     return { ok: false, reason: retry.reason };
@@ -221,18 +229,18 @@ async function getEvent(eventId) {
   return { ok: true, event: res.data };
 }
 
-async function patchEvent(eventId, patch) {
+async function patchEvent(eventId, patch, { notifyGuests = false } = {}) {
   const res = await authed(
     `/calendars/${encodeURIComponent(calendarId())}/events/${encodeURIComponent(eventId)}`,
-    { method: 'PATCH', body: patch, query: { sendUpdates: 'none' } });
+    { method: 'PATCH', body: patch, query: { sendUpdates: notifyGuests ? 'all' : 'none' } });
   if (!res.ok) return res;
   return { ok: true, event: res.data };
 }
 
-async function deleteEvent(eventId) {
+async function deleteEvent(eventId, { notifyGuests = false } = {}) {
   const res = await authed(
     `/calendars/${encodeURIComponent(calendarId())}/events/${encodeURIComponent(eventId)}`,
-    { method: 'DELETE', query: { sendUpdates: 'none' } });
+    { method: 'DELETE', query: { sendUpdates: notifyGuests ? 'all' : 'none' } });
   // A 410/404 means it is already gone, which is the state we wanted.
   if (!res.ok && !/410|404/.test(String(res.status))) return res;
   return { ok: true };

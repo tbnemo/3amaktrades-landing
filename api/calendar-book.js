@@ -10,6 +10,10 @@ const bslack = require('./_booking-slack');
 const { postSystemAlert } = require('./_slack');
 const { makeBookingToken } = require('./_booking-token');
 const { loadTemplate } = require('./_load-template');
+// The whole module, not the function, so the short-notice decision is read off
+// the live export at call time -- same reason calendar-reminders.js itself keeps
+// `slack` and `cemail` whole.
+const remind = require('./calendar-reminders');
 
 function badRequest(res, message) {
   return res.status(400).json({ ok: false, error: 'BAD_REQUEST', message });
@@ -67,6 +71,10 @@ module.exports = async function handler(req, res) {
     description: `Booked from 3amaktrades.com\nName: ${name}\nEmail: ${addr}\nPhone: ${phone || '—'}\nTheir timezone: ${visitorTimeZone}`,
     start: { dateTime: new Date(startMs).toISOString(), timeZone: 'UTC' },
     end: { dateTime: new Date(endMs).toISOString(), timeZone: 'UTC' },
+    // Real attendee, not just metadata, so the event lands on the client's own
+    // calendar (paired with notifyGuests: true below, which is what actually
+    // makes Google send them the invite).
+    attendees: [{ email: addr, displayName: name }],
     extendedProperties: {
       // R3: the calendar is the record, so per-booking metadata rides with the
       // event instead of needing a third blob.
@@ -80,7 +88,7 @@ module.exports = async function handler(req, res) {
       },
     },
     conferenceData: { createRequest: { requestId: `amak-${Date.now()}` } },
-  });
+  }, { notifyGuests: true });
   if (!inserted.ok) {
     return res.status(502).json({ ok: false, error: 'UPSTREAM',
       message: 'Could not create the event.' });
@@ -97,7 +105,10 @@ module.exports = async function handler(req, res) {
   if (after.ok) {
     const clash = guard.overlapping(after.events, startMs, endMs);
     if (guard.shouldRollBack(eventId, clash)) {
-      await gcal.deleteEvent(eventId);
+      // notifyGuests: true -- the client may already have the Google invite
+      // for this event in their inbox/calendar from the insert above; the
+      // rollback must clear it off their calendar too, not just ours.
+      await gcal.deleteEvent(eventId, { notifyGuests: true });
       return res.status(409).json({ ok: false, error: 'SLOT_TAKEN',
         message: 'Someone booked that time a moment before you.' });
     }
@@ -148,6 +159,47 @@ module.exports = async function handler(req, res) {
     console.error('confirmation email threw:', e.message);
     await postSystemAlert(`*Booking confirmation email threw* for \`${eventId}\` (${addr}): ${e.message}`);
   }
+
+  // ---- Short-notice reminder ----------------------------------------------
+  // The reminder cron runs once a day, so it can only be RELIED ON to catch a
+  // booking whose min(notice, REMINDER_LEAD_HOURS) is at least a full cron
+  // period; below that the one eligible tick can fall outside the interval
+  // entirely and the visitor gets NO reminder, ever, silently. That is the
+  // hole that used to force _availability.js's minNoticeHours to stay at 24.
+  //
+  // So when the cron cannot be trusted with this booking, we send the reminder
+  // NOW and mark the event reminded, which is what the cron looks at -- it will
+  // skip this event rather than send a second copy. At normal notice the test
+  // is false and nothing here runs at all: the >=24h path is exactly the
+  // behaviour that shipped before.
+  //
+  // Deliberately placed AFTER the double-booking rollback check above: that
+  // branch returns 409, so a booking that got rolled back never reaches this
+  // and nobody is reminded about a call that no longer exists. Best-effort,
+  // like the confirmation email and the Slack post above -- a confirmed
+  // booking must never be undone by a reminder that would not send.
+  if (remind.needsImmediateReminder(startMs, Date.now())) {
+    try {
+      const sent = await email.sendReminder(booking);
+      if (sent.ok) {
+        // notifyGuests deliberately NOT passed (so it defaults to off): this is
+        // a metadata-only patch, exactly like the slackTs one above, and Google
+        // must not email the attendee about an extendedProperties change.
+        await gcal.patchEvent(eventId, {
+          extendedProperties: { private: { reminderSent: '1' } },
+        });
+      } else {
+        console.error('short-notice reminder failed:', sent.reason);
+        await postSystemAlert(`*Short-notice reminder failed* for \`${eventId}\` (${addr}): ${sent.reason}. `
+          + `This booking is too close to rely on the daily cron, so it likely gets no reminder at all.`);
+      }
+    } catch (e) {
+      console.error('short-notice reminder threw:', e.message);
+      await postSystemAlert(`*Short-notice reminder threw* for \`${eventId}\` (${addr}): ${e.message}. `
+        + `This booking is too close to rely on the daily cron, so it likely gets no reminder at all.`);
+    }
+  }
+  // -------------------------------------------------------------------------
 
   return res.status(200).json({
     ok: true, eventId, manageToken: token,

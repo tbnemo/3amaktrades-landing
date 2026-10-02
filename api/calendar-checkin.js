@@ -33,6 +33,9 @@ const { makeBookingToken } = require('./_booking-token');
 const { loadCheckinTemplate } = require('./_load-checkin-template');
 const { loadBooking } = require('./_load-booking');
 const { resolveAction, notFound } = require('./_route-action');
+// The whole module, not the function, so the short-notice decision is read off
+// the live export at call time.
+const remind = require('./calendar-reminders');
 
 // ===========================================================================
 // POST /api/checkin-verify
@@ -307,6 +310,8 @@ async function bookHandler(req, res) {
     description: `Check-in booked from 3amaktrades.com/check-in\nName: ${name}\nEmail: ${addr}\nPhone: ${phone || '—'}\nTheir timezone: ${visitorTimeZone}`,
     start: { dateTime: new Date(startMs).toISOString(), timeZone: 'UTC' },
     end: { dateTime: new Date(endMs).toISOString(), timeZone: 'UTC' },
+    // Real attendee, not just metadata -- see calendar-book.js for why.
+    attendees: [{ email: addr, displayName: name }],
     extendedProperties: {
       private: {
         // The SHARED marker, identical to calendar-book.js. This is what lets a
@@ -324,7 +329,7 @@ async function bookHandler(req, res) {
       },
     },
     conferenceData: { createRequest: { requestId: `amak-ci-${Date.now()}` } },
-  });
+  }, { notifyGuests: true });
   if (!inserted.ok) {
     return res.status(502).json({ ok: false, error: 'UPSTREAM',
       message: 'Could not create the event.' });
@@ -339,7 +344,7 @@ async function bookHandler(req, res) {
   if (after.ok) {
     const clash = guard.overlapping(after.events, startMs, endMs);
     if (guard.shouldRollBack(eventId, clash)) {
-      await gcal.deleteEvent(eventId);
+      await gcal.deleteEvent(eventId, { notifyGuests: true });
       return res.status(409).json({ ok: false, error: 'SLOT_TAKEN',
         message: 'Someone booked that time a moment before you.' });
     }
@@ -392,6 +397,37 @@ async function bookHandler(req, res) {
     await postSystemAlert(`*Check-in confirmation email threw* for \`${eventId}\` (${addr}): ${e.message}`);
   }
 
+  // ---- Short-notice reminder (mirrors calendar-book.js exactly) ------------
+  // The reminder cron is ONE once-daily job serving both audiences, so a
+  // check-in booked at short notice falls into the same hole an applicant
+  // booking does: min(notice, REMINDER_LEAD_HOURS) under a full cron period
+  // means the single eligible tick can miss the interval entirely and nothing
+  // ever sends. See needsImmediateReminder in calendar-reminders.js.
+  //
+  // After the rollback check above for the same reason as the applicant path:
+  // that branch returns 409, so a withdrawn booking is never reminded about.
+  if (remind.needsImmediateReminder(startMs, Date.now())) {
+    try {
+      const sent = await cemail.sendCheckinReminder(booking);
+      if (sent.ok) {
+        // notifyGuests deliberately NOT passed (defaults to off): metadata
+        // only, exactly like the slackTs patch above.
+        await gcal.patchEvent(eventId, {
+          extendedProperties: { private: { reminderSent: '1' } },
+        });
+      } else {
+        console.error('short-notice check-in reminder failed:', sent.reason);
+        await postSystemAlert(`*Short-notice CHECK-IN reminder failed* for \`${eventId}\` (${addr}): ${sent.reason}. `
+          + `This booking is too close to rely on the daily cron, so it likely gets no reminder at all.`);
+      }
+    } catch (e) {
+      console.error('short-notice check-in reminder threw:', e.message);
+      await postSystemAlert(`*Short-notice CHECK-IN reminder threw* for \`${eventId}\` (${addr}): ${e.message}. `
+        + `This booking is too close to rely on the daily cron, so it likely gets no reminder at all.`);
+    }
+  }
+  // -------------------------------------------------------------------------
+
   return res.status(200).json({
     ok: true, eventId, manageToken: token,
     start: new Date(startMs).toISOString(),
@@ -432,7 +468,7 @@ async function cancelHandler(req, res) {
   const startMs = Date.parse(event.start && event.start.dateTime) || Date.now();
   const endMs = Date.parse(event.end && event.end.dateTime) || startMs;
 
-  const deleted = await gcal.deleteEvent(event.id);
+  const deleted = await gcal.deleteEvent(event.id, { notifyGuests: true });
   if (!deleted.ok) {
     // No notification on this path: never tell a client their call is cancelled
     // while it is still on the calendar.
@@ -565,7 +601,7 @@ async function rescheduleHandler(req, res) {
     end: { dateTime: new Date(endMs).toISOString(), timeZone: 'UTC' },
     // A moved call needs its reminder again.
     extendedProperties: { private: { reminderSent: '' } },
-  });
+  }, { notifyGuests: true });
   if (!patched.ok) {
     return res.status(502).json({ ok: false, error: 'UPSTREAM',
       message: 'Could not move the booking.' });
@@ -586,7 +622,7 @@ async function rescheduleHandler(req, res) {
           // Undo the reminder re-arm too, or a booking that was already reminded
           // gets reminded twice after a lost race.
           extendedProperties: { private: { reminderSent: originalReminderSent } },
-        });
+        }, { notifyGuests: true });
       } else {
         // The booking had no dateTime to begin with -- it was converted to an
         // all-day event in Google Calendar. There is no original time to
@@ -636,6 +672,34 @@ async function rescheduleHandler(req, res) {
     console.error('check-in reschedule email threw:', e.message);
     await postSystemAlert(`*Check-in reschedule email threw* for \`${event.id}\` (${meta.visitorEmail}): ${e.message}`);
   }
+
+  // ---- Short-notice reminder (mirrors calendar-reschedule.js exactly) ------
+  // The move cleared reminderSent so the moved call is reminded again, but a
+  // once-daily cron cannot be relied on to deliver that when the new time is
+  // closer than a full cron period's worth of notice. Evaluated against the NEW
+  // start, and only on the path where that new time stuck -- the rollback branch
+  // above returns 409, and after a rollback the booking is back at its original
+  // time with originalReminderSent restored untouched.
+  if (remind.needsImmediateReminder(startMs, Date.now())) {
+    try {
+      const sent = await cemail.sendCheckinReminder(booking);
+      if (sent.ok) {
+        // notifyGuests deliberately NOT passed (defaults to off): metadata only.
+        await gcal.patchEvent(event.id, {
+          extendedProperties: { private: { reminderSent: '1' } },
+        });
+      } else {
+        console.error('short-notice check-in reminder failed on reschedule:', sent.reason);
+        await postSystemAlert(`*Short-notice CHECK-IN reminder failed* on reschedule for \`${event.id}\` (${meta.visitorEmail}): ${sent.reason}. `
+          + `The new time is too close to rely on the daily cron, so this booking likely gets no reminder at all.`);
+      }
+    } catch (e) {
+      console.error('short-notice check-in reminder threw on reschedule:', e.message);
+      await postSystemAlert(`*Short-notice CHECK-IN reminder threw* on reschedule for \`${event.id}\` (${meta.visitorEmail}): ${e.message}. `
+        + `The new time is too close to rely on the daily cron, so this booking likely gets no reminder at all.`);
+    }
+  }
+  // -------------------------------------------------------------------------
 
   return res.status(200).json({ ok: true, eventId: event.id,
     start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString() });

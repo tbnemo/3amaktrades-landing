@@ -734,3 +734,227 @@ test('non-POST requests return 405', async () => {
     assert.equal(res._status, 405);
   }
 });
+
+// ===========================================================================
+// SHORT-NOTICE REMINDER on the check-in reschedule path
+//
+// The move patch clears reminderSent so a moved call is reminded again -- but
+// the single once-daily cron can only be RELIED ON to deliver that when
+// min(notice, REMINDER_LEAD_HOURS) is at least a full cron period. A client
+// moving their check-in to this afternoon therefore re-armed a reminder nothing
+// would ever send. See needsImmediateReminder in api/calendar-reminders.js.
+//
+// Mirrors calendar-reschedule.js: send it here against the NEW time, re-mark
+// the flag, and do neither if the move was rolled back.
+// ===========================================================================
+
+const FIXED_NOW = Date.UTC(2027, 6, 14, 10, 0, 0); // Wednesday 10:00 UTC
+
+function withFixedNow(nowMs, fn) {
+  const orig = Date.now;
+  Date.now = () => nowMs;
+  return Promise.resolve(fn()).finally(() => { Date.now = orig; });
+}
+
+// Open every day 00:00-23:45 UTC on the check-in 15-minute grid, ONE hour of
+// minimum notice.
+const SAME_DAY_CHECKIN_TEMPLATE = av.normalizeTemplate({
+  timezone: 'UTC',
+  days: {
+    mon: { enabled: true, start: '00:00', end: '23:45' },
+    tue: { enabled: true, start: '00:00', end: '23:45' },
+    wed: { enabled: true, start: '00:00', end: '23:45' },
+    thu: { enabled: true, start: '00:00', end: '23:45' },
+    fri: { enabled: true, start: '00:00', end: '23:45' },
+    sat: { enabled: true, start: '00:00', end: '23:45' },
+    sun: { enabled: true, start: '00:00', end: '23:45' },
+  },
+  slotMinutes: 15,
+  bufferMinutes: 0,
+  minNoticeHours: 1,
+});
+
+// The call starts three days out; the client moves it to an hour from now.
+const ORIGINAL_START = FIXED_NOW + 72 * 3600000;
+const SHORT_NOTICE_START = FIXED_NOW + 1 * 3600000;   // 11:00 UTC, 1h of notice
+const NORMAL_NOTICE_START = FIXED_NOW + 48 * 3600000; // two days out
+
+// REMINDER_LEAD_HOURS is pinned because it is half of the quantity under test.
+function sameDayEnvSetup() {
+  envSetup();
+  process.env.REMINDER_LEAD_HOURS = '24';
+}
+
+function sameDayStubs(newStartMs, extra = []) {
+  const newEndMs = newStartMs + 15 * 60 * 1000;
+  return baseStubs([
+    { obj: loadMod, key: 'loadCheckinTemplate', value: async () => ({ ok: true, template: SAME_DAY_CHECKIN_TEMPLATE, usedDefault: false }) },
+    { obj: gcal, key: 'getEvent', value: async () => ({ ok: true,
+        event: checkinEvent({ startMs: ORIGINAL_START, endMs: ORIGINAL_START + 15 * 60 * 1000 }) }) },
+    { obj: gcal, key: 'patchEvent', value: async () => ({ ok: true, event: { hangoutLink: 'https://meet.example/moved' } }) },
+    { obj: gcal, key: 'listEvents', value: async () => ({
+        ok: true,
+        events: [listedOurs(EVENT_ID, new Date(newStartMs).toISOString(), new Date(newEndMs).toISOString())],
+      }) },
+    ...extra,
+  ]);
+}
+
+// The move patch sets reminderSent to '' and the short-notice patch sets it to
+// '1', so the SEQUENCE is what matters, not just that a patch happened.
+function reminderFlagPatches(patchSpy) {
+  return patchSpy.calls.filter(c => c[1].extendedProperties
+    && c[1].extendedProperties.private
+    && c[1].extendedProperties.private.reminderSent !== undefined);
+}
+
+test('SHORT NOTICE: moving a check-in to an hour from now sends the reminder immediately and re-marks reminderSent', async () => {
+  sameDayEnvSetup();
+  const newStart = SHORT_NOTICE_START;
+  const newEnd = newStart + 15 * 60 * 1000;
+  const reminderSpy = spyStub({ ok: true });
+  const patchSpy = spyStub({ ok: true, event: { hangoutLink: 'https://meet.example/moved' } });
+
+  await withStubs(sameDayStubs(newStart, [
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: reminderSpy },
+  ]), () => withFixedNow(FIXED_NOW, async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody(newStart) }, res);
+
+    assert.equal(res._status, 200, `expected 200, got ${res._status} (${JSON.stringify(res._json)})`);
+
+    assert.equal(reminderSpy.calls.length, 1,
+      'a move the daily cron cannot be relied on for must be reminded at reschedule time');
+
+    const b = reminderSpy.calls[0][0];
+    assert.equal(b.eventId, EVENT_ID);
+    assert.equal(b.name, 'Alice Client');
+    assert.equal(b.email, EMAIL);
+    assert.equal(b.phone, '5550100100');
+    assert.equal(b.startMs, newStart, 'the reminder must describe the NEW time, not the old one');
+    assert.equal(b.endMs, newEnd);
+    assert.equal(b.visitorTimeZone, 'Europe/Istanbul');
+    assert.equal(b.templateTimeZone, 'UTC');
+    assert.equal(b.meetLink, 'https://meet.example/moved');
+    assert.equal(b.lang, 'en');
+    assert.equal(bt.verifyBookingToken(EVENT_ID, EMAIL, b.manageToken), true);
+
+    // The move cleared the flag, then the immediate send put it back -- in that
+    // order, so the cron skips this event instead of sending a second copy.
+    const flags = reminderFlagPatches(patchSpy);
+    assert.deepEqual(flags.map(c => c[1].extendedProperties.private.reminderSent), ['', '1']);
+    assert.equal(flags[1][0], EVENT_ID);
+    assert.equal(flags[1][2], undefined,
+      'the flag patch must carry no options -- notifyGuests must stay off for a metadata-only change');
+  }));
+  delete require.cache[handlerPath];
+});
+
+test('NORMAL NOTICE: moving a check-in two days out does NOT trigger an immediate reminder, and leaves reminderSent cleared', async () => {
+  sameDayEnvSetup();
+  const newStart = NORMAL_NOTICE_START;
+  const reminderSpy = spyStub({ ok: true });
+  const patchSpy = spyStub({ ok: true, event: {} });
+
+  await withStubs(sameDayStubs(newStart, [
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: reminderSpy },
+  ]), () => withFixedNow(FIXED_NOW, async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody(newStart) }, res);
+
+    assert.equal(res._status, 200);
+    assert.equal(reminderSpy.calls.length, 0,
+      'the daily cron is guaranteed to catch this one -- sending now would just be a duplicate');
+    assert.deepEqual(reminderFlagPatches(patchSpy).map(c => c[1].extendedProperties.private.reminderSent), [''],
+      'only the move patch may touch the flag, and it must leave it cleared for the cron');
+  }));
+  delete require.cache[handlerPath];
+});
+
+// After a rollback the booking is back at its ORIGINAL time, whose own notice
+// was evaluated when it was first created, with originalReminderSent restored
+// untouched. A reminder here would describe a time the call never moved to.
+test('SHORT NOTICE: a check-in reschedule rolled back by the lost-race guard is never reminded', async () => {
+  sameDayEnvSetup();
+  const newStart = SHORT_NOTICE_START;
+  const newEnd = newStart + 15 * 60 * 1000;
+  const isoNewStart = new Date(newStart).toISOString();
+  const isoNewEnd = new Date(newEnd).toISOString();
+  const reminderSpy = spyStub({ ok: true });
+  const patchSpy = spyStub({ ok: true, event: {} });
+
+  await withStubs(sameDayStubs(newStart, [
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+    { obj: gcal, key: 'listEvents', value: async () => ({
+        ok: true,
+        events: [
+          listedOurs('aaa-other', isoNewStart, isoNewEnd),
+          listedOurs(EVENT_ID, isoNewStart, isoNewEnd),
+        ] }) },
+    { obj: cemail, key: 'sendCheckinReminder', value: reminderSpy },
+  ]), () => withFixedNow(FIXED_NOW, async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody(newStart) }, res);
+
+    assert.equal(res._status, 409);
+    assert.equal(res._json.error, 'SLOT_TAKEN');
+    assert.equal(patchSpy.calls.length, 2, 'the move really was undone');
+    assert.equal(reminderSpy.calls.length, 0,
+      'the booking is back at its original time -- a reminder for the new one would be a lie');
+  }));
+  delete require.cache[handlerPath];
+});
+
+test('SHORT NOTICE: a check-in reminder returning {ok:false} alerts, leaves the flag cleared, and keeps the 200', async () => {
+  sameDayEnvSetup();
+  const newStart = SHORT_NOTICE_START;
+  const patchSpy = spyStub({ ok: true, event: {} });
+  const alertSpy = spyStub(undefined);
+
+  await withStubs(sameDayStubs(newStart, [
+    { obj: gcal, key: 'patchEvent', value: patchSpy },
+    { obj: cemail, key: 'sendCheckinReminder', value: async () => ({ ok: false, reason: 'resend 422' }) },
+    { obj: require('../api/_slack'), key: 'postSystemAlert', value: alertSpy },
+  ]), () => withFixedNow(FIXED_NOW, async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await h({ method: 'POST', body: goodBody(newStart) }, res);
+
+    assert.equal(res._status, 200,
+      'the move is already on the calendar -- a failed reminder must not report it as failed');
+    assert.equal(res._json.ok, true);
+
+    assert.equal(alertSpy.calls.length, 1, 'a short-notice reminder that silently failed must be visible');
+    assert.match(String(alertSpy.calls[0][0]), new RegExp(EVENT_ID));
+    assert.match(String(alertSpy.calls[0][0]), /resend 422/);
+
+    assert.deepEqual(reminderFlagPatches(patchSpy).map(c => c[1].extendedProperties.private.reminderSent), [''],
+      'a failed send must leave the flag cleared, so the cron at least gets a chance to retry');
+  }));
+  delete require.cache[handlerPath];
+});
+
+test('SHORT NOTICE: a THROWING check-in reminder alerts and still keeps the 200', async () => {
+  sameDayEnvSetup();
+  const newStart = SHORT_NOTICE_START;
+  const alertSpy = spyStub(undefined);
+
+  await withStubs(sameDayStubs(newStart, [
+    { obj: cemail, key: 'sendCheckinReminder', value: async () => { throw new Error('resend unreachable'); } },
+    { obj: require('../api/_slack'), key: 'postSystemAlert', value: alertSpy },
+  ]), () => withFixedNow(FIXED_NOW, async () => {
+    const h = freshHandler();
+    const res = makeRes();
+    await assert.doesNotReject(() => h({ method: 'POST', body: goodBody(newStart) }, res));
+    assert.equal(res._status, 200);
+    assert.equal(res._json.ok, true);
+    assert.equal(alertSpy.calls.length, 1);
+    assert.match(String(alertSpy.calls[0][0]), /resend unreachable/);
+  }));
+  delete require.cache[handlerPath];
+});
