@@ -185,6 +185,14 @@
     .day-to{color:var(--dim);font-size:13px;text-align:center;}
     .hhmm{max-width:90px;text-align:center;letter-spacing:.05em;}
 
+    /* The day-row's four fixed-width/1fr grid columns (150px day label +
+       two time fields + "to") have no room to shrink into on a phone
+       screen -- stack them instead of letting them get crushed. */
+    @media (max-width:640px){
+      .day-row{grid-template-columns:1fr;row-gap:8px;padding-block:16px;}
+      .day-to{text-align:start;}
+    }
+
     .tz-row{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
     .tz-row .field{flex:1 1 240px;}
     #tzNow{display:block;font-size:13px;color:var(--dim);margin-block-end:11px;}
@@ -207,7 +215,7 @@
 
     /* ══ tab bar ══ */
     .tab-bar{
-      display:flex; gap:0; margin-block-end:28px;
+      display:flex; flex-wrap:wrap; gap:0; margin-block-end:28px;
       border-block-end:1px solid var(--gold-lo);
     }
     .tab-btn{
