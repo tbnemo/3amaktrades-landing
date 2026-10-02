@@ -240,7 +240,11 @@
     }
     .clients-table td{
       padding-block:11px; padding-inline-end:16px; border-block-end:1px solid #241D08;
-      color:var(--bone); word-break:break-word;
+      color:var(--bone); white-space:nowrap;
+      /* .clients-table-scroll (overflow-x:auto) is the overflow mechanism --
+         wrapping a cell's own text fights that by shrinking columns instead
+         of letting the table scroll, which is what put "thaerberrached46"
+         and "@gmail.com" on two lines. */
     }
     .clients-table tr:last-child td{border-block-end:none;}
     .clients-table td.client-actions{text-align:end; white-space:nowrap; padding-inline-end:0;}
@@ -307,7 +311,12 @@
     .modal-box{
       width:100%; max-width:600px; max-height:calc(100vh - 40px); overflow-y:auto;
       background:var(--band-2); border:1px solid var(--gold-lo); padding:24px;
+      scrollbar-width:thin; scrollbar-color:var(--gold-lo) transparent;
     }
+    .modal-box::-webkit-scrollbar{width:8px;}
+    .modal-box::-webkit-scrollbar-track{background:transparent;}
+    .modal-box::-webkit-scrollbar-thumb{background:var(--gold-lo);border-radius:0;}
+    .modal-box::-webkit-scrollbar-thumb:hover{background:var(--gold);}
     .modal-head{
       display:flex; align-items:center; justify-content:space-between;
       margin-block-end:18px; gap:12px;
@@ -1333,6 +1342,11 @@
         trigger.setAttribute('aria-expanded', 'true');
         document.addEventListener('click', onOutsideClick, true);
         document.addEventListener('keydown', onKeydown, true);
+        // The trigger can sit low in a scrolled container (e.g. the client
+        // modal) with the panel opening below the visible area -- scroll
+        // whichever ancestor needs it (the modal box, or the page) so the
+        // calendar the admin just opened is actually on screen.
+        panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }
 
       function closePanel() {
