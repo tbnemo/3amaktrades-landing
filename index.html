@@ -1282,7 +1282,7 @@ const t = {
     q7: "ما ميزانيتك للبدء؟",
     q7_a: "أقل من $500", q7_b: "$500 – $1,000", q7_c: "$1,000 – $3,000", q7_d: "$3,000+",
     q8: "ماذا تبحث عنه؟",
-    q8_a: "دورة فيديو من الألف للياء", q8_b: "مجتمع متداولين للتعلم معهم", q8_c: "إرشاد 1 على 1 مباشر", q8_d: "كل ما سبق",
+    q8_a: "دورة فيديو من الألف للياء", q8_b: "مجتمع متداولين للتعلم معهم", q8_c: "إرشاد 1 على 1 مباشر", q8_d: "كل ما سبق", q8_e: "Bookmap",
     q9: "ما هدفك الرئيسي؟",
     q9_a: "دخل إضافي جانبي", q9_b: "استبدال دخلي الكامل", q9_c: "أنا أتداول وأريد أن أصبح محترفاً",
     q10: "ما رقم هاتفك؟", q10_ph: "مثال: +966 5xxxxxxxx",
@@ -1452,7 +1452,7 @@ const t = {
     q7: "What's your budget to get started?",
     q7_a: "Less than $500", q7_b: "$500 – $1,000", q7_c: "$1,000 – $3,000", q7_d: "$3,000+",
     q8: "What are you looking for?",
-    q8_a: "A-Z video course at my own pace", q8_b: "A community of traders to learn with", q8_c: "1-on-1 mentorship with direct access", q8_d: "All of the above",
+    q8_a: "A-Z video course at my own pace", q8_b: "A community of traders to learn with", q8_c: "1-on-1 mentorship with direct access", q8_d: "All of the above", q8_e: "Bookmap",
     q9: "What's your main goal?",
     q9_a: "Extra income on the side", q9_b: "Replace my full-time income", q9_c: "Already trading, want to go pro",
     q10: "What's your phone number?", q10_ph: "e.g. +1 555 000 0000",
@@ -2021,6 +2021,7 @@ function render() {
             <div class="form-choice" data-value="community" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">B</span><span data-key="q8_b"></span></div>
             <div class="form-choice" data-value="1on1" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">C</span><span data-key="q8_c"></span></div>
             <div class="form-choice" data-value="all" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">D</span><span data-key="q8_d"></span></div>
+            <div class="form-choice" data-value="bookmap" role="radio" tabindex="0" aria-checked="false"><span class="choice-key">E</span><span data-key="q8_e"></span></div>
           </div>
         </div>
 
@@ -2594,7 +2595,7 @@ function render() {
     // step order: 1=name,2=phone,3=email,4=country,5=experience,6=budget,7=looking,8=goal
     const expMap        = { beginner: txt('q5_a'), 'tried-lost': txt('q5_b'), 'some-exp': txt('q5_c') };
     const budgetMap     = { '<500': txt('q7_a'), '500-1k': txt('q7_b'), '1k-3k': txt('q7_c'), '3k+': txt('q7_d') };
-    const lookingMap    = { videos: txt('q8_a'), community: txt('q8_b'), '1on1': txt('q8_c'), all: txt('q8_d') };
+    const lookingMap    = { videos: txt('q8_a'), community: txt('q8_b'), '1on1': txt('q8_c'), all: txt('q8_d'), bookmap: txt('q8_e') };
     const goalMap       = { 'side-income': txt('q9_a'), 'replace-income': txt('q9_b'), 'full-time': txt('q9_c') };
 
     const payload = {
