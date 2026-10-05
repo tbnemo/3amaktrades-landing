@@ -81,30 +81,30 @@ test('each sender addresses the client email and passes a subject and html throu
   }
 });
 
-test('every subject and body is marked [PLACEHOLDER], and the shell carries the footer', async () => {
+// The design pass is finished: no sender may ship placeholder copy, and every
+// body must carry the shared shell's wordmark and WhatsApp footer line.
+test('no subject or body carries placeholder copy, and the shell wordmark/footer are present', async () => {
   for (const name of SENDERS) {
     const sendSpy = spyStub({ ok: true });
     await withStubs([{ obj: baseEmail, key: 'send', value: sendSpy }], async () => {
       const mod = freshCe();
       await mod[name](booking());
       const { subject, html } = sendSpy.calls[0][0];
-      assert.match(subject, /\[PLACEHOLDER\]/, `${name} subject must be marked placeholder`);
-      assert.match(html, /\[PLACEHOLDER\]/, `${name} body must be marked placeholder`);
-      assert.match(html, /PLACEHOLDER EMAIL — final copy pending\./,
-        `${name} must use the shared placeholder shell`);
+      assert.equal(/PLACEHOLDER/.test(subject), false, `${name} subject must not be placeholder`);
+      assert.equal(/PLACEHOLDER/.test(html), false, `${name} body must not be placeholder`);
+      assert.match(html, /3AMAK TRADES/, `${name} must use the shared shell wordmark`);
+      assert.match(html, /wa\.me\/14382259193/, `${name} must carry the WhatsApp footer link`);
     });
     delete require.cache[cePath];
   }
 });
 
-// The convention markers are what stop this copy being mistaken for finished
-// text in a later pass, so they are asserted against the file itself.
-test('the source file carries the PLACEHOLDER banner and a per-sender marker comment', () => {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'api', '_checkin-email.js'), 'utf8');
-  assert.match(src, /ALL COPY IN THIS FILE IS PLACEHOLDER/);
-  const markers = src.match(/PLACEHOLDER COPY — collaborative design pass pending/g) || [];
-  assert.ok(markers.length >= 8,
-    `expected a marker above every subject and body (>=8), found ${markers.length}`);
+// Guards against a regression back to placeholder copy in either source file.
+test('neither email source file carries placeholder markers any more', () => {
+  for (const file of ['_checkin-email.js', '_email.js']) {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'api', file), 'utf8');
+    assert.equal(/PLACEHOLDER/.test(src), false, `${file} must not contain PLACEHOLDER markers`);
+  }
 });
 
 test('the booking time is rendered in the CLIENT timezone, the one load-bearing value', async () => {
@@ -137,8 +137,11 @@ test('the Meet link is linked when present and omitted entirely when absent', as
     await withStubs([{ obj: baseEmail, key: 'send', value: withoutLink }], async () => {
       const mod = freshCe();
       await mod[name](booking({ meetLink: '' }));
-      assert.equal(/Join link/.test(withoutLink.calls[0][0].html), false,
-        `${name} must omit the join line when there is no link`);
+      const html = withoutLink.calls[0][0].html;
+      assert.equal(/JOIN LINK/i.test(html), false,
+        `${name} must omit the join link row when there is no link`);
+      assert.equal(/JOIN THE CALL/i.test(html), false,
+        `${name} must omit the join CTA button when there is no link`);
     });
     delete require.cache[cePath];
   }
@@ -153,7 +156,8 @@ test('a javascript: Meet link is refused rather than escaped into an href', asyn
     await mod.sendCheckinConfirmation(booking({ meetLink: 'javascript:alert(1)' }));
     const { html } = sendSpy.calls[0][0];
     assert.equal(/javascript:/i.test(html), false);
-    assert.equal(/Join link/.test(html), false);
+    assert.equal(/JOIN LINK/i.test(html), false);
+    assert.equal(/JOIN THE CALL/i.test(html), false);
   });
   delete require.cache[cePath];
 });

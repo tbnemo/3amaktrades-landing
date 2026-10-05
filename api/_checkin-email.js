@@ -1,95 +1,80 @@
 // Transactional email for the CHECK-IN audience.
 //
-// ############################################################################
-// # ALL COPY IN THIS FILE IS PLACEHOLDER. Do not treat it as finished text.   #
-// # Final wording and layout are a separate, collaborative design pass with   #
-// # the user. Only the SENDING MECHANISM and TRIGGER POINTS are complete.     #
-// ############################################################################
+// Reuses the Resend POST (`send`), the timezone formatter (`formatWhen`), and
+// the whole Minimal Ticket visual shell from api/_email.js: these are
+// transport/visual plumbing, not audience-specific copy, so sharing them does
+// not compromise the "fully separate lifecycle" decision -- an env-var, retry,
+// or visual fix never has to be made twice.
 //
-// The Resend POST (`send`) and the timezone formatter (`formatWhen`) are reused
-// from api/_email.js rather than reimplemented: those are transport-layer
-// plumbing, not audience-facing copy, so sharing them does not compromise the
-// "fully separate lifecycle" decision -- and it means an env-var or retry fix
-// never has to be made twice.
+// English-only, deliberately: check-in.html is itself "English-only and
+// dir=ltr" (the check-in audience is a known, small client list), so there is
+// no Arabic branch here the way there is in _email.js's bilingual apply flow.
 //
 // NOTE: these emails deliberately advertise no reschedule/cancel links, exactly
 // as the applicant ones do. The endpoints exist and are tested, but nothing
 // reads a `booking` query param yet, so a link would drop the client on a page
 // that cannot act on it. `manageToken` is still minted and still valid, so the
-// flow can be wired up later without reworking anything here.
-const { send, formatWhen } = require('./_email');
-const { escapeHtml, safeUrl } = require('./_html');
+// flow can be wired up later without reworking anything here. The WhatsApp
+// footer line is the stand-in contact path.
+const {
+  send, formatWhen, escapeHtml, shell, headline, detailsBox, ctaButton,
+  footerLine, joinRow,
+} = require('./_email');
 const { baseUrl } = require('./_site-url');
 
-// A shared placeholder shell so the real design pass has one obvious place to
-// land, instead of four diverging ad-hoc layouts.
-function shell(bodyHtml) {
-  // PLACEHOLDER COPY — collaborative design pass pending
-  return `<div style="font-family:system-ui,sans-serif;background:#050505;color:#F2EEE4;padding:24px">
-    <p style="color:#D4AF37;font-weight:700">3AMAK TRADES</p>
-    ${bodyHtml}
-    <p style="color:#8B887F;font-size:12px">PLACEHOLDER EMAIL — final copy pending.</p>
-  </div>`;
-}
-
-// The booking time in the CLIENT's own zone -- the one genuinely load-bearing
-// value in these otherwise-placeholder bodies.
-function whenHtml(b) {
-  return `<strong>${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, b.lang))}</strong>
-     (${escapeHtml(b.visitorTimeZone)})`;
-}
-
-// safeUrl, not escapeHtml: escaping alone would not stop a `javascript:` URL,
-// and these links are rendered inside mail clients.
-function joinHtml(b) {
-  const href = safeUrl(b.meetLink);
-  if (!href) return '';
-  // PLACEHOLDER COPY — collaborative design pass pending
-  return `<p>[PLACEHOLDER] Join link: <a href="${href}">${escapeHtml(b.meetLink)}</a></p>`;
-}
-
 async function sendCheckinConfirmation(b) {
-  // PLACEHOLDER COPY — collaborative design pass pending
-  const subject = '[PLACEHOLDER] Your check-in call is booked';
-  // PLACEHOLDER COPY — collaborative design pass pending
+  const when = `${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, 'en'))} (${escapeHtml(b.visitorTimeZone)})`;
+  const name = escapeHtml(b.name);
+  const subject = 'Your check-in call is booked';
   const html = shell(`
-    <p>Hi ${escapeHtml(b.name)},</p>
-    <p>[PLACEHOLDER] Your check-in call is confirmed for ${whenHtml(b)}.</p>
-    ${joinHtml(b)}`);
+    ${headline('YOUR CHECK-IN<br>IS BOOKED', 'en')}
+    <p style="color:#F2EEE4;font-size:14px;margin:0 0 16px;">Hi ${name}, you're confirmed. We'll see you then.</p>
+    ${detailsBox([{ label: 'WHEN', value: when }, ...joinRow(b.meetLink, 'en')], 'en')}
+    ${ctaButton(b.meetLink, 'JOIN THE CALL')}
+    ${footerLine('Need to change anything?', 'Message us on WhatsApp')}
+  `, 'en');
   return send({ to: b.email, subject, html });
 }
 
 async function sendCheckinRescheduleNotice(b) {
-  // PLACEHOLDER COPY — collaborative design pass pending
-  const subject = '[PLACEHOLDER] Your check-in call was moved';
-  // PLACEHOLDER COPY — collaborative design pass pending
+  const when = `${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, 'en'))} (${escapeHtml(b.visitorTimeZone)})`;
+  const name = escapeHtml(b.name);
+  const subject = 'Your check-in call was moved';
   const html = shell(`
-    <p>Hi ${escapeHtml(b.name)},</p>
-    <p>[PLACEHOLDER] Your check-in call is now ${whenHtml(b)}.</p>
-    ${joinHtml(b)}`);
+    ${headline('YOUR CHECK-IN<br>WAS MOVED', 'en')}
+    <p style="color:#F2EEE4;font-size:14px;margin:0 0 16px;">Hi ${name}, here's your new time.</p>
+    ${detailsBox([{ label: 'NEW TIME', value: when }, ...joinRow(b.meetLink, 'en')], 'en')}
+    ${ctaButton(b.meetLink, 'JOIN THE CALL')}
+    ${footerLine('Not expecting this?', 'Message us on WhatsApp')}
+  `, 'en');
   return send({ to: b.email, subject, html });
 }
 
 async function sendCheckinCancellationNotice(b) {
-  // PLACEHOLDER COPY — collaborative design pass pending
-  const subject = '[PLACEHOLDER] Your check-in call was cancelled';
-  // PLACEHOLDER COPY — collaborative design pass pending
+  const when = `${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, 'en'))} (${escapeHtml(b.visitorTimeZone)})`;
+  const name = escapeHtml(b.name);
+  const checkinUrl = `${baseUrl()}/check-in`;
+  const subject = 'Your check-in call was cancelled';
   const html = shell(`
-    <p>Hi ${escapeHtml(b.name)},</p>
-    <p>[PLACEHOLDER] Your check-in call on
-       ${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, b.lang))} is cancelled.</p>
-    <p>[PLACEHOLDER] <a href="${escapeHtml(baseUrl())}/check-in">Book another check-in</a></p>`);
+    ${headline('YOUR CHECK-IN IS<br>CANCELLED', 'en')}
+    <p style="color:#F2EEE4;font-size:14px;margin:0 0 16px;">Hi ${name}, your check-in on <span style="text-decoration:line-through;color:#8B887F;">${when}</span> has been cancelled.</p>
+    ${ctaButton(checkinUrl, 'BOOK ANOTHER CHECK-IN')}
+    ${footerLine('Questions?', 'Message us on WhatsApp')}
+  `, 'en');
   return send({ to: b.email, subject, html });
 }
 
 async function sendCheckinReminder(b) {
-  // PLACEHOLDER COPY — collaborative design pass pending
-  const subject = '[PLACEHOLDER] Your check-in call is coming up';
-  // PLACEHOLDER COPY — collaborative design pass pending
+  const when = `${escapeHtml(formatWhen(b.startMs, b.visitorTimeZone, 'en'))} (${escapeHtml(b.visitorTimeZone)})`;
+  const name = escapeHtml(b.name);
+  const subject = 'Your check-in call is coming up';
   const html = shell(`
-    <p>Hi ${escapeHtml(b.name)},</p>
-    <p>[PLACEHOLDER] Reminder: your check-in call is ${whenHtml(b)}.</p>
-    ${joinHtml(b)}`);
+    ${headline('YOUR CHECK-IN IS<br>COMING UP', 'en')}
+    <p style="color:#F2EEE4;font-size:14px;margin:0 0 16px;">Hi ${name}, quick reminder — your check-in is coming up.</p>
+    ${detailsBox([{ label: 'WHEN', value: when }, ...joinRow(b.meetLink, 'en')], 'en')}
+    ${ctaButton(b.meetLink, 'JOIN THE CALL')}
+    ${footerLine("Can't make it?", 'Message us on WhatsApp')}
+  `, 'en');
   return send({ to: b.email, subject, html });
 }
 
