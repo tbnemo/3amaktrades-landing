@@ -12,6 +12,7 @@
     { "source": "/api/:action(calendar-checkin-reschedule)", "destination": "/api/calendar-checkin" },
     { "source": "/api/admin/:action(checkin-availability)", "destination": "/api/admin/checkin" },
     { "source": "/api/admin/:action(checkin-clients)", "destination": "/api/admin/checkin" },
+    { "source": "/api/admin/:action(prize-winner)", "destination": "/api/admin/checkin" },
     { "source": "/api/admin/:action(login)", "destination": "/api/admin/auth" },
     { "source": "/api/admin/:action(status)", "destination": "/api/admin/auth" },
     { "source": "/api/wa-click", "destination": "/api/submit?action=wa-click" }

@@ -633,6 +633,35 @@
             </div>
           </div>
 
+          <div class="prize-winner-tool" style="margin-block-end:24px;">
+            <h3 style="margin:0 0 10px;font-size:15px;">Send Prize Winner Email</h3>
+            <p style="color:var(--dim);font-size:13px;margin:0 0 12px;">
+              Sends the branded giveaway-winner email (one-time-use code + FundingPips instructions) to one recipient at a time.
+            </p>
+            <div class="prize-winner-row" style="display:flex;flex-wrap:wrap;gap:12px;margin-block-end:12px;">
+              <div class="field">
+                <label for="prizeEmail">Winner email</label>
+                <input class="input" type="email" id="prizeEmail" placeholder="winner@example.com" />
+              </div>
+              <div class="field">
+                <label for="prizeName">Name (optional)</label>
+                <input class="input" type="text" id="prizeName" placeholder="there" />
+              </div>
+              <div class="field">
+                <label for="prizeCode">Prize code</label>
+                <input class="input" type="text" id="prizeCode" placeholder="ABCD1234" />
+              </div>
+              <div class="field">
+                <label for="prizeAccount">Account (optional)</label>
+                <input class="input" type="text" id="prizeAccount" placeholder="5K 2-Step Pro" />
+              </div>
+            </div>
+            <div class="reminders-catchup">
+              <button type="button" class="btn-primary" id="sendPrizeWinnerBtn">Send Prize Email</button>
+              <span id="sendPrizeWinnerStatus" class="field-hint"></span>
+            </div>
+          </div>
+
           <div class="clients-table-scroll">
             <table class="clients-table">
               <thead>
@@ -2267,6 +2296,58 @@
       });
     }
 
+    // Same real-send confirmation + 401/network-error handling as
+    // wireRemindersCatchup above -- this also sends real email to a real
+    // person, just a one-off instead of a batch.
+    function wirePrizeWinnerTool() {
+      $('sendPrizeWinnerBtn').addEventListener('click', async () => {
+        const email = $('prizeEmail').value.trim();
+        const name = $('prizeName').value.trim();
+        const code = $('prizeCode').value.trim();
+        const prize = $('prizeAccount').value.trim();
+        const statusEl = $('sendPrizeWinnerStatus');
+
+        if (!email || !code) {
+          statusEl.textContent = 'Email and code are required.';
+          return;
+        }
+        if (!window.confirm(`Send the prize-winner email to ${email}? This sends real email.`)) {
+          return;
+        }
+
+        const btn = $('sendPrizeWinnerBtn');
+        btn.disabled = true;
+        statusEl.textContent = 'Sending…';
+
+        let res, data;
+        try {
+          res = await fetch('/api/admin/prize-winner', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, name, code, prize }),
+          });
+          data = await res.json().catch(() => ({}));
+        } catch (err) {
+          statusEl.textContent = 'Network error -- try again.';
+          btn.disabled = false;
+          return;
+        }
+        btn.disabled = false;
+
+        if (res.status === 401) { showGate(); return; }
+
+        if (res.status === 200 && data.ok) {
+          statusEl.textContent = `Sent to ${email}.`;
+          $('prizeEmail').value = '';
+          $('prizeName').value = '';
+          $('prizeCode').value = '';
+          $('prizeAccount').value = '';
+          return;
+        }
+        statusEl.textContent = (data.errors && data.errors[0]) || data.error || `Failed (status ${res.status}).`;
+      });
+    }
+
     async function loadAllPanels() {
       await loadAvailabilityInto(PREFIX_APPLICANTS, '/api/admin/availability', 'storageMissingNote');
       await loadAvailabilityInto(PREFIX_CHECKINS, '/api/admin/checkin-availability', 'chk-storageMissingNote');
@@ -2299,6 +2380,7 @@
       $('clientSearchInput').addEventListener('input', filterClientRows);
       wirePaymentsTab();
       wireRemindersCatchup();
+      wirePrizeWinnerTool();
 
       const authed = await loadStatus();
       if (authed) await loadAllPanels();

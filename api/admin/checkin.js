@@ -19,6 +19,7 @@ const store = require('../_blob-store');
 const cc = require('../_checkin-clients');
 const { loadCheckinTemplate } = require('../_load-checkin-template');
 const { resolveAction, notFound } = require('../_route-action');
+const { sendPrizeWinnerNotice } = require('../_prize-email');
 
 // ===========================================================================
 // Read/write the CHECK-IN weekly template. Passcode-gated behind the same
@@ -200,6 +201,33 @@ async function clientsHandler(req, res) {
 }
 
 // ===========================================================================
+// One-off prize/giveaway-winner notices (e.g. FundingPips codes). Lives here
+// rather than in its own file purely for the Hobby-plan 12-Serverless-Function
+// cap this whole directory is already built around (see the file header) --
+// it has nothing to do with check-ins otherwise, and shares no state with the
+// two handlers above. The actual template/copy lives in api/_prize-email.js.
+// ===========================================================================
+async function prizeWinnerHandler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  if (!auth.requireAdmin(req, res)) return;
+  if (req.method !== 'POST') return res.status(405).end();
+
+  const body = req.body || {};
+  const email = String(body.email || '').trim();
+  const code = String(body.code || '').trim();
+  const errors = [];
+  if (!email || !email.includes('@')) errors.push('A valid email is required');
+  if (!code) errors.push('A prize code is required');
+  if (errors.length) return res.status(400).json({ ok: false, errors });
+
+  const result = await sendPrizeWinnerNotice({
+    email, code, name: body.name, prize: body.prize,
+  });
+  if (!result.ok) return res.status(502).json({ ok: false, errors: [result.reason] });
+  return res.status(200).json({ ok: true });
+}
+
+// ===========================================================================
 // Dispatch
 // ===========================================================================
 
@@ -210,6 +238,7 @@ async function clientsHandler(req, res) {
 const ROUTES = {
   'checkin-availability': availabilityHandler,
   'checkin-clients': clientsHandler,
+  'prize-winner': prizeWinnerHandler,
 };
 
 module.exports = async function handler(req, res) {
@@ -222,4 +251,5 @@ module.exports = async function handler(req, res) {
 
 module.exports.availability = availabilityHandler;
 module.exports.clients = clientsHandler;
+module.exports.prizeWinner = prizeWinnerHandler;
 module.exports.__routesForTests = ROUTES;
